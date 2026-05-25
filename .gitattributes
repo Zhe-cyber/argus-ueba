@@ -1,0 +1,15 @@
+# Git LFS — track large binary/data files
+# Run `git lfs install` once per machine before committing these.
+
+# PyTorch model weights
+*.pt  filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+
+# Parquet feature files (can be 10-100 MB each)
+*.parquet filter=lfs diff=lfs merge=lfs -text
+
+# Large CSV score files  (>10 MB)
+data/processed/*.csv filter=lfs diff=lfs merge=lfs -text
+
+# Compressed log archives
+*.gz  filter=lfs diff=lfs merge=lfs -text

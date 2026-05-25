@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+jobs:
+  # ── Backend → Hugging Face Spaces ────────────────────────────────────────
+  deploy-backend:
+    name: Push backend to HuggingFace Spaces
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with LFS)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true        # pull large files tracked by git-lfs
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name  "github-actions[bot]"
+
+      - name: Push to HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          # Set HF_SPACE to your Space path, e.g. "yourname/ueba-backend"
+          HF_SPACE: ${{ secrets.HF_SPACE }}
+        run: |
+          git remote add hf-space \
+            "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
+          git push hf-space main --force
+
+  # ── Frontend → Vercel (auto-handled by Vercel GitHub integration) ─────────
+  # Vercel re-deploys automatically on every push to main once the GitHub
+  # integration is connected in the Vercel dashboard — no action needed here.
+  #
+  # If you prefer an explicit action, uncomment the block below and add
+  # VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID as repo secrets.
+  #
+  # deploy-frontend:
+  #   name: Deploy frontend to Vercel
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: amondnet/vercel-action@v25
+  #       with:
+  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+  #         working-directory: ./frontend
+  #         vercel-args: '--prod'

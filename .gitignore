@@ -1,0 +1,58 @@
+# ── Raw cloud logs (too large for git, never needed at runtime) ──────────
+data/raw/
+
+# ── Model + processed data files ─────────────────────────────────────────
+# These are excluded from the GITHUB repo (kept in Google Drive / HF Hub).
+# They MUST be present in the HuggingFace Space repo (pushed once via LFS).
+# See .gitattributes — all *.pt / *.pkl / *.parquet / *.csv are LFS-tracked.
+data/processed/
+ml/models/
+*.csv
+*.parquet
+*.pkl
+*.pt
+!demo/demo_scores.csv
+!demo/demo_shap.parquet
+
+# ── Runtime-generated files ───────────────────────────────────────────────
+data/events.db          # SQLite (local dev only — production uses PostgreSQL)
+data/events/
+
+.env
+.env.local
+.env.*.local
+
+# ── Python ────────────────────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+pytest-cache-files-*/
+
+# ── Node / Next.js ────────────────────────────────────────────────────────
+node_modules/
+.next/
+
+# ── Test / lint caches ────────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+*.log
+uvicorn*.log
+
+# ── Misc dev artifacts ────────────────────────────────────────────────────
+_test_*.py
+test_pipeline.py
+.claude/
+
+# ── OS ────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

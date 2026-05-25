@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pandas
+pyarrow
+fastparquet
+python-dotenv
+python-multipart
+# Model inference (CPU-only build — no GPU needed for loading weights)
+torch --index-url https://download.pytorch.org/whl/cpu
+joblib
+# PostgreSQL driver (production) — falls back to SQLite locally
+psycopg2-binary
+# Streaming JSON parse for large .gz ingestion
+ijson
