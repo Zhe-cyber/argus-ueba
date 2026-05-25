@@ -1,6 +1,6 @@
 # ============================================================
 # Root Dockerfile — Hugging Face Spaces (Docker SDK)
-#
+# Build trigger: v2
 # Exposes port 7860 (HF default).
 # Data + model files are NOT in the GitHub repo (too large).
 # After first deploy, add them directly to the HF Space repo:

@@ -1,6 +1,6 @@
 ---
 title: Argus UEBA
-emoji: 👁️
+emoji: 🔍
 colorFrom: indigo
 colorTo: blue
 sdk: docker
