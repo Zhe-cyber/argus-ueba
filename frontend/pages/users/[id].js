@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine, ResponsiveContainer,
 } from 'recharts'
@@ -343,9 +344,9 @@ function LiveActivityFeed({ events, loading }) {
             <p className="text-sm font-medium text-slate-500">No live events yet</p>
             <p className="text-xs text-slate-400 mt-1">
               Use the{' '}
-              <a href="/demo" className="text-indigo-500 hover:underline font-medium">
+              <Link href="/demo" className="text-indigo-500 hover:underline font-medium">
                 Demo page
-              </a>{' '}
+              </Link>{' '}
               to ingest events for this user via <code className="bg-slate-100 px-1 rounded font-mono">POST /ingest</code>
             </p>
           </div>
@@ -612,8 +613,8 @@ function InvestigationPanel({ userId, initial }) {
           ) : (
             <div className="rounded-lg border border-dashed border-slate-200 px-4 py-5
                             text-center text-xs text-slate-400">
-              Click "Get AI Suggestion" to generate a Claude-powered investigation guide
-              based on this user's anomaly scores and SHAP features.
+              Click &quot;Get AI Suggestion&quot; to generate an AI-powered investigation guide
+              based on this user&apos;s anomaly scores and SHAP features.
             </div>
           )}
         </div>

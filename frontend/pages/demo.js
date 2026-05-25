@@ -316,7 +316,7 @@ export default function DemoPage() {
             <p className="mt-1 text-sm text-slate-500 max-w-2xl">
               Paste any raw log, choose the source, and click <strong className="text-slate-700">Run Pipeline</strong>.
               Each event is normalized, features are extracted, the event is persisted, and the
-              user's live risk score is updated — all in one API call.
+              user&apos;s live risk score is updated — all in one API call.
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
               <StepBadge n="1" label="Normalize"         done={!!result} />
