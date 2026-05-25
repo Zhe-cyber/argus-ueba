@@ -7,6 +7,7 @@ python-dotenv
 python-multipart
 # Model inference (CPU-only build — no GPU needed for loading weights)
 torch --index-url https://download.pytorch.org/whl/cpu
+scikit-learn
 joblib
 # PostgreSQL driver (production) — falls back to SQLite locally
 psycopg2-binary
