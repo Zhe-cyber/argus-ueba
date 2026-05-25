@@ -38,10 +38,11 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY backend/  ./backend/
 COPY scripts/  ./scripts/
 
-# Create expected directories — files are populated either by:
-#   (a) git-lfs files committed directly to the HF Space repo, or
-#   (b) the HF_MODEL_REPO download in start.sh
-RUN mkdir -p data/processed data/events ml/models
+# Model + data files — uploaded directly to the HF Space repo via LFS.
+# COPY resolves LFS pointers and bakes the actual binaries into the image.
+COPY ml/models/       ./ml/models/
+COPY data/processed/  ./data/processed/
+RUN mkdir -p data/events
 
 # Startup script
 COPY start.sh ./start.sh
