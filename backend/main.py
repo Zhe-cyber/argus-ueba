@@ -45,6 +45,7 @@ from backend.models import (
     UserSummary,
 )
 from backend.normalizer import normalize
+from backend.rarity_scorer import compute_rarity_flags, rarity_score as calc_rarity_score
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -636,6 +637,13 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     peer_means   = peer_context.get("cluster_means") if peer_context else None
     ae_live      = ae_scorer.score_user(user_id, peer_means=peer_means)
 
+    # ── Stage 6: Rarity flags (source-agnostic anomaly signals) ──────────
+    # Use recent history (last 500 events) for first_time_action / new_ip checks;
+    # high_volume uses len(history) vs VOLUME_THRESHOLD in rarity_scorer.
+    history_events = evstore.get_user_events(user_id, limit=500)
+    r_flags        = compute_rarity_flags(normalised, history_events)
+    r_score        = calc_rarity_score(r_flags)
+
     return PipelineResult(
         **normalised,
         extracted_features  = features,
@@ -644,6 +652,8 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
         event_count_24h     = len(window_events),
         cumulative_features = cumulative,
         total_events        = total_events,
+        rarity_flags        = r_flags,
+        rarity_score        = r_score,
     )
 
 

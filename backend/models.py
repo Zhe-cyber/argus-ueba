@@ -292,6 +292,19 @@ class PipelineResult(NormalizedEvent):
         description="All-time total events stored for this user",
     )
 
+    # Step 5 — rarity flags (source-agnostic anomaly signals)
+    rarity_flags: Dict[str, bool] = Field(
+        default_factory=dict,
+        description=(
+            "Five source-agnostic boolean anomaly signals: "
+            "first_time_action, new_ip, off_hours, high_volume, sensitive_resource."
+        ),
+    )
+    rarity_score: float = Field(
+        0.0,
+        description="Fraction of rarity flags that are True (0.0–1.0)",
+    )
+
 
 class LiveEvent(BaseModel):
     """One event entry from the live event store (GET /users/{id}/events)."""

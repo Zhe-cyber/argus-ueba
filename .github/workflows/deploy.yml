@@ -2,21 +2,56 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:   # allow manual trigger from GitHub UI
 
 jobs:
+  # ── Tests ─────────────────────────────────────────────────────────────────
+  test:
+    name: Run backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet fastapi uvicorn[standard] pandas pyarrow \
+            fastparquet python-dotenv python-multipart scikit-learn \
+            joblib psycopg2-binary ijson pytest httpx
+
+      - name: Run tests
+        run: pytest backend/tests/ -v --tb=short
+        env:
+          DEMO_MODE: "true"
+
   # ── Backend → Hugging Face Spaces ────────────────────────────────────────
+  # NOTE: Model files (*.pt, *.pkl, *.parquet, *.csv) are gitignored and
+  # live on the local `hf-deploy` branch. GitHub Actions cannot push model
+  # files automatically. Use the manual command when models change:
+  #
+  #   git checkout hf-deploy && git rebase master
+  #   git push hf-space hf-deploy:main --force
+  #   git checkout master
+  #
+  # This job only runs when triggered manually (workflow_dispatch) or when
+  # you want to push a code-only change and model files are already on HF.
   deploy-backend:
     name: Push backend to HuggingFace Spaces
     runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'workflow_dispatch'   # manual trigger only
 
     steps:
       - name: Checkout (with LFS)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true        # pull large files tracked by git-lfs
+          lfs: false        # model files not in GitHub repo
 
       - name: Configure git identity
         run: |
@@ -26,29 +61,12 @@ jobs:
       - name: Push to HuggingFace Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          # Set HF_SPACE to your Space path, e.g. "yourname/ueba-backend"
           HF_SPACE: ${{ secrets.HF_SPACE }}
         run: |
           git remote add hf-space \
             "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
-          git push hf-space main --force
+          git push hf-space master:main --force
 
-  # ── Frontend → Vercel (auto-handled by Vercel GitHub integration) ─────────
-  # Vercel re-deploys automatically on every push to main once the GitHub
-  # integration is connected in the Vercel dashboard — no action needed here.
-  #
-  # If you prefer an explicit action, uncomment the block below and add
-  # VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID as repo secrets.
-  #
-  # deploy-frontend:
-  #   name: Deploy frontend to Vercel
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: amondnet/vercel-action@v25
-  #       with:
-  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-  #         working-directory: ./frontend
-  #         vercel-args: '--prod'
+  # ── Frontend → Vercel ─────────────────────────────────────────────────────
+  # Vercel re-deploys automatically on every push to master via GitHub
+  # integration — no action needed here.
