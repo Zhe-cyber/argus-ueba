@@ -1,3 +1,14 @@
+---
+title: Argus UEBA
+emoji: 👁️
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+license: mit
+pinned: false
+---
+
 # Argus — Multi-Cloud UEBA for Insider Threat Detection
 
 **FYP · Universiti Malaya · Supervisor: Dr. Firdaus Sahran**
