@@ -150,11 +150,11 @@ def _call_gemini(prompt: str) -> str:
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 # (display_label, model_id) — verified :free tier models on OpenRouter
-# Checked against https://openrouter.ai/models?q=free (2025-05)
+# Last checked against GET /api/v1/models on openrouter.ai (2025-05-26)
 _OPENROUTER_MODELS: list[tuple[str, str]] = [
-    ("Llama-3.3-70B",  "meta-llama/llama-3.3-70b-instruct:free"),
-    ("DeepSeek-R1",    "deepseek/deepseek-r1:free"),
-    ("Mistral-7B",     "mistralai/mistral-7b-instruct:free"),
+    ("Hermes-3-405B",  "nousresearch/hermes-3-llama-3.1-405b:free"),
+    ("DeepSeek-V4",    "deepseek/deepseek-v4-flash:free"),
+    ("Gemma-4-31B",    "google/gemma-4-31b-it:free"),
 ]
 
 
