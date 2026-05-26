@@ -223,10 +223,10 @@ def _collect_tasks(prompt: str) -> dict[str, Any]:
     if os.environ.get("GEMINI_API_KEY"):
         tasks["Gemini-2.5"] = lambda: _call_gemini(prompt)
 
-    if os.environ.get("OPENROUTER_API_KEY"):
-        for label, model in _OPENROUTER_MODELS:
-            # Use default-argument capture to avoid closure-over-loop-variable bug
-            tasks[label] = lambda p=prompt, m=model: _call_openrouter(p, m)
+    # OpenRouter free models are excluded from the default ensemble because their
+    # upstream providers frequently hang past the client-level timeout, blocking
+    # the ThreadPoolExecutor shutdown and pushing total latency past 60s.
+    # They remain available as a synthesis fallback but not as primary sources.
 
     if os.environ.get("DEEPSEEK_API_KEY"):
         tasks["DeepSeek"] = lambda: _call_openai_compat(
