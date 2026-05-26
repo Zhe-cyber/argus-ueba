@@ -150,11 +150,13 @@ def _call_gemini(prompt: str) -> str:
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 # (display_label, model_id) — verified :free tier models on OpenRouter
-# Last checked against GET /api/v1/models on openrouter.ai (2025-05-26)
+# Deliberately chosen from different upstream providers (NVIDIA/Alibaba/MiniMax)
+# to avoid shared rate-limit exhaustion across popular Google/Meta endpoints.
+# Last verified against GET /api/v1/models (2025-05-26)
 _OPENROUTER_MODELS: list[tuple[str, str]] = [
-    ("Hermes-3-405B",  "nousresearch/hermes-3-llama-3.1-405b:free"),
-    ("DeepSeek-V4",    "deepseek/deepseek-v4-flash:free"),
-    ("Gemma-4-31B",    "google/gemma-4-31b-it:free"),
+    ("Nemotron-120B",  "nvidia/nemotron-3-super-120b-a12b:free"),   # NVIDIA
+    ("Qwen3-80B",      "qwen/qwen3-next-80b-a3b-instruct:free"),    # Alibaba
+    ("MiniMax-M2.5",   "minimax/minimax-m2.5:free"),                # MiniMax
 ]
 
 
