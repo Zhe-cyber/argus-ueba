@@ -313,11 +313,12 @@ def generate_ensemble(
 
     if len(successful) == 1:
         final = next(iter(successful.values()))
-        return {"final": final, "sources": successful, "synthesized": False}
+        # Return raw_results so callers can see which providers failed and why
+        return {"final": final, "sources": raw_results, "synthesized": False}
 
     # Synthesise from all successful outputs
     final = _synthesize(user_id, successful)
-    return {"final": final, "sources": successful, "synthesized": True}
+    return {"final": final, "sources": raw_results, "synthesized": True}
 
 
 # ---------------------------------------------------------------------------
