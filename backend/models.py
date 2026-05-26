@@ -197,10 +197,53 @@ class NormalizedEvent(BaseModel):
         allowed = {
             "aws_cloudtrail", "azure_ad", "cloudflare_access",
             "cert_logon", "cert_file", "cert_device",
-            "cert_email", "cert_http",
+            "cert_email", "cert_http", "github_events",
         }
         if v not in allowed:
             raise ValueError(f"source must be one of {allowed}, got {v!r}")
+        return v
+
+
+# ---------------------------------------------------------------------------
+# Alert schemas
+# ---------------------------------------------------------------------------
+
+ALERT_SEVERITIES = ("Critical", "High", "Medium", "Low")
+ALERT_STATUSES   = ("Open", "Acknowledged", "Resolved", "False Positive")
+
+
+class Alert(BaseModel):
+    """One security alert row from the alerts table."""
+
+    id:          int
+    user_id:     str
+    alert_type:  str  = Field(..., description="rarity_spike | ae_critical | anomalous_behavior | new_user")
+    severity:    str  = Field(..., description="Critical | High | Medium | Low")
+    title:       str
+    details:     Dict[str, Any] = Field(default_factory=dict)
+    status:      str  = Field(..., description="Open | Acknowledged | Resolved | False Positive")
+    created_at:  str
+    resolved_at: Optional[str] = None
+
+
+class AlertStats(BaseModel):
+    """Counts of alerts per status — used by the nav badge and stats bar."""
+    open:           int = 0
+    acknowledged:   int = 0
+    resolved:       int = 0
+    false_positive: int = 0
+    total:          int = 0
+
+
+class AlertStatusUpdate(BaseModel):
+    """Request body for PATCH /alerts/{id}."""
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def status_must_be_valid(cls, v: str) -> str:
+        if v not in ALERT_STATUSES:
+            raise ValueError(f"status must be one of {ALERT_STATUSES}, got {v!r}")
         return v
 
 
@@ -358,7 +401,7 @@ class IngestRequest(BaseModel):
         allowed = {
             "aws_cloudtrail", "azure_ad", "cloudflare_access",
             "cert_logon", "cert_file", "cert_device",
-            "cert_email", "cert_http",
+            "cert_email", "cert_http", "github_events",
         }
         if v not in allowed:
             raise ValueError(f"source must be one of {allowed}, got {v!r}")

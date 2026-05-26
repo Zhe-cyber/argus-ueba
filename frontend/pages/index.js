@@ -151,37 +151,6 @@ export default function Dashboard() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="min-h-screen bg-slate-100 font-sans">
-
-        {/* ── Header ── */}
-        <header className="bg-slate-900 shadow-md">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Shield icon */}
-              <svg className="h-7 w-7 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
-                <path fillRule="evenodd" clipRule="evenodd"
-                  d="M12 1.5l8.485 3.182A1 1 0 0121 5.62v5.38c0 4.418-3.582 8.49-9 9.38C6.582 19.49 3 15.418 3 11V5.62a1 1 0 01.515-.938L12 1.5z" />
-              </svg>
-              <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Argus</h1>
-                <p className="text-xs text-slate-400">User &amp; Entity Behaviour Analytics</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/investigations')}
-                className="text-xs text-slate-400 hover:text-white font-medium transition-colors"
-              >
-                Investigation Queue
-              </button>
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-slate-400 font-medium">Live</span>
-              </span>
-            </div>
-          </div>
-        </header>
-
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
           {/* ── Stats bar ── */}
@@ -315,12 +284,6 @@ export default function Dashboard() {
           </section>
 
         </main>
-
-        {/* ── Footer ── */}
-        <footer className="mt-8 pb-6 text-center text-xs text-slate-400">
-          Argus · Multi-Cloud UEBA
-        </footer>
-      </div>
     </>
   )
 }

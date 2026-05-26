@@ -32,6 +32,7 @@ SOURCE_CERT_FILE   = "cert_file"
 SOURCE_CERT_DEVICE = "cert_device"
 SOURCE_CERT_EMAIL  = "cert_email"
 SOURCE_CERT_HTTP   = "cert_http"
+SOURCE_GITHUB      = "github_events"
 
 KNOWN_SOURCES = {
     SOURCE_AWS,
@@ -42,6 +43,7 @@ KNOWN_SOURCES = {
     SOURCE_CERT_DEVICE,
     SOURCE_CERT_EMAIL,
     SOURCE_CERT_HTTP,
+    SOURCE_GITHUB,
 }
 
 REQUIRED_FIELDS = ("timestamp", "user", "source", "action", "resource", "ip_address", "metadata", "raw")
@@ -468,6 +470,88 @@ def parse_cert_http(event: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Parser: GitHub Events (free real-time source — no account required)
+# ---------------------------------------------------------------------------
+
+# Map GitHub event types to human-readable SOC actions
+_GH_ACTION_MAP = {
+    "PushEvent":             "Code push",
+    "CreateEvent":           "Branch/tag created",
+    "DeleteEvent":           "Branch/tag deleted",
+    "PullRequestEvent":      "Pull request",
+    "IssuesEvent":           "Issue activity",
+    "IssueCommentEvent":     "Issue comment",
+    "ForkEvent":             "Repository forked",
+    "WatchEvent":            "Repository starred",
+    "ReleaseEvent":          "Release published",
+    "MemberEvent":           "Member change",
+    "PublicEvent":           "Repository made public",
+    "GollumEvent":           "Wiki updated",
+    "CommitCommentEvent":    "Commit comment",
+    "PullRequestReviewEvent":"PR review",
+}
+
+
+def parse_github_events(event: dict) -> dict:
+    """
+    Map a GitHub Events API record to the unified schema.
+
+    Real API format (GET /events or GET /users/{username}/events):
+        id          — event ID string
+        type        — event type (PushEvent, CreateEvent, …)
+        actor       — { login, display_login, id }
+        repo        — { name, url }
+        payload     — event-specific payload dict
+        created_at  — ISO 8601 timestamp
+        public      — bool (private events only visible with auth)
+
+    Free tier: 60 unauthenticated req/hour · 5000 req/hour with token.
+    Poll with:  GET https://api.github.com/events
+                Authorization: token <GITHUB_TOKEN>   (optional, raises limit)
+    """
+    actor   = event.get("actor") or {}
+    repo    = event.get("repo")  or {}
+    payload = event.get("payload") or {}
+
+    user    = str(actor.get("login") or actor.get("display_login") or "")
+    ev_type = str(event.get("type", ""))
+    action  = _GH_ACTION_MAP.get(ev_type, ev_type)
+
+    # Enrich action with payload hints
+    pr_action  = payload.get("action", "")
+    if ev_type == "PullRequestEvent" and pr_action:
+        action = f"PR {pr_action}"
+    elif ev_type == "IssuesEvent" and pr_action:
+        action = f"Issue {pr_action}"
+    elif ev_type == "PushEvent":
+        size = payload.get("size", 0)
+        action = f"Code push ({size} commit{'s' if size != 1 else ''})"
+
+    repo_name = str(repo.get("name", ""))
+
+    metadata: dict = {}
+    metadata["event_id"] = event.get("id", "")
+    metadata["public"]   = event.get("public", True)
+    if payload.get("ref"):
+        metadata["ref"] = payload["ref"]
+    if payload.get("size") is not None:
+        metadata["commits"] = payload["size"]
+    if actor.get("id"):
+        metadata["actor_id"] = actor["id"]
+
+    return _build(
+        source=SOURCE_GITHUB,
+        timestamp=event.get("created_at", ""),
+        user=user,
+        action=action,
+        resource=repo_name,
+        ip_address="",
+        metadata=metadata,
+        raw=event,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -480,6 +564,7 @@ _PARSERS: dict[str, Callable[[dict], dict]] = {
     SOURCE_CERT_DEVICE: parse_cert_device,
     SOURCE_CERT_EMAIL:  parse_cert_email,
     SOURCE_CERT_HTTP:   parse_cert_http,
+    SOURCE_GITHUB:      parse_github_events,
 }
 
 

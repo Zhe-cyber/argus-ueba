@@ -111,12 +111,41 @@ const SAMPLES = {
       ray_id: 'cf-ray-7a8b9c0d1e2f',
     },
   },
+  github_events: {
+    label: 'GitHub Events',
+    icon: '🐙',
+    description: 'Bulk code push — off hours',
+    source: 'github_events',
+    event: {
+      id: '34823485756',
+      type: 'PushEvent',
+      actor: {
+        id: 9182736,
+        login: 'alice',
+        display_login: 'alice',
+      },
+      repo: {
+        id: 556677,
+        name: 'company/internal-secrets-api',
+        url: 'https://api.github.com/repos/company/internal-secrets-api',
+      },
+      payload: {
+        push_id: 18273645,
+        size: 47,
+        ref: 'refs/heads/main',
+        head: 'a1b2c3d4e5f6a1b2c3d4',
+      },
+      public: false,
+      created_at: '2024-03-15T02:47:00Z',
+    },
+  },
 }
 
 const SOURCE_OPTIONS = [
   { value: 'aws_cloudtrail',    label: 'AWS CloudTrail'      },
   { value: 'azure_ad',          label: 'Azure AD'            },
   { value: 'cloudflare_access', label: 'Cloudflare Access'   },
+  { value: 'github_events',     label: 'GitHub Events'       },
   { value: 'cert_logon',        label: 'CERT Logon'          },
   { value: 'cert_file',         label: 'CERT File'           },
   { value: 'cert_device',       label: 'CERT Device'         },
@@ -294,38 +323,9 @@ export default function DemoPage() {
   return (
     <>
       <Head>
-        <title>Ingest Pipeline Demo — Argus</title>
+        <title>Demo Lab — Argus</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-
-      <div className="min-h-screen bg-slate-100 font-sans">
-
-        {/* Header */}
-        <header className="bg-slate-900 shadow-md">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg className="h-6 w-6 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
-                <path fillRule="evenodd" clipRule="evenodd"
-                  d="M12 1.5l8.485 3.182A1 1 0 0121 5.62v5.38c0 4.418-3.582 8.49-9
-                     9.38C6.582 19.49 3 15.418 3 11V5.62a1 1 0 01.515-.938L12 1.5z" />
-              </svg>
-              <div>
-                <h1 className="text-base font-bold text-white">Argus</h1>
-                <p className="text-xs text-slate-400">Live Ingestion Pipeline</p>
-              </div>
-            </div>
-            <button onClick={() => router.push('/')}
-              className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5">
-              <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" clipRule="evenodd"
-                  d="M17 10a.75.75 0 01-.75.75H5.56l3.22 3.22a.75.75 0
-                     11-1.06 1.06l-4.5-4.5a.75.75 0 010-1.06l4.5-4.5a.75.75
-                     0 011.06 1.06L5.56 9.25H16.25A.75.75 0 0117 10z" />
-              </svg>
-              Dashboard
-            </button>
-          </div>
-        </header>
 
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
 
@@ -724,11 +724,6 @@ export default function DemoPage() {
           </div>
 
         </main>
-
-        <footer className="mt-8 pb-6 text-center text-xs text-slate-400">
-          Argus · Multi-Cloud UEBA
-        </footer>
-      </div>
     </>
   )
 }

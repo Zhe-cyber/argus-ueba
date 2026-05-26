@@ -28,9 +28,13 @@ from backend.loader import store
 from backend import investigations as inv_store
 from backend import ai_suggest
 from backend import event_store as evstore
+from backend import alert_store as astore
 from backend import feature_extractor as fex
 from backend.ae_scorer import ae_scorer
 from backend.models import (
+    Alert,
+    AlertStats,
+    AlertStatusUpdate,
     IngestRequest,
     InvestigationRecord,
     InvestigationUpdate,
@@ -67,6 +71,7 @@ async def lifespan(app: FastAPI):
     store.load()
     evstore.init_db()
     inv_store.init_investigations_db()
+    astore.init_alerts_db()
     yield
 
 
@@ -217,6 +222,31 @@ def _build_reason(features: list[ShapFeature], risk_level: str = "Low") -> str:
     ]
     prefix = "Flagged:" if risk_level == "High" else "Elevated activity:"
     return f"{prefix} " + "; ".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Alert helpers
+# ---------------------------------------------------------------------------
+
+def _maybe_alert(
+    user_id:    str,
+    alert_type: str,
+    severity:   str,
+    title:      str,
+    details:    dict | None = None,
+    *,
+    dedup_minutes: int = 60,
+) -> None:
+    """
+    Create an alert only if no active alert of the same type exists for this
+    user within the last *dedup_minutes* minutes.  Swallows all exceptions so
+    a storage failure never crashes the ingest pipeline.
+    """
+    try:
+        if not astore.recent_alert_exists(user_id, alert_type, dedup_minutes):
+            astore.create_alert(user_id, alert_type, severity, title, details)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -673,6 +703,46 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
         event_count = total_events,
     )
 
+    # ── Stage 8: Auto-create alerts (deduplicated — one per type/user/hour) ──
+    flags_fired = sum(1 for v in r_flags.values() if v)
+
+    if total_events == 1:
+        # First event ever for this user
+        _maybe_alert(
+            user_id, "new_user", "Low",
+            f"New user observed: {user_id}",
+            {"total_events": total_events, "source": normalised["source"]},
+        )
+
+    if ae_live is not None and ae_live >= 0.7:
+        _maybe_alert(
+            user_id, "ae_critical", "Critical",
+            f"Critical AE anomaly score ({ae_live:.3f}) for {user_id}",
+            {"ae_live": ae_live, "rule_live": score, "rarity_score": r_score},
+        )
+    elif ae_live is not None and ae_live >= 0.5:
+        _maybe_alert(
+            user_id, "ae_critical", "High",
+            f"Elevated AE anomaly score ({ae_live:.3f}) for {user_id}",
+            {"ae_live": ae_live, "rule_live": score},
+        )
+
+    if r_score >= 0.6:
+        severity = "Critical" if r_score >= 0.8 else "High"
+        _maybe_alert(
+            user_id, "rarity_spike", severity,
+            f"Multi-signal anomaly: {flags_fired} rarity flags fired for {user_id}",
+            {"rarity_score": r_score, "flags": r_flags, "source": normalised["source"]},
+        )
+
+    if r_flags.get("first_time_action") and r_flags.get("off_hours"):
+        _maybe_alert(
+            user_id, "anomalous_behavior", "High",
+            f"First-time action outside business hours for {user_id}",
+            {"action": normalised["action"], "resource": normalised["resource"],
+             "timestamp": normalised["timestamp"]},
+        )
+
     return PipelineResult(
         **normalised,
         extracted_features  = features,
@@ -745,3 +815,64 @@ async def get_live_score(user_id: str) -> LiveScore:
         event_count = int(row.get("event_count", 0)),
         updated_at  = str(row.get("updated_at", "")),
     )
+
+
+# ---------------------------------------------------------------------------
+# Alert endpoints
+# NOTE: /alerts/summary MUST be defined before /alerts/{alert_id} so FastAPI
+# does not try to match the literal string "summary" as an integer alert_id.
+# ---------------------------------------------------------------------------
+
+@app.get(
+    "/alerts/summary",
+    response_model=AlertStats,
+    summary="Counts of alerts by status (for nav badge + stats bar)",
+)
+async def get_alert_summary() -> AlertStats:
+    """Return counts of alerts grouped by status. Polled every 15 s by the nav bar."""
+    stats = astore.get_stats()
+    return AlertStats(**stats)
+
+
+@app.get(
+    "/alerts",
+    response_model=List[Alert],
+    summary="List security alerts (newest first)",
+)
+async def list_alerts(
+    status: Optional[str] = Query(
+        None,
+        description="Filter: Open | Acknowledged | Resolved | False Positive",
+    ),
+    limit:  int = Query(50, ge=1, le=200),
+    offset: int = Query(0,  ge=0),
+) -> list[Alert]:
+    """
+    Return security alerts from the auto-generated alert queue.
+
+    Alerts are created by the /ingest pipeline when anomaly thresholds are
+    crossed (rarity spike, critical AE score, first-time off-hours action, etc.)
+    """
+    rows = astore.list_alerts(status=status, limit=limit, offset=offset)
+    return [Alert(**r) for r in rows]
+
+
+@app.patch(
+    "/alerts/{alert_id}",
+    response_model=Alert,
+    summary="Update alert status (Acknowledge / Resolve / False Positive)",
+)
+async def update_alert(alert_id: int, body: AlertStatusUpdate) -> Alert:
+    """
+    Transition an alert to a new status.
+
+    Valid transitions:
+      Open → Acknowledged  (analyst is working on it)
+      Open / Acknowledged → Resolved  (threat confirmed and contained)
+      Open / Acknowledged → False Positive  (benign activity confirmed)
+      Resolved / False Positive → Open  (re-open if needed)
+    """
+    updated = astore.update_status(alert_id, body.status)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found.")
+    return Alert(**updated)

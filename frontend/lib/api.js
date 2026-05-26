@@ -205,3 +205,54 @@ export async function fetchLiveScore(id) {
     return null
   }
 }
+
+// ---------------------------------------------------------------------------
+// Alert endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch alerts, optionally filtered by status.
+ * @param {string|null} status — 'Open' | 'Acknowledged' | 'Resolved' | 'False Positive' | null
+ * @param {number} [limit=50]
+ * @returns {Promise<Alert[]>}
+ */
+export async function fetchAlerts(status = null, limit = 50) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (status) params.set('status', status)
+  return apiFetch(`/alerts?${params}`)
+}
+
+/**
+ * Fetch alert counts by status (used by nav badge and stats bar).
+ * @returns {Promise<AlertStats>}
+ */
+export async function fetchAlertStats() {
+  return apiFetch('/alerts/summary')
+}
+
+/**
+ * Returns the count of open alerts (convenience wrapper for the nav badge).
+ * Returns 0 on error so the badge gracefully disappears when backend is down.
+ * @returns {Promise<number>}
+ */
+export async function fetchOpenAlertCount() {
+  try {
+    const stats = await fetchAlertStats()
+    return stats?.open ?? 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Update an alert's status.
+ * @param {number} alertId
+ * @param {string} status — 'Acknowledged' | 'Resolved' | 'False Positive' | 'Open'
+ * @returns {Promise<Alert>}
+ */
+export async function updateAlertStatus(alertId, status) {
+  return apiFetch(`/alerts/${alertId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
