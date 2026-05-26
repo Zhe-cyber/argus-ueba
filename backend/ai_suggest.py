@@ -127,7 +127,7 @@ _GEMINI_MODELS = [
 ]
 
 
-_CALL_TIMEOUT = 35  # seconds — per-provider HTTP timeout
+_CALL_TIMEOUT = 12  # seconds — per-provider HTTP timeout
 
 
 def _call_gemini(prompt: str) -> str:
@@ -315,7 +315,7 @@ def generate_ensemble(
     with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as ex:
         future_map = {ex.submit(fn): label for label, fn in tasks.items()}
         try:
-            for fut in as_completed(future_map, timeout=40):
+            for fut in as_completed(future_map, timeout=15):
                 label = future_map[fut]
                 try:
                     raw_results[label] = fut.result()
@@ -326,7 +326,7 @@ def generate_ensemble(
     # Mark any provider whose future never completed
     for fut, label in future_map.items():
         if label not in raw_results:
-            raw_results[label] = "[error: timed out after 40s]"
+            raw_results[label] = "[error: timed out after 15s]"
 
     successful = {k: v for k, v in raw_results.items() if not v.startswith("[error:")}
 
