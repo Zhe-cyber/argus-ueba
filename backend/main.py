@@ -502,6 +502,9 @@ async def get_investigation(user_id: str) -> InvestigationRecord:
             status_code=404,
             detail=f"No investigation record for user {user_id!r}.",
         )
+    # PostgreSQL SELECT * includes user_id in the row; pop it before unpacking
+    # to avoid "TypeError: got multiple values for keyword argument 'user_id'".
+    record.pop("user_id", None)
     return InvestigationRecord(user_id=user_id, **record)
 
 
