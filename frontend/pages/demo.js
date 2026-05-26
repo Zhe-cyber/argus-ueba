@@ -93,16 +93,35 @@ const SAMPLES = {
       activity: 'Connect',
     },
   },
+  cloudflare_access: {
+    label: 'Cloudflare Access',
+    icon: '🔶',
+    description: 'Login from new country',
+    source: 'cloudflare_access',
+    event: {
+      action: 'login',
+      allowed: true,
+      app_domain: 'internal-dashboard.company.com',
+      app_uid: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      created_at: '2024-03-15T02:34:00Z',
+      user_email: 'alice@company.com',
+      user_id: 'cf-user-uuid-1234',
+      ip_address: '203.0.113.45',
+      country: 'CN',
+      ray_id: 'cf-ray-7a8b9c0d1e2f',
+    },
+  },
 }
 
 const SOURCE_OPTIONS = [
-  { value: 'aws_cloudtrail', label: 'AWS CloudTrail'  },
-  { value: 'azure_ad',       label: 'Azure AD'        },
-  { value: 'cert_logon',     label: 'CERT Logon'      },
-  { value: 'cert_file',      label: 'CERT File'       },
-  { value: 'cert_device',    label: 'CERT Device'     },
-  { value: 'cert_email',     label: 'CERT Email'      },
-  { value: 'cert_http',      label: 'CERT HTTP'       },
+  { value: 'aws_cloudtrail',    label: 'AWS CloudTrail'      },
+  { value: 'azure_ad',          label: 'Azure AD'            },
+  { value: 'cloudflare_access', label: 'Cloudflare Access'   },
+  { value: 'cert_logon',        label: 'CERT Logon'          },
+  { value: 'cert_file',         label: 'CERT File'           },
+  { value: 'cert_device',       label: 'CERT Device'         },
+  { value: 'cert_email',        label: 'CERT Email'          },
+  { value: 'cert_http',         label: 'CERT HTTP'           },
 ]
 
 const SCHEMA_FIELDS = [
@@ -323,6 +342,7 @@ export default function DemoPage() {
               <StepBadge n="2" label="Extract Features"  done={!!result} />
               <StepBadge n="3" label="Store Event"       done={!!result} />
               <StepBadge n="4" label="Live Score Update" done={!!result} />
+              <StepBadge n="5" label="Rarity Signals"    done={!!result && !!result.rarity_flags} />
             </div>
           </div>
 
@@ -574,6 +594,88 @@ export default function DemoPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Stage 5: Rarity Signals */}
+                  {result.rarity_flags && (
+                    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                        <span className="h-5 w-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">5</span>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-slate-700">Rarity Signals</h4>
+                          <p className="text-xs text-slate-400">Source-agnostic anomaly flags — fire on unusual patterns regardless of log type</p>
+                        </div>
+                        {/* Rarity score badge */}
+                        <div className={`rounded-lg border px-3 py-1.5 text-center min-w-[72px] ${
+                          result.rarity_score >= 0.6 ? 'border-red-200 bg-red-50' :
+                          result.rarity_score >= 0.4 ? 'border-amber-200 bg-amber-50' :
+                          'border-green-200 bg-green-50'
+                        }`}>
+                          <p className={`text-lg font-bold tabular-nums ${
+                            result.rarity_score >= 0.6 ? 'text-red-600' :
+                            result.rarity_score >= 0.4 ? 'text-amber-600' :
+                            'text-green-600'
+                          }`}>
+                            {Math.round(result.rarity_score * 100)}%
+                          </p>
+                          <p className="text-[10px] text-slate-400 leading-tight">rarity</p>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4 space-y-3">
+                        {/* Flag pills */}
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { key: 'first_time_action',  label: 'First-Time Action',  desc: 'Action never seen for this user before' },
+                            { key: 'new_ip',             label: 'New IP',             desc: 'Source IP never seen for this user' },
+                            { key: 'off_hours',          label: 'Off Hours',          desc: 'Outside Mon–Fri 07:00–19:00 UTC' },
+                            { key: 'high_volume',        label: 'High Volume',        desc: `More than 50 events in last hour` },
+                            { key: 'sensitive_resource', label: 'Sensitive Resource', desc: 'Resource matches high-risk pattern (IAM, secrets, admin…)' },
+                            { key: 'geo_rarity',         label: 'New Country',        desc: 'Country code never seen for this user (Cloudflare Access)' },
+                          ].map(({ key, label, desc }) => {
+                            const fired = result.rarity_flags[key] === true
+                            return (
+                              <div key={key} title={desc}
+                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-default select-none transition-all ${
+                                  fired
+                                    ? 'border-red-300 bg-red-50 text-red-700 ring-1 ring-red-300'
+                                    : 'border-slate-200 bg-slate-50 text-slate-400'
+                                }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${fired ? 'bg-red-500' : 'bg-slate-300'}`} />
+                                {label}
+                                {fired && <span className="ml-0.5 text-[10px] font-bold text-red-600">!</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Score bar */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-slate-500 font-medium">
+                              {Object.values(result.rarity_flags).filter(Boolean).length} of {Object.keys(result.rarity_flags).length} signals fired
+                            </span>
+                            <span className={`text-xs font-semibold ${
+                              result.rarity_score >= 0.6 ? 'text-red-600' :
+                              result.rarity_score >= 0.4 ? 'text-amber-600' :
+                              'text-green-600'
+                            }`}>
+                              {result.rarity_score >= 0.6 ? 'High rarity' :
+                               result.rarity_score >= 0.4 ? 'Medium rarity' : 'Low rarity'}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                result.rarity_score >= 0.6 ? 'bg-red-500' :
+                                result.rarity_score >= 0.4 ? 'bg-amber-500' :
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.round(result.rarity_score * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 </>
               )}

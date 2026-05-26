@@ -195,7 +195,7 @@ class NormalizedEvent(BaseModel):
     @classmethod
     def source_must_be_known(cls, v: str) -> str:
         allowed = {
-            "aws_cloudtrail", "azure_ad",
+            "aws_cloudtrail", "azure_ad", "cloudflare_access",
             "cert_logon", "cert_file", "cert_device",
             "cert_email", "cert_http",
         }
@@ -306,6 +306,22 @@ class PipelineResult(NormalizedEvent):
     )
 
 
+class LiveScore(BaseModel):
+    """
+    Current live score for a user (GET /users/{id}/live-score).
+
+    Always returns HTTP 200. Fields are None / 0.0 when the user
+    has never had an event ingested (no row in live_scores table).
+    """
+
+    user_id:     str
+    ae_live:     Optional[float] = Field(None,  description="Live AE score (0–1) or null if not yet scored")
+    rule_live:   float           = Field(0.0,   description="Rule-based live score (0–1)")
+    rarity:      float           = Field(0.0,   description="Rarity signal fraction (0–1)")
+    event_count: int             = Field(0,     description="Total events ingested for this user")
+    updated_at:  Optional[str]   = Field(None,  description="ISO timestamp of last update")
+
+
 class LiveEvent(BaseModel):
     """One event entry from the live event store (GET /users/{id}/events)."""
 
@@ -340,7 +356,7 @@ class IngestRequest(BaseModel):
     @classmethod
     def source_must_be_known(cls, v: str) -> str:
         allowed = {
-            "aws_cloudtrail", "azure_ad",
+            "aws_cloudtrail", "azure_ad", "cloudflare_access",
             "cert_logon", "cert_file", "cert_device",
             "cert_email", "cert_http",
         }

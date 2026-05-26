@@ -49,6 +49,17 @@ _DDL_EVENTS = """
     )
 """.format(pk="BIGSERIAL PRIMARY KEY" if _PG else "INTEGER PRIMARY KEY AUTOINCREMENT")
 
+_DDL_LIVE_SCORES = """
+    CREATE TABLE IF NOT EXISTS live_scores (
+        user_id     TEXT PRIMARY KEY,
+        ae_live     REAL    DEFAULT 0.0,
+        rule_live   REAL    DEFAULT 0.0,
+        rarity      REAL    DEFAULT 0.0,
+        event_count INTEGER DEFAULT 0,
+        updated_at  TEXT    NOT NULL
+    )
+"""
+
 # Aggregate function for comma-separated distinct values
 _GROUP_CONCAT = "STRING_AGG(DISTINCT source, ',')" if _PG else "GROUP_CONCAT(DISTINCT source)"
 
@@ -113,6 +124,7 @@ def init_db() -> None:
         cur.execute(_DDL_EVENTS)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_user ON events(\"user\")")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_ts   ON events(ingested_at)")
+        cur.execute(_DDL_LIVE_SCORES)
 
 
 # ---------------------------------------------------------------------------
@@ -217,4 +229,65 @@ def list_event_store_users() -> list[dict[str, Any]]:
             ORDER BY event_count DESC
             """
         )
+        return _rows(cur)
+
+
+# ---------------------------------------------------------------------------
+# Live score persistence
+# ---------------------------------------------------------------------------
+
+def upsert_live_score(
+    user_id: str,
+    ae_live: float,
+    rule_live: float,
+    rarity: float,
+    event_count: int,
+) -> None:
+    """
+    Insert or update the live score record for *user_id*.
+
+    Uses INSERT … ON CONFLICT … DO UPDATE which works in both
+    SQLite ≥3.24 (2018) and PostgreSQL.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"""
+            INSERT INTO live_scores (user_id, ae_live, rule_live, rarity, event_count, updated_at)
+            VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH})
+            ON CONFLICT (user_id) DO UPDATE SET
+                ae_live     = EXCLUDED.ae_live,
+                rule_live   = EXCLUDED.rule_live,
+                rarity      = EXCLUDED.rarity,
+                event_count = EXCLUDED.event_count,
+                updated_at  = EXCLUDED.updated_at
+            """,
+            (str(user_id), float(ae_live), float(rule_live),
+             float(rarity), int(event_count), now),
+        )
+
+
+def get_live_score(user_id: str) -> dict[str, Any] | None:
+    """
+    Return the live score record for *user_id*, or None if not found.
+
+    Returns a dict with keys: user_id, ae_live, rule_live, rarity,
+    event_count, updated_at.
+    """
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"SELECT * FROM live_scores WHERE user_id = {_PH}",
+            (str(user_id),),
+        )
+        rows = _rows(cur)
+    return rows[0] if rows else None
+
+
+def get_all_live_scores() -> list[dict[str, Any]]:
+    """Return all rows from live_scores, ordered by rarity desc."""
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute("SELECT * FROM live_scores ORDER BY rarity DESC")
         return _rows(cur)

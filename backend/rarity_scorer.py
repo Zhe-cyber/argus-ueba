@@ -16,6 +16,9 @@ Flags
                        events in the past VOLUME_WINDOW_HOURS hours.
 5. sensitive_resource  True if the resource path / ARN / object name matches
                        any pattern in SENSITIVE_PATTERNS (case-insensitive).
+6. geo_rarity          True if the event's country (from metadata) has never been
+                       seen for this user. Only fires when source=cloudflare_access
+                       or any source that populates metadata.country.
 
 Usage
 -----
@@ -128,12 +131,22 @@ def compute_rarity_flags(
     ip       = str(event.get("ip_address", "")).strip()
     ts_raw   = str(event.get("timestamp",  "")).strip()
 
+    metadata = event.get("metadata", {})
+    if isinstance(metadata, str):
+        import json as _json
+        try:
+            metadata = _json.loads(metadata)
+        except Exception:
+            metadata = {}
+    country = str(metadata.get("country", "")).strip().upper()
+
     return {
         "first_time_action":  _flag_first_time_action(action, recent_events),
         "new_ip":             _flag_new_ip(ip, recent_events),
         "off_hours":          _flag_off_hours(ts_raw),
         "high_volume":        _flag_high_volume(recent_events),
         "sensitive_resource": _flag_sensitive_resource(resource),
+        "geo_rarity":         _flag_geo_rarity(country, recent_events),
     }
 
 
@@ -258,3 +271,30 @@ def _flag_sensitive_resource(resource: str) -> bool:
     if not resource:
         return False
     return any(p.search(resource) for p in _COMPILED_PATTERNS)
+
+
+def _flag_geo_rarity(
+    country: str,
+    recent_events: list[dict[str, Any]],
+) -> bool:
+    """
+    True if this country code has never appeared in this user's event history.
+
+    Only meaningful when metadata.country is populated (e.g. Cloudflare Access,
+    Azure AD with location enrichment). Returns False when country is blank.
+    """
+    if not country:
+        return False
+    seen_countries = set()
+    for e in recent_events:
+        meta = e.get("metadata", {})
+        if isinstance(meta, str):
+            import json as _json
+            try:
+                meta = _json.loads(meta)
+            except Exception:
+                meta = {}
+        c = str(meta.get("country", "")).strip().upper()
+        if c:
+            seen_countries.add(c)
+    return country not in seen_countries

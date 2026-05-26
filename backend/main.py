@@ -35,6 +35,7 @@ from backend.models import (
     InvestigationRecord,
     InvestigationUpdate,
     LiveEvent,
+    LiveScore,
     NormalizedEvent,
     PeerDeviation,
     PipelineResult,
@@ -644,6 +645,15 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     r_flags        = compute_rarity_flags(normalised, history_events)
     r_score        = calc_rarity_score(r_flags)
 
+    # ── Stage 7: Persist live scores ─────────────────────────────────────
+    evstore.upsert_live_score(
+        user_id     = user_id,
+        ae_live     = ae_live if ae_live is not None else 0.0,
+        rule_live   = score,
+        rarity      = r_score,
+        event_count = total_events,
+    )
+
     return PipelineResult(
         **normalised,
         extracted_features  = features,
@@ -675,3 +685,44 @@ async def get_user_events(
     """
     rows = evstore.get_user_events(user_id, limit=limit)
     return [LiveEvent(**r) for r in rows]
+
+
+@app.get(
+    "/users/{user_id}/live-score",
+    response_model=LiveScore,
+    summary="Current live risk scores for a user (persisted from last /ingest call)",
+)
+async def get_live_score(user_id: str) -> LiveScore:
+    """
+    Return the most recently persisted live risk scores for *user_id*.
+
+    Scores are updated every time a new event is ingested via POST /ingest.
+    Always returns HTTP 200 — fields are null / 0 when the user has never
+    had an event ingested.
+
+    Fields
+    ------
+    ae_live     : live autoencoder score (0–1), None when model unavailable
+    rule_live   : rule-based live score from last 24-hour window
+    rarity      : fraction of rarity flags that fired (0–1)
+    event_count : all-time event count for this user
+    updated_at  : ISO timestamp of last ingest for this user
+    """
+    row = evstore.get_live_score(user_id)
+    if row is None:
+        return LiveScore(
+            user_id     = user_id,
+            ae_live     = None,
+            rule_live   = 0.0,
+            rarity      = 0.0,
+            event_count = 0,
+            updated_at  = None,
+        )
+    return LiveScore(
+        user_id     = str(row["user_id"]),
+        ae_live     = float(row["ae_live"]) if row.get("ae_live") is not None else None,
+        rule_live   = float(row.get("rule_live", 0.0)),
+        rarity      = float(row.get("rarity", 0.0)),
+        event_count = int(row.get("event_count", 0)),
+        updated_at  = str(row.get("updated_at", "")),
+    )

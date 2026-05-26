@@ -96,8 +96,8 @@ def extract(event: dict[str, Any]) -> dict[str, int]:
     ah = _is_after_hours(ts)
     f: dict[str, int] = {}
 
-    # ── Logon ─────────────────────────────────────────────────────────────
-    if source in ("cert_logon", "aws_cloudtrail", "azure_ad"):
+    # ── Logon (including Cloudflare Access) ──────────────────────────────
+    if source in ("cert_logon", "aws_cloudtrail", "azure_ad", "cloudflare_access"):
         f["login_count"] = 1
         if ah:
             f["after_hours_count"] = 1

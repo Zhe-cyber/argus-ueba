@@ -189,3 +189,19 @@ export async function getAiSuggestion(id) {
 export async function fetchUserEvents(id, limit = 20) {
   return apiFetch(`/users/${encodeURIComponent(id)}/events?limit=${limit}`)
 }
+
+/**
+ * Fetch the persisted live risk scores for a user.
+ * Always returns a LiveScore object (never throws on 404 — backend returns 200).
+ * Returns null only on unexpected network/server errors.
+ *
+ * @param {string} id
+ * @returns {Promise<LiveScore|null>}
+ */
+export async function fetchLiveScore(id) {
+  try {
+    return await apiFetch(`/users/${encodeURIComponent(id)}/live-score`)
+  } catch {
+    return null
+  }
+}

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine, ResponsiveContainer,
 } from 'recharts'
-import { fetchUser, fetchUserShap, fetchInvestigation, saveInvestigation, getAiSuggestion, fetchUserEvents } from '@/lib/api'
+import { fetchUser, fetchUserShap, fetchInvestigation, saveInvestigation, getAiSuggestion, fetchUserEvents, fetchLiveScore } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Constants & style maps
@@ -284,13 +284,14 @@ function PeerContextPanel({ peerGroup, peerSize, peerDeviations }) {
 // ---------------------------------------------------------------------------
 
 const SOURCE_STYLE = {
-  cert_logon:    { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Logon'   },
-  cert_file:     { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'File'    },
-  cert_device:   { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Device'  },
-  cert_email:    { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Email'   },
-  cert_http:     { bg: 'bg-slate-100',  text: 'text-slate-600',  label: 'HTTP'    },
-  aws_cloudtrail:{ bg: 'bg-orange-100', text: 'text-orange-700', label: 'AWS'     },
-  azure_ad:      { bg: 'bg-sky-100',    text: 'text-sky-700',    label: 'Azure'   },
+  cert_logon:        { bg: 'bg-blue-100',    text: 'text-blue-700',    label: 'Logon'      },
+  cert_file:         { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'File'       },
+  cert_device:       { bg: 'bg-purple-100',  text: 'text-purple-700',  label: 'Device'     },
+  cert_email:        { bg: 'bg-green-100',   text: 'text-green-700',   label: 'Email'      },
+  cert_http:         { bg: 'bg-slate-100',   text: 'text-slate-600',   label: 'HTTP'       },
+  aws_cloudtrail:    { bg: 'bg-orange-100',  text: 'text-orange-700',  label: 'AWS'        },
+  azure_ad:          { bg: 'bg-sky-100',     text: 'text-sky-700',     label: 'Azure'      },
+  cloudflare_access: { bg: 'bg-yellow-100',  text: 'text-yellow-700',  label: 'Cloudflare' },
 }
 
 function SourceBadge({ source }) {
@@ -685,6 +686,7 @@ export default function UserDetail() {
   const [user,          setUser]          = useState(null)
   const [shap,          setShap]          = useState(null)
   const [invRec,        setInvRec]        = useState(null)   // null = not loaded yet
+  const [liveScore,     setLiveScore]     = useState(null)   // null = no live data yet
   const [events,        setEvents]        = useState([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [loading,       setLoading]       = useState(true)
@@ -719,6 +721,14 @@ export default function UserDetail() {
       .then(data => setEvents(Array.isArray(data) ? data : []))
       .catch(() => setEvents([]))
       .finally(() => setEventsLoading(false))
+
+    // Live score: non-critical, always 200 — null means no events ingested yet
+    fetchLiveScore(id)
+      .then(data => {
+        // Only surface if user has actually had events ingested
+        if (data && data.event_count > 0) setLiveScore(data)
+      })
+      .catch(() => {})
   }, [id])
 
   const goBack = () => router.push('/')
@@ -796,27 +806,68 @@ export default function UserDetail() {
                     </div>
                   </div>
 
-                  {/* Right: prominent AE score */}
-                  <div className="flex flex-col items-start sm:items-end gap-1">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      AE Score
-                    </span>
-                    <span className={`text-5xl font-bold tabular-nums leading-none ${riskStyle.score}`}>
-                      {user.ae_score.toFixed(3)}
-                    </span>
-                    {/* Thin full-width score bar */}
-                    <div className="w-40 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all
-                          ${user.risk_level === 'High'
-                            ? 'bg-red-400'
-                            : user.risk_level === 'Medium'
-                              ? 'bg-amber-400'
-                              : 'bg-green-400'
-                          }`}
-                        style={{ width: `${Math.round(user.ae_score * 100)}%` }}
-                      />
+                  {/* Right: static AE score + optional live score */}
+                  <div className="flex items-end gap-5">
+
+                    {/* Live Score card — only shown when events have been ingested */}
+                    {liveScore && (
+                      <div className="flex flex-col items-start sm:items-end gap-1">
+                        <div className="flex items-center gap-1.5">
+                          {/* Pulsing green dot */}
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                          </span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                            Live AE
+                          </span>
+                        </div>
+                        <span className="text-4xl font-bold tabular-nums leading-none text-emerald-600">
+                          {liveScore.ae_live != null ? liveScore.ae_live.toFixed(3) : '—'}
+                        </span>
+                        <div className="text-[10px] text-slate-400 text-right space-y-0.5">
+                          {/* Arrow showing direction vs static */}
+                          {liveScore.ae_live != null && (
+                            <span className={`font-semibold ${
+                              liveScore.ae_live > user.ae_score
+                                ? 'text-red-500'
+                                : liveScore.ae_live < user.ae_score
+                                  ? 'text-green-500'
+                                  : 'text-slate-400'
+                            }`}>
+                              {liveScore.ae_live > user.ae_score ? '↑ higher live risk'
+                               : liveScore.ae_live < user.ae_score ? '↓ lower live risk'
+                               : '= unchanged'}
+                            </span>
+                          )}
+                          <p>{liveScore.event_count} events ingested</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Static AE score */}
+                    <div className="flex flex-col items-start sm:items-end gap-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        AE Score
+                      </span>
+                      <span className={`text-5xl font-bold tabular-nums leading-none ${riskStyle.score}`}>
+                        {user.ae_score.toFixed(3)}
+                      </span>
+                      {/* Thin full-width score bar */}
+                      <div className="w-40 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all
+                            ${user.risk_level === 'High'
+                              ? 'bg-red-400'
+                              : user.risk_level === 'Medium'
+                                ? 'bg-amber-400'
+                                : 'bg-green-400'
+                            }`}
+                          style={{ width: `${Math.round(user.ae_score * 100)}%` }}
+                        />
+                      </div>
                     </div>
+
                   </div>
 
                 </div>

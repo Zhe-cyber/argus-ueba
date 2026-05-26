@@ -26,6 +26,7 @@ from typing import Callable
 
 SOURCE_AWS        = "aws_cloudtrail"
 SOURCE_AZURE      = "azure_ad"
+SOURCE_CF         = "cloudflare_access"
 SOURCE_CERT_LOGON  = "cert_logon"
 SOURCE_CERT_FILE   = "cert_file"
 SOURCE_CERT_DEVICE = "cert_device"
@@ -35,6 +36,7 @@ SOURCE_CERT_HTTP   = "cert_http"
 KNOWN_SOURCES = {
     SOURCE_AWS,
     SOURCE_AZURE,
+    SOURCE_CF,
     SOURCE_CERT_LOGON,
     SOURCE_CERT_FILE,
     SOURCE_CERT_DEVICE,
@@ -281,6 +283,54 @@ def parse_azure_ad(event: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Parser: Cloudflare Access (Zero Trust)
+# ---------------------------------------------------------------------------
+
+def parse_cloudflare_access(event: dict) -> dict:
+    """
+    Map a Cloudflare Access authentication log entry to the unified schema.
+
+    Real API format (GET /accounts/{id}/access/logs/access_requests):
+        action      → action type (e.g. "login", "logout", "allow")
+        allowed     → bool — whether access was granted
+        app_domain  → FQDN of the protected application
+        app_uid     → Cloudflare application UUID
+        created_at  → ISO 8601 timestamp
+        user_email  → identity email
+        user_id     → Cloudflare identity UUID
+        ip_address  → source IP
+        country     → 2-letter ISO country code (gold for geo_rarity flag)
+        ray_id      → Cloudflare request ID
+
+    Free tier: 50 users, 24 h retention, no Logpush streaming.
+    No Cloudflare account required to use this parser — synthetic events
+    matching this format are sufficient for the FYP demo.
+    """
+    action_type = str(event.get("action", "access")).lower().strip()
+    allowed     = event.get("allowed", True)
+
+    # Append "(denied)" suffix when access was blocked — important signal
+    action = action_type if allowed else f"{action_type} (denied)"
+
+    metadata: dict = {}
+    for key in ("country", "app_uid", "ray_id", "user_id", "app_type"):
+        val = event.get(key)
+        if val is not None:
+            metadata[key] = val
+
+    return _build(
+        source=SOURCE_CF,
+        timestamp=event.get("created_at", ""),
+        user=str(event.get("user_email", "")),
+        action=action,
+        resource=str(event.get("app_domain", "")),
+        ip_address=str(event.get("ip_address", "")),
+        metadata=metadata,
+        raw=event,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Parsers: CERT insider-threat dataset
 # ---------------------------------------------------------------------------
 # The CMU CERT dataset uses a common base layout with source-specific fields.
@@ -424,6 +474,7 @@ def parse_cert_http(event: dict) -> dict:
 _PARSERS: dict[str, Callable[[dict], dict]] = {
     SOURCE_AWS:         parse_aws_cloudtrail,
     SOURCE_AZURE:       parse_azure_ad,
+    SOURCE_CF:          parse_cloudflare_access,
     SOURCE_CERT_LOGON:  parse_cert_logon,
     SOURCE_CERT_FILE:   parse_cert_file,
     SOURCE_CERT_DEVICE: parse_cert_device,
