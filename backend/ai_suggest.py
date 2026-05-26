@@ -121,9 +121,7 @@ Rules:
 # ---------------------------------------------------------------------------
 
 _GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",   # single model — no cascade retry to keep latency bounded
 ]
 
 
@@ -248,22 +246,28 @@ def _synthesize(user_id: str, successful: dict[str, str]) -> str:
     """Call the best available provider to synthesise multiple suggestions."""
     synth_prompt = _build_synthesis_prompt(user_id, successful)
 
-    # Try providers in preference order for synthesis
-    if os.environ.get("GEMINI_API_KEY"):
-        try:
-            return _call_gemini(synth_prompt)
-        except Exception:  # noqa: BLE001
-            pass
-
-    if os.environ.get("OPENROUTER_API_KEY"):
-        try:
-            return _call_openrouter(synth_prompt, _OPENROUTER_MODELS[0][1])
-        except Exception:  # noqa: BLE001
-            pass
-
+    # Try providers fastest-first so synthesis doesn't add much latency.
+    # Groq is sub-3s; DeepSeek sub-5s; Gemini sub-8s.
     if os.environ.get("GROQ_API_KEY"):
         try:
             return _call_groq(synth_prompt)
+        except Exception:  # noqa: BLE001
+            pass
+
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        try:
+            return _call_openai_compat(
+                synth_prompt,
+                "https://api.deepseek.com",
+                os.environ["DEEPSEEK_API_KEY"],
+                "deepseek-chat",
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    if os.environ.get("GEMINI_API_KEY"):
+        try:
+            return _call_gemini(synth_prompt)
         except Exception:  # noqa: BLE001
             pass
 
