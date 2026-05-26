@@ -164,9 +164,8 @@ _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 # to avoid shared rate-limit exhaustion across popular Google/Meta endpoints.
 # Last verified against GET /api/v1/models (2025-05-26)
 _OPENROUTER_MODELS: list[tuple[str, str]] = [
-    ("Nemotron-120B",  "nvidia/nemotron-3-super-120b-a12b:free"),   # NVIDIA
-    ("Qwen3-80B",      "qwen/qwen3-next-80b-a3b-instruct:free"),    # Alibaba
-    ("MiniMax-M2.5",   "minimax/minimax-m2.5:free"),                # MiniMax
+    ("Qwen3-80B",    "qwen/qwen3-next-80b-a3b-instruct:free"),  # Alibaba
+    ("MiniMax-M2.5", "minimax/minimax-m2.5:free"),              # MiniMax
 ]
 
 
