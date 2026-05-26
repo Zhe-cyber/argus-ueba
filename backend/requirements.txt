@@ -13,3 +13,7 @@ joblib
 psycopg2-binary
 # Streaming JSON parse for large .gz ingestion
 ijson
+# AI suggestion providers (lazy-imported — all three included so any key works)
+google-genai        # Gemini 2.0/2.5 Flash  — GEMINI_API_KEY
+openai>=1.0         # DeepSeek (OpenAI-compat) — DEEPSEEK_API_KEY
+groq                # Groq / Llama-3.3-70b  — GROQ_API_KEY
