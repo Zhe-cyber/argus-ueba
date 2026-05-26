@@ -127,13 +127,23 @@ _GEMINI_MODELS = [
 ]
 
 
+_CALL_TIMEOUT = 35  # seconds — per-provider HTTP timeout
+
+
 def _call_gemini(prompt: str) -> str:
     from google import genai  # noqa: PLC0415
+    from google.genai import types as genai_types  # noqa: PLC0415
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     last_err: Exception | None = None
     for model in _GEMINI_MODELS:
         try:
-            resp = client.models.generate_content(model=model, contents=prompt)
+            resp = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    http_options=genai_types.HttpOptions(timeout=_CALL_TIMEOUT * 1000),
+                ),
+            )
             return resp.text.strip()
         except Exception as exc:  # noqa: BLE001
             last_err = exc
@@ -165,6 +175,7 @@ def _call_openrouter(prompt: str, model: str) -> str:
     client = OpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],
         base_url=_OPENROUTER_BASE,
+        timeout=_CALL_TIMEOUT,
         default_headers={
             "HTTP-Referer": "https://argus-ueba.vercel.app",
             "X-Title": "Argus UEBA",
@@ -184,7 +195,7 @@ def _call_openrouter(prompt: str, model: str) -> str:
 
 def _call_openai_compat(prompt: str, base_url: str, api_key: str, model: str) -> str:
     from openai import OpenAI  # noqa: PLC0415
-    client = OpenAI(api_key=api_key, base_url=base_url)
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=_CALL_TIMEOUT)
     resp = client.chat.completions.create(
         model=model,
         max_tokens=512,
@@ -195,7 +206,7 @@ def _call_openai_compat(prompt: str, base_url: str, api_key: str, model: str) ->
 
 def _call_groq(prompt: str) -> str:
     from groq import Groq  # noqa: PLC0415
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    client = Groq(api_key=os.environ["GROQ_API_KEY"], timeout=_CALL_TIMEOUT)
     resp = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         max_tokens=512,
@@ -297,16 +308,26 @@ def generate_ensemble(
             "  GROQ_API_KEY       - https://console.groq.com            (free tier)"
         )
 
-    # Run all providers concurrently (60 s total wall-clock timeout)
+    # Run all providers concurrently.
+    # Each provider has a _CALL_TIMEOUT (35s) HTTP-level timeout.
+    # as_completed timeout = 40s so slow stragglers are skipped,
+    # then we mark any futures that didn't finish as timed-out errors.
     raw_results: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as ex:
         future_map = {ex.submit(fn): label for label, fn in tasks.items()}
-        for fut in as_completed(future_map, timeout=60):
-            label = future_map[fut]
-            try:
-                raw_results[label] = fut.result()
-            except Exception as exc:  # noqa: BLE001
-                raw_results[label] = f"[error: {exc}]"
+        try:
+            for fut in as_completed(future_map, timeout=40):
+                label = future_map[fut]
+                try:
+                    raw_results[label] = fut.result()
+                except Exception as exc:  # noqa: BLE001
+                    raw_results[label] = f"[error: {exc}]"
+        except TimeoutError:
+            pass  # remaining futures are marked below
+    # Mark any provider whose future never completed
+    for fut, label in future_map.items():
+        if label not in raw_results:
+            raw_results[label] = "[error: timed out after 40s]"
 
     successful = {k: v for k, v in raw_results.items() if not v.startswith("[error:")}
 
