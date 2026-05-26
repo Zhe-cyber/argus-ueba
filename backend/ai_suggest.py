@@ -1,17 +1,30 @@
 """
-ai_suggest.py — Free-AI-powered investigation suggestions for SOC analysts.
+ai_suggest.py — Ensemble AI investigation suggestions for Argus UEBA.
 
-Provider auto-detection (first key found wins):
-  GEMINI_API_KEY   → Google Gemini 2.0 Flash  (free tier, no credit card)
-  DEEPSEEK_API_KEY → DeepSeek Chat             (free credits on sign-up)
-  GROQ_API_KEY     → Groq / Llama-3.3-70b      (free tier, fast)
+Ensemble strategy
+-----------------
+All configured providers are queried in **parallel**.
+  GEMINI_API_KEY     -> Google Gemini 2.5 / 2.0 Flash  (direct)
+  OPENROUTER_API_KEY -> 3 free models via openrouter.ai
+                        (Llama-3.3-70B, Gemini-Flash, DeepSeek-V3)
+  DEEPSEEK_API_KEY   -> DeepSeek Chat  (direct)
+  GROQ_API_KEY       -> Groq / Llama-3.3-70b  (direct)
 
-Set one of the above in your .env file, then restart the backend.
+If >=2 providers succeed, results are fed into a synthesis prompt and
+a single authoritative plan is returned alongside the raw source outputs.
+If only 1 provider succeeds, that result is returned directly.
+
+Set at least one key in your .env (or HuggingFace Space secrets):
+  GEMINI_API_KEY     - https://aistudio.google.com/apikey   (free, no card)
+  OPENROUTER_API_KEY - https://openrouter.ai/keys           (free models available)
+  DEEPSEEK_API_KEY   - https://platform.deepseek.com        (free credits)
+  GROQ_API_KEY       - https://console.groq.com             (free tier, fast)
 """
 
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 
@@ -21,9 +34,9 @@ from typing import Any
 
 _SCENARIO_LABELS = {
     0: "No confirmed scenario",
-    1: "Scenario 1 — USB / file exfiltration (sudden burst activity)",
-    2: "Scenario 2 — Gradual email / cloud exfiltration (disgruntled employee)",
-    3: "Scenario 3 — IT sabotage",
+    1: "Scenario 1 -- USB / file exfiltration (sudden burst activity)",
+    2: "Scenario 2 -- Gradual email / cloud exfiltration (disgruntled employee)",
+    3: "Scenario 3 -- IT sabotage",
 }
 
 
@@ -37,7 +50,7 @@ def _build_prompt(
     features:   list[dict[str, Any]],
 ) -> str:
     feat_lines = "\n".join(
-        f"  • {f['feature']}: {f['shap_value']:+.5f} "
+        f"  * {f['feature']}: {f['shap_value']:+.5f} "
         f"({'above' if f['shap_value'] > 0 else 'below'} normal peer-group baseline)"
         for f in features[:8]
     )
@@ -46,7 +59,7 @@ def _build_prompt(
 A UEBA system flagged the following user as potentially anomalous.
 Your job: give the analyst a concise, actionable investigation plan.
 
-═══ USER PROFILE ═══
+USER PROFILE
 User ID       : {user_id}
 Risk Level    : {risk_level}
 AE Score      : {ae_score:.4f}  (autoencoder reconstruction error, higher = more anomalous)
@@ -58,29 +71,53 @@ Top behavioural anomalies (positive = deviates above normal peer group):
 {feat_lines}
 
 Feature naming guide:
-  *_peer_ratio  = user value ÷ peer-group mean (>1 means elevated vs peers)
-  after_hours_* = activity outside 07:00–18:00
+  *_peer_ratio  = user value / peer-group mean (>1 means elevated vs peers)
+  after_hours_* = activity outside 07:00-18:00
   usb_*         = USB device activity
   external_*    = emails sent outside the organisation
   n_job_site    = visits to job-search websites
   suspicious_http = visits to flagged/unusual URLs
-  burst_ratio   = max daily activity ÷ mean daily activity (spike indicator)
+  burst_ratio   = max daily activity / mean daily activity (spike indicator)
 
-Respond with these four sections — be specific to the features shown, under 260 words total:
+Respond with these four sections -- be specific to the features shown, under 260 words total:
 
-**Priority:** What to investigate first and why (1–2 sentences).
+**Priority:** What to investigate first and why (1-2 sentences).
 
 **Evidence to pull:** Specific log sources and time windows (3 bullet points).
 
 **Confirm vs Clear:**
-  - Confirm insider: 2–3 patterns that would escalate this
-  - Clear: 2–3 patterns that would mark this as benign
+  - Confirm insider: 2-3 patterns that would escalate this
+  - Clear: 2-3 patterns that would mark this as benign
 
-**Recommendation:** One of — Escalate to IR / Continue Monitoring / Clear — with a one-sentence rationale."""
+**Recommendation:** One of -- Escalate to IR / Continue Monitoring / Clear -- with a one-sentence rationale."""
+
+
+def _build_synthesis_prompt(user_id: str, suggestions: dict[str, str]) -> str:
+    """Meta-prompt that synthesises multiple provider outputs into one plan."""
+    parts = "\n\n".join(
+        f"--- {label} ---\n{text}"
+        for label, text in suggestions.items()
+    )
+    return f"""You are a senior SOC analyst. Multiple AI models independently analysed the same \
+UEBA-flagged user ({user_id}). Synthesise their investigation suggestions into ONE definitive, \
+actionable plan.
+
+Rules:
+- Extract the strongest, most specific insights from each source
+- Remove duplicate recommendations
+- When sources disagree on risk level, be conservative (higher risk wins)
+- Keep the same 4-section format (**Priority**, **Evidence to pull**, **Confirm vs Clear**, **Recommendation**)
+- Total response: under 300 words
+- Do NOT mention the individual sources or that this is a synthesis
+
+=== RAW SUGGESTIONS FROM MULTIPLE MODELS ===
+{parts}
+
+=== SYNTHESISED INVESTIGATION PLAN ==="""
 
 
 # ---------------------------------------------------------------------------
-# Provider implementations
+# Provider: Gemini (direct via google-genai SDK)
 # ---------------------------------------------------------------------------
 
 _GEMINI_MODELS = [
@@ -91,7 +128,7 @@ _GEMINI_MODELS = [
 
 
 def _call_gemini(prompt: str) -> str:
-    from google import genai
+    from google import genai  # noqa: PLC0415
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     last_err: Exception | None = None
     for model in _GEMINI_MODELS:
@@ -102,15 +139,50 @@ def _call_gemini(prompt: str) -> str:
             last_err = exc
             continue
     raise RuntimeError(
-        f"All Gemini models failed. Last error: {last_err}\n"
-        "Check your API key at https://aistudio.google.com/apikey"
+        f"All Gemini models failed. Last error: {last_err}"
     ) from last_err
 
 
+# ---------------------------------------------------------------------------
+# Provider: OpenRouter (3 free models — one OPENROUTER_API_KEY covers all)
+# ---------------------------------------------------------------------------
+
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+
+# (display_label, model_id) — all :free tier on OpenRouter, no credits needed
+_OPENROUTER_MODELS: list[tuple[str, str]] = [
+    ("Llama-3.3-70B", "meta-llama/llama-3.3-70b-instruct:free"),
+    ("Gemini-Flash",  "google/gemini-2.0-flash-exp:free"),
+    ("DeepSeek-V3",   "deepseek/deepseek-chat-v3-0324:free"),
+]
+
+
+def _call_openrouter(prompt: str, model: str) -> str:
+    from openai import OpenAI  # noqa: PLC0415
+    client = OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url=_OPENROUTER_BASE,
+        default_headers={
+            "HTTP-Referer": "https://argus-ueba.vercel.app",
+            "X-Title": "Argus UEBA",
+        },
+    )
+    resp = client.chat.completions.create(
+        model=model,
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return resp.choices[0].message.content.strip()
+
+
+# ---------------------------------------------------------------------------
+# Provider: DeepSeek (direct) and Groq (direct)
+# ---------------------------------------------------------------------------
+
 def _call_openai_compat(prompt: str, base_url: str, api_key: str, model: str) -> str:
-    from openai import OpenAI
+    from openai import OpenAI  # noqa: PLC0415
     client = OpenAI(api_key=api_key, base_url=base_url)
-    resp   = client.chat.completions.create(
+    resp = client.chat.completions.create(
         model=model,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -119,9 +191,9 @@ def _call_openai_compat(prompt: str, base_url: str, api_key: str, model: str) ->
 
 
 def _call_groq(prompt: str) -> str:
-    from groq import Groq
+    from groq import Groq  # noqa: PLC0415
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
-    resp   = client.chat.completions.create(
+    resp = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -130,19 +202,127 @@ def _call_groq(prompt: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Auto-detecting dispatcher
+# Ensemble dispatcher
 # ---------------------------------------------------------------------------
 
-def _detect_provider() -> str:
-    """Return the name of the first configured provider."""
-    if os.environ.get("GEMINI_API_KEY"):
-        return "gemini"
-    if os.environ.get("DEEPSEEK_API_KEY"):
-        return "deepseek"
-    if os.environ.get("GROQ_API_KEY"):
-        return "groq"
-    return "none"
+def _collect_tasks(prompt: str) -> dict[str, Any]:
+    """Build a {label: callable} dict for every configured provider."""
+    tasks: dict[str, Any] = {}
 
+    if os.environ.get("GEMINI_API_KEY"):
+        tasks["Gemini-2.5"] = lambda: _call_gemini(prompt)
+
+    if os.environ.get("OPENROUTER_API_KEY"):
+        for label, model in _OPENROUTER_MODELS:
+            # Use default-argument capture to avoid closure-over-loop-variable bug
+            tasks[label] = lambda p=prompt, m=model: _call_openrouter(p, m)
+
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        tasks["DeepSeek"] = lambda: _call_openai_compat(
+            prompt,
+            "https://api.deepseek.com",
+            os.environ["DEEPSEEK_API_KEY"],
+            "deepseek-chat",
+        )
+
+    if os.environ.get("GROQ_API_KEY"):
+        tasks["Groq-Llama"] = lambda: _call_groq(prompt)
+
+    return tasks
+
+
+def _synthesize(user_id: str, successful: dict[str, str]) -> str:
+    """Call the best available provider to synthesise multiple suggestions."""
+    synth_prompt = _build_synthesis_prompt(user_id, successful)
+
+    # Try providers in preference order for synthesis
+    if os.environ.get("GEMINI_API_KEY"):
+        try:
+            return _call_gemini(synth_prompt)
+        except Exception:  # noqa: BLE001
+            pass
+
+    if os.environ.get("OPENROUTER_API_KEY"):
+        try:
+            return _call_openrouter(synth_prompt, _OPENROUTER_MODELS[0][1])
+        except Exception:  # noqa: BLE001
+            pass
+
+    if os.environ.get("GROQ_API_KEY"):
+        try:
+            return _call_groq(synth_prompt)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Last resort: return the longest single suggestion (most detailed)
+    return max(successful.values(), key=len)
+
+
+def generate_ensemble(
+    user_id:    str,
+    risk_level: str,
+    ae_score:   float,
+    if_score:   float,
+    rule_score: float,
+    scenario:   int,
+    features:   list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Run all configured providers in parallel, then synthesise into one plan.
+
+    Returns:
+        {
+            "final":       str,           # synthesised (or single) suggestion
+            "sources":     {label: str},  # raw per-provider output
+            "synthesized": bool,          # True when >=2 sources were merged
+        }
+
+    Raises:
+        RuntimeError  if no provider key is configured, or all calls fail.
+    """
+    prompt = _build_prompt(
+        user_id, risk_level, ae_score, if_score, rule_score, scenario, features
+    )
+    tasks = _collect_tasks(prompt)
+
+    if not tasks:
+        raise RuntimeError(
+            "No AI provider API key found. Set at least one of:\n"
+            "  GEMINI_API_KEY     - https://aistudio.google.com/apikey  (free)\n"
+            "  OPENROUTER_API_KEY - https://openrouter.ai/keys          (free models)\n"
+            "  DEEPSEEK_API_KEY   - https://platform.deepseek.com       (free credits)\n"
+            "  GROQ_API_KEY       - https://console.groq.com            (free tier)"
+        )
+
+    # Run all providers concurrently (60 s total wall-clock timeout)
+    raw_results: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=min(len(tasks), 6)) as ex:
+        future_map = {ex.submit(fn): label for label, fn in tasks.items()}
+        for fut in as_completed(future_map, timeout=60):
+            label = future_map[fut]
+            try:
+                raw_results[label] = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                raw_results[label] = f"[error: {exc}]"
+
+    successful = {k: v for k, v in raw_results.items() if not v.startswith("[error:")}
+
+    if not successful:
+        errors = "; ".join(f"{k}: {v}" for k, v in raw_results.items())
+        raise RuntimeError(f"All AI providers failed. Details: {errors}")
+
+    if len(successful) == 1:
+        final = next(iter(successful.values()))
+        return {"final": final, "sources": successful, "synthesized": False}
+
+    # Synthesise from all successful outputs
+    final = _synthesize(user_id, successful)
+    return {"final": final, "sources": successful, "synthesized": True}
+
+
+# ---------------------------------------------------------------------------
+# Backward-compat shim
+# ---------------------------------------------------------------------------
 
 def generate(
     user_id:    str,
@@ -153,33 +333,8 @@ def generate(
     scenario:   int,
     features:   list[dict[str, Any]],
 ) -> str:
-    """
-    Call the configured free AI provider and return a plain-text investigation guide.
-
-    Raises RuntimeError if no provider API key is set.
-    """
-    provider = _detect_provider()
-    prompt   = _build_prompt(
+    """Thin wrapper that returns only the final string (backward compatibility)."""
+    result = generate_ensemble(
         user_id, risk_level, ae_score, if_score, rule_score, scenario, features
     )
-
-    if provider == "gemini":
-        return _call_gemini(prompt)
-
-    if provider == "deepseek":
-        return _call_openai_compat(
-            prompt,
-            base_url="https://api.deepseek.com",
-            api_key=os.environ["DEEPSEEK_API_KEY"],
-            model="deepseek-chat",
-        )
-
-    if provider == "groq":
-        return _call_groq(prompt)
-
-    raise RuntimeError(
-        "No AI provider API key found. Set one of these in your .env file:\n"
-        "  GEMINI_API_KEY   — https://aistudio.google.com/apikey  (free, no card)\n"
-        "  DEEPSEEK_API_KEY — https://platform.deepseek.com       (free credits)\n"
-        "  GROQ_API_KEY     — https://console.groq.com            (free tier)"
-    )
+    return result["final"]

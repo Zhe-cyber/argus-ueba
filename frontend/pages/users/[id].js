@@ -435,11 +435,18 @@ function InvestigationPanel({ userId, initial }) {
   const [status,     setStatus]     = useState(initial?.status        ?? 'Pending')
   const [analyst,    setAnalyst]    = useState(initial?.analyst       ?? '')
   const [notes,      setNotes]      = useState(initial?.notes         ?? '')
-  const [suggestion, setSuggestion] = useState(initial?.ai_suggestion ?? null)
-  const [saving,     setSaving]     = useState(false)
-  const [saved,      setSaved]      = useState(false)
-  const [suggesting, setSuggesting] = useState(false)
-  const [err,        setErr]        = useState(null)
+  // suggestion: { final: string, sources: {label: string}, synthesized: bool } | null
+  // On first load, ai_suggestion is the cached plain string — wrap it for display
+  const [suggestion, setSuggestion] = useState(
+    initial?.ai_suggestion
+      ? { final: initial.ai_suggestion, sources: {}, synthesized: false }
+      : null
+  )
+  const [sourcesOpen, setSourcesOpen] = useState(false)
+  const [saving,      setSaving]      = useState(false)
+  const [saved,       setSaved]       = useState(false)
+  const [suggesting,  setSuggesting]  = useState(false)
+  const [err,         setErr]         = useState(null)
 
   async function handleSave() {
     if (!analyst.trim()) { setErr('Analyst name is required.'); return }
@@ -457,11 +464,11 @@ function InvestigationPanel({ userId, initial }) {
   }
 
   async function handleSuggest() {
-    setSuggesting(true); setErr(null)
+    setSuggesting(true); setErr(null); setSourcesOpen(false)
     try {
       const res = await getAiSuggestion(userId)
-      setSuggestion(res.suggestion)
-      // Refresh inv record so cached suggestion is shown on next load
+      // res = { user_id, suggestion, sources, synthesized }
+      setSuggestion({ final: res.suggestion, sources: res.sources ?? {}, synthesized: res.synthesized ?? false })
       setInv(prev => prev ? { ...prev, ai_suggestion: res.suggestion } : prev)
     } catch (e) {
       setErr(e.message ?? 'AI suggestion failed.')
@@ -570,12 +577,27 @@ function InvestigationPanel({ userId, initial }) {
           />
         </div>
 
-        {/* AI Suggestion */}
+        {/* AI Ensemble Suggestion */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              AI Investigation Guide
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                AI Investigation Guide
+              </label>
+              {suggestion?.synthesized && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5
+                                 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-200">
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969
+                             0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755
+                             1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197
+                             -1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588
+                             -1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Ensemble · {Object.keys(suggestion.sources).length} models
+                </span>
+              )}
+            </div>
             <button
               onClick={handleSuggest}
               disabled={suggesting}
@@ -589,7 +611,7 @@ function InvestigationPanel({ userId, initial }) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
-                  Generating…
+                  Querying {suggestion ? 'models' : 'AI models'}…
                 </>
               ) : (
                 <>
@@ -606,16 +628,68 @@ function InvestigationPanel({ userId, initial }) {
           </div>
 
           {suggestion ? (
-            <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
-              <div className="prose prose-sm max-w-none text-slate-700 text-xs leading-relaxed whitespace-pre-wrap">
-                {suggestion}
+            <div className="space-y-2">
+              {/* Final synthesised answer */}
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
+                <div className="prose prose-sm max-w-none text-slate-700 text-xs leading-relaxed whitespace-pre-wrap">
+                  {suggestion.final}
+                </div>
               </div>
+
+              {/* Collapsible raw provider outputs */}
+              {Object.keys(suggestion.sources).length > 0 && (
+                <div className="rounded-lg border border-slate-200 overflow-hidden">
+                  <button
+                    onClick={() => setSourcesOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-3 py-2
+                               bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                  >
+                    <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0
+                                 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3
+                                 3 0 01-3 3z" />
+                      </svg>
+                      Raw provider outputs ({Object.keys(suggestion.sources).length} models)
+                    </span>
+                    <svg
+                      className={`h-3.5 w-3.5 text-slate-400 transition-transform ${sourcesOpen ? 'rotate-180' : ''}`}
+                      viewBox="0 0 20 20" fill="currentColor"
+                    >
+                      <path fillRule="evenodd" clipRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414
+                           1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </button>
+
+                  {sourcesOpen && (
+                    <div className="divide-y divide-slate-100">
+                      {Object.entries(suggestion.sources).map(([label, text]) => (
+                        <div key={label} className="px-3 py-3">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <span className="inline-block rounded-full bg-slate-200 px-2 py-0.5
+                                             text-[10px] font-semibold text-slate-600">
+                              {label}
+                            </span>
+                            {text.startsWith('[error:') && (
+                              <span className="text-[10px] text-red-500 font-medium">failed</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-wrap">
+                            {text.startsWith('[error:') ? text : text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-200 px-4 py-5
                             text-center text-xs text-slate-400">
-              Click &quot;Get AI Suggestion&quot; to generate an AI-powered investigation guide
-              based on this user&apos;s anomaly scores and SHAP features.
+              Click &quot;Get AI Suggestion&quot; to query multiple AI models in parallel
+              and synthesise a unified investigation guide.
             </div>
           )}
         </div>

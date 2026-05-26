@@ -553,13 +553,17 @@ async def delete_investigation(user_id: str) -> None:
 )
 async def suggest_investigation(user_id: str) -> dict:
     """
-    Call Claude (claude-haiku) with the user's risk scores and top SHAP features
-    to produce a concise, actionable investigation guide for the SOC analyst.
+    Query all configured free AI providers in parallel (Gemini, OpenRouter models,
+    DeepSeek, Groq) then synthesise the results into one authoritative investigation
+    plan when >=2 providers succeed.
 
-    The suggestion is cached in the investigation record (creating a Pending
-    record if one doesn't exist yet) and returned in the response.
+    Returns:
+        user_id     - the requested user
+        suggestion  - final synthesised (or single-provider) investigation plan
+        sources     - dict of {provider_label: raw_suggestion} for transparency
+        synthesized - true when >=2 providers were merged
 
-    Requires the ANTHROPIC_API_KEY environment variable to be set.
+    The final suggestion is cached in the investigation record.
     """
     _guard_loaded()
 
@@ -571,7 +575,7 @@ async def suggest_investigation(user_id: str) -> dict:
     features  = shap_data["features"] if shap_data else []
 
     try:
-        suggestion = ai_suggest.generate(
+        result = ai_suggest.generate_ensemble(
             user_id    = user_id,
             risk_level = str(row.get("risk", "Low")),
             ae_score   = float(row.get("ae_score", 0.0)),
@@ -583,8 +587,15 @@ async def suggest_investigation(user_id: str) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    inv_store.save_suggestion(user_id, suggestion)
-    return {"user_id": user_id, "suggestion": suggestion}
+    # Cache only the final synthesised text in the investigation record
+    inv_store.save_suggestion(user_id, result["final"])
+
+    return {
+        "user_id":     user_id,
+        "suggestion":  result["final"],
+        "sources":     result["sources"],
+        "synthesized": result["synthesized"],
+    }
 
 
 @app.post(
