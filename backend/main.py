@@ -622,6 +622,14 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     # ── Stage 2: Feature extraction ──────────────────────────────────────
     features = fex.extract(normalised)
 
+    user_id = normalised["user"]
+
+    # ── Stage 2b: Snapshot history BEFORE inserting the current event ─────
+    # Rarity flags must compare against PRIOR history only; fetching after
+    # insert would suppress first_time_action / new_ip / geo_rarity on the
+    # very first occurrence because the just-inserted event is already in DB.
+    history_events = evstore.get_user_events_full(user_id, limit=500)
+
     # ── Stage 3: Persist ─────────────────────────────────────────────────
     evstore.insert_event(normalised)
 
@@ -633,17 +641,14 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
 
     # ── Stage 5: Live AE score (trained model, all stored events) ─────────
     # Fetch peer group means for this user if available (CERT dataset users only).
-    user_id      = normalised["user"]
     peer_context = store.get_user_peer_context(user_id) if store.loaded else None
     peer_means   = peer_context.get("cluster_means") if peer_context else None
     ae_live      = ae_scorer.score_user(user_id, peer_means=peer_means)
 
     # ── Stage 6: Rarity flags (source-agnostic anomaly signals) ──────────
-    # Use recent history (last 500 events) for first_time_action / new_ip checks;
-    # high_volume uses len(history) vs VOLUME_THRESHOLD in rarity_scorer.
-    history_events = evstore.get_user_events(user_id, limit=500)
-    r_flags        = compute_rarity_flags(normalised, history_events)
-    r_score        = calc_rarity_score(r_flags)
+    # Uses pre-insert history snapshot from Stage 2b (correct semantics).
+    r_flags = compute_rarity_flags(normalised, history_events)
+    r_score = calc_rarity_score(r_flags)
 
     # ── Stage 7: Persist live scores ─────────────────────────────────────
     evstore.upsert_live_score(

@@ -159,7 +159,11 @@ def insert_event(event: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
-    """Return the most recent *limit* events for *user_id*, newest first."""
+    """Return the most recent *limit* events for *user_id*, newest first.
+
+    Selects only the display columns (no metadata) — suitable for the
+    activity-feed endpoint (LiveEvent model).
+    """
     with _db() as con:
         cur = _cursor(con)
         cur.execute(
@@ -173,6 +177,34 @@ def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
             (str(user_id), limit),
         )
         return _rows(cur)
+
+
+def get_user_events_full(user_id: str, limit: int = 500) -> list[dict[str, Any]]:
+    """Return the most recent *limit* events including the metadata column.
+
+    Used by the rarity scorer (geo_rarity needs metadata.country) and any
+    other scoring path that needs the full event payload.
+    """
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"""
+            SELECT * FROM events
+            WHERE "user" = {_PH}
+            ORDER BY ingested_at DESC
+            LIMIT {_PH}
+            """,
+            (str(user_id), limit),
+        )
+        rows = _rows(cur)
+    # Parse metadata JSON string → dict so callers get a consistent type
+    for row in rows:
+        if isinstance(row.get("metadata"), str):
+            try:
+                row["metadata"] = json.loads(row["metadata"])
+            except Exception:
+                row["metadata"] = {}
+    return rows
 
 
 def get_user_events_window(user_id: str, hours: int = 24) -> list[dict[str, Any]]:

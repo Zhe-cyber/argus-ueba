@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-evaluate.py — Offline evaluation script for the Argus UEBA models.
+evaluate.py -- Offline evaluation script for the Argus UEBA models.
 
 Produces publication-quality SVG charts + a metrics.json file
 for the FYP dissertation.
@@ -44,6 +45,12 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+# Force UTF-8 on Windows consoles that default to cp1252
+import sys as _sys
+if hasattr(_sys.stdout, "reconfigure"):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -182,17 +189,21 @@ def compute_metrics(df, rng: np.random.Generator) -> dict:
 
 
 def print_metrics_table(metrics: dict) -> None:
+    if not metrics:
+        print("\n[WARN] No models had sufficient columns — metrics table skipped.")
+        return
     header = f"{'Model':<22}{'AUROC':>7}{'AUPRC':>7}{'F1':>7}{'Prec':>7}{'Recall':>7}{'Thr':>8}"
-    print("\n" + "─" * len(header))
+    sep = "-" * len(header)
+    print(f"\n{sep}")
     print(header)
-    print("─" * len(header))
+    print(sep)
     for name, m in metrics.items():
         print(
             f"{name:<22}{m['auroc']:>7.4f}{m['auprc']:>7.4f}"
             f"{m['f1']:>7.4f}{m['precision']:>7.4f}{m['recall']:>7.4f}"
             f"{m['threshold']:>8.4f}"
         )
-    print("─" * len(header))
+    print(sep)
     print()
 
 
