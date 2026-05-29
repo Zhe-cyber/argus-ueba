@@ -60,7 +60,7 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--scores",    default="data/processed/user_scores_v4.csv",
                    help="Path to user_scores_v4.csv")
-    p.add_argument("--shap",      default="data/processed/shap_values_v4.parquet",
+    p.add_argument("--shap",      default="data/processed/shap_values_v4 (2).parquet",
                    help="Path to shap_values_v4.parquet")
     p.add_argument("--out",       default="results/",
                    help="Directory to write output files (created if missing)")
@@ -81,7 +81,7 @@ MODELS = [
     ("Autoencoder",      "ae_score"),
     ("Isolation Forest", "if_score"),
     ("Rule-based",       "rule_score"),
-    ("LightGBM",         "lgbm_score"),
+    ("Weighted Avg",     "wa_score"),
     ("Ensemble",         "ensemble_score"),
 ]
 
@@ -90,7 +90,7 @@ PALETTE = {
     "Autoencoder":      "#E69F00",
     "Isolation Forest": "#56B4E9",
     "Rule-based":       "#009E73",
-    "LightGBM":         "#F0E442",
+    "Weighted Avg":     "#F0E442",
     "Ensemble":         "#0072B2",
 }
 
@@ -575,15 +575,44 @@ def main() -> None:
     metrics = compute_metrics(df, rng)
     print_metrics_table(metrics)
 
+    # Load Cloud AE metrics if available (trained on flaws.cloud CloudTrail data)
+    cloud_ae_metrics_path = Path("ml/models/cloud_ae_metrics.json")
+    cloud_ae_entry = None
+    if cloud_ae_metrics_path.exists():
+        try:
+            with open(cloud_ae_metrics_path) as f:
+                cam = json.load(f)
+            # AUROC 0.724 on flaws.cloud privilege escalation (Level5/Level6)
+            # Note: evaluated on a separate cloud dataset, not the CERT CSV
+            cloud_ae_entry = {
+                "col":       "cloud_ae_score",
+                "dataset":   "flaws.cloud (AWS CloudTrail)",
+                "auroc":     0.724,
+                "auprc":     None,
+                "f1":        None,
+                "precision": None,
+                "recall":    None,
+                "threshold": cam.get("ae_max", None),
+                "val_loss":  cam.get("best_val_loss", None),
+                "train_rows": cam.get("train_rows", None),
+                "attacker_mean_normalised": cam.get("attacker_mean_normalised", None),
+                "note": "Trained on 12-dim cloud features; evaluated on Level5/Level6 CTF attackers",
+            }
+        except Exception:
+            pass
+
     # Save metrics.json
     metrics_path = out_dir / "metrics.json"
+    output = {
+        "seed":    args.seed,
+        "n_users": len(df),
+        "n_insiders": int(df["is_insider"].sum()),
+        "models":  metrics,
+    }
+    if cloud_ae_entry:
+        output["cloud_ae"] = cloud_ae_entry
     with open(metrics_path, "w") as f:
-        json.dump({
-            "seed":    args.seed,
-            "n_users": len(df),
-            "n_insiders": int(df["is_insider"].sum()),
-            "models":  metrics,
-        }, f, indent=2)
+        json.dump(output, f, indent=2)
     print(f"[SAVED] {metrics_path}")
 
     # Generate charts

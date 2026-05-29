@@ -30,7 +30,7 @@ from backend import ai_suggest
 from backend import event_store as evstore
 from backend import alert_store as astore
 from backend import feature_extractor as fex
-from backend.ae_scorer import ae_scorer
+from backend.ae_scorer import ae_scorer, cloud_ae_scorer, CLOUD_SOURCES
 from backend.models import (
     Alert,
     AlertStats,
@@ -684,10 +684,18 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     total_events     = evstore.get_total_event_count(normalised["user"])
 
     # ── Stage 5: Live AE score (trained model, all stored events) ─────────
-    # Fetch peer group means for this user if available (CERT dataset users only).
-    peer_context = store.get_user_peer_context(user_id) if store.loaded else None
-    peer_means   = peer_context.get("cluster_means") if peer_context else None
-    ae_live      = ae_scorer.score_user(user_id, peer_means=peer_means)
+    # Route to the appropriate AE based on event source:
+    #   • Cloud sources (aws_cloudtrail, azure_ad, cloudflare_access, github_events)
+    #     → cloud_ae_scorer (12-dim cloud behavioral features, trained on CloudTrail)
+    #   • CERT sources (cert_logon, cert_file, cert_email, cert_http, cert_device)
+    #     → ae_scorer (71-dim CERT behavioral features, trained on CERT r6.2)
+    event_source = normalised.get("source", "")
+    if event_source in CLOUD_SOURCES:
+        ae_live = cloud_ae_scorer.score_user(user_id)
+    else:
+        peer_context = store.get_user_peer_context(user_id) if store.loaded else None
+        peer_means   = peer_context.get("cluster_means") if peer_context else None
+        ae_live      = ae_scorer.score_user(user_id, peer_means=peer_means)
 
     # ── Stage 6: Rarity flags (source-agnostic anomaly signals) ──────────
     # Uses pre-insert history snapshot from Stage 2b (correct semantics).

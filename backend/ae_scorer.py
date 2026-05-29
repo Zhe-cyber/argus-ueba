@@ -317,7 +317,152 @@ class _AEScorer:
 
 
 # ---------------------------------------------------------------------------
-# Module-level singleton — imported once, shared across all requests
+# Cloud AE scorer — second model for cloud-source events
 # ---------------------------------------------------------------------------
 
-ae_scorer = _AEScorer()
+_CLOUD_AE_PATH     = _MDL_DIR / "cloud_ae_v1.pt"
+_CLOUD_SCALER_PATH = _MDL_DIR / "cloud_scaler_v1.pkl"
+
+# Sources that use the cloud AE instead of the CERT AE
+CLOUD_SOURCES = {"aws_cloudtrail", "azure_ad", "cloudflare_access", "github_events"}
+
+
+class _CloudAEScorer:
+    """
+    Lazy-loading singleton for the cloud-native autoencoder.
+
+    Trained on cloud behavioral features (12 dimensions) from AWS CloudTrail,
+    Azure AD, GitHub Events, and Cloudflare Access events.
+    Falls back to None when model files are absent.
+    """
+
+    def __init__(self) -> None:
+        self._model   = None
+        self._scaler  = None
+        self._ae_min: float = 0.0
+        self._ae_max: float = 1.0
+        self._features: List[str] = []
+        self._ready   = False
+        self._tried   = False
+
+    def _load(self) -> bool:
+        if self._tried:
+            return self._ready
+        self._tried = True
+
+        if not _CLOUD_AE_PATH.exists():
+            logger.info(
+                "cloud_ae_v1.pt not found in ml/models/ — cloud AE scoring disabled. "
+                "Run: python scripts/build_cloud_dataset.py && python scripts/train_cloud_ae.py"
+            )
+            return False
+        if not _CLOUD_SCALER_PATH.exists():
+            logger.info("cloud_scaler_v1.pkl not found — cloud AE scoring disabled.")
+            return False
+
+        try:
+            import torch
+            import joblib
+            from backend.cloud_feature_extractor import CLOUD_FEATURES, CLOUD_INPUT_DIM
+
+            ckpt      = torch.load(str(_CLOUD_AE_PATH), map_location="cpu")
+            input_dim = int(ckpt.get("input_dim", CLOUD_INPUT_DIM))
+
+            # Rebuild the cloud AE architecture (must match train_cloud_ae.py)
+            import torch.nn as nn
+
+            class _CloudAE(nn.Module):
+                def __init__(self, d: int) -> None:
+                    super().__init__()
+                    self.encoder = nn.Sequential(
+                        nn.Linear(d, 32),  nn.LeakyReLU(0.1),
+                        nn.Linear(32, 16), nn.LeakyReLU(0.1),
+                        nn.Linear(16, 8),  nn.LeakyReLU(0.1),
+                    )
+                    self.decoder = nn.Sequential(
+                        nn.Linear(8, 16),  nn.LeakyReLU(0.1),
+                        nn.Linear(16, 32), nn.LeakyReLU(0.1),
+                        nn.Linear(32, d),
+                    )
+                def forward(self, x):
+                    return self.decoder(self.encoder(x))
+
+            net = _CloudAE(input_dim)
+            net.load_state_dict(ckpt["state_dict"])
+            net.eval()
+
+            self._model    = net
+            self._scaler   = joblib.load(str(_CLOUD_SCALER_PATH))
+            self._ae_min   = float(ckpt.get("ae_min", 0.0))
+            self._ae_max   = float(ckpt.get("ae_max", 1.0))
+            self._features = ckpt.get("features", CLOUD_FEATURES)
+            self._ready    = True
+            logger.info(
+                "Cloud AE loaded (input_dim=%d, ae_min=%.6f, ae_max=%.6f)",
+                input_dim, self._ae_min, self._ae_max,
+            )
+            return True
+        except Exception as exc:
+            logger.error("Failed to load cloud AE: %s", exc, exc_info=True)
+            return False
+
+    def score_user(self, user_id: str) -> Optional[float]:
+        """
+        Score a user's cloud events using the cloud AE.
+
+        Fetches the user's cloud-source events from the event store,
+        aggregates 12 behavioral features over the last 7 days, runs the
+        cloud AE, and returns a normalised anomaly score in [0, 1].
+
+        Returns None if the model is unavailable or the user has no cloud events.
+        """
+        if not self._load():
+            return None
+
+        try:
+            import torch
+            import numpy as np
+            from backend import event_store as evstore
+            from backend.cloud_feature_extractor import CLOUD_FEATURES, aggregate_window
+
+            # Fetch all events for this user
+            all_events = evstore.get_user_events(user_id, limit=50_000)
+            # Keep only cloud-source events
+            cloud_events = [e for e in all_events if e.get("source", "") in CLOUD_SOURCES]
+            if not cloud_events:
+                return None
+
+            # Use events from last 7 days as the window
+            feats = aggregate_window(cloud_events, history=None)
+            x_raw = np.array([feats.get(f, 0.0) for f in CLOUD_FEATURES], dtype=np.float32)
+
+            if x_raw.sum() == 0:
+                return None
+
+            x_scaled = self._scaler.transform(x_raw.reshape(1, -1)).astype(np.float32)
+            x_t      = torch.tensor(x_scaled)
+
+            self._model.eval()
+            with torch.no_grad():
+                recon = self._model(x_t)
+                error = float(((x_t - recon) ** 2).mean().item())
+
+            ae_range = self._ae_max - self._ae_min
+            score    = (error - self._ae_min) / ae_range if ae_range > 0 else 0.0
+            return float(np.clip(score, 0.0, 1.0))
+
+        except Exception as exc:
+            logger.error("Cloud AE score_user(%s) failed: %s", user_id, exc, exc_info=True)
+            return None
+
+    @property
+    def is_ready(self) -> bool:
+        return self._load()
+
+
+# ---------------------------------------------------------------------------
+# Module-level singletons — imported once, shared across all requests
+# ---------------------------------------------------------------------------
+
+ae_scorer       = _AEScorer()        # CERT behavioral AE (71-dim)
+cloud_ae_scorer = _CloudAEScorer()   # Cloud-native AE (12-dim)
