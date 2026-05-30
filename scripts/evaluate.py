@@ -609,8 +609,14 @@ def main() -> None:
         except Exception:
             pass
 
-    # Save metrics.json
+    # Save metrics.json — preserve any blocks written by other scripts (e.g. live_pipeline)
     metrics_path = out_dir / "metrics.json"
+    existing: dict = {}
+    if metrics_path.exists():
+        try:
+            existing = json.loads(metrics_path.read_text())
+        except Exception:
+            existing = {}
     output = {
         "seed":    args.seed,
         "n_users": len(df),
@@ -619,6 +625,10 @@ def main() -> None:
     }
     if cloud_ae_entry:
         output["cloud_ae"] = cloud_ae_entry
+    # Re-inject any preserved blocks (live_pipeline from replay_eval.py, etc.)
+    for key in ("live_pipeline",):
+        if key in existing:
+            output[key] = existing[key]
     with open(metrics_path, "w") as f:
         json.dump(output, f, indent=2)
     print(f"[SAVED] {metrics_path}")
