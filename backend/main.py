@@ -260,9 +260,11 @@ async def root() -> dict[str, Any]:
     Useful as a quick health / readiness check.
     """
     _guard_loaded()
+    from backend.event_store import _PG
+    db_mode = "postgres" if _PG else "sqlite"
     return {
         "version": API_VERSION,
-        "mode":    "demo" if DEMO_MODE else "local",
+        "mode":    db_mode,
         "users":   len(store.scores_df),
     }
 
