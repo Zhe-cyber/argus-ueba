@@ -18,11 +18,10 @@ const RISK_STYLE = {
 }
 
 const SCORE_CARDS = [
-  { key: 'ensemble_score', label: 'Ensemble ★', title: '0.40×AE + 0.60×LGBM — final recommended score',       primary: true  },
-  { key: 'ae_score',       label: 'AE Score',   title: 'Autoencoder reconstruction error (Stage 1)',           primary: false },
-  { key: 'lgbm_score',     label: 'LGBM Score', title: 'Self-supervised LightGBM Stage 2 (pseudo-labels)',     primary: false },
-  { key: 'if_score',       label: 'IF Score',   title: 'Isolation Forest (unsupervised baseline)',             primary: false },
-  { key: 'rule_score',     label: 'Rule Score', title: 'Rule-based heuristic (static weights, Gap 3 baseline)', primary: false },
+  { key: 'ae_score',   label: 'AE Score ★',   title: 'Autoencoder reconstruction error — the final detector', primary: true  },
+  { key: 'wa_score',   label: 'Weighted Avg', title: 'Weighted IF + AE average (comparison baseline; underperforms AE)', primary: false },
+  { key: 'if_score',   label: 'IF Score',     title: 'Isolation Forest (unsupervised baseline)',             primary: false },
+  { key: 'rule_score', label: 'Rule Score',   title: 'Rule-based heuristic (static weights, baseline)',       primary: false },
 ]
 
 const INV_STATUSES = ['Pending', 'Under Investigation', 'Cleared', 'Confirmed Insider']
@@ -944,8 +943,8 @@ export default function UserDetail() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-slate-400">
-                  ★ Ensemble = 0.40×AE + 0.60×LGBM (self-supervised).
-                  IF and Rule scores shown for research comparison only.
+                  ★ AE Score = Autoencoder reconstruction error, the final detector.
+                  Weighted-Avg, IF and Rule scores are shown for research comparison only.
                 </p>
               </section>
 

@@ -97,11 +97,12 @@ class UserDetail(UserSummary):
 
     Score fields
     ------------
-    if_score       : Isolation Forest (unsupervised)
-    rule_score     : rule-based heuristic baseline
-    wa_score       : simple weighted average (IF + AE)
-    lgbm_score     : self-supervised LightGBM Stage 2
-    ensemble_score : final ensemble (0.40×AE + 0.60×LGBM) ★ recommended
+    ae_score       : Autoencoder reconstruction error — the adopted final detector ★
+    if_score       : Isolation Forest (unsupervised comparison baseline)
+    rule_score     : rule-based heuristic (comparison baseline)
+    wa_score       : weighted IF + AE average (comparison baseline; underperforms AE)
+    lgbm_score     : deprecated — LightGBM Stage 2 was not adopted; equals ae_score
+    ensemble_score : alias of ae_score, retained for API/back-compat (no score fusion is used)
     top_features   : top 5 reconstruction-error attribution features
     peer_group     : KMeans cluster index (0–7, fitted on normal users)
     peer_size      : number of users in this peer group
@@ -111,8 +112,8 @@ class UserDetail(UserSummary):
     if_score:        float
     rule_score:      float
     wa_score:        float
-    lgbm_score:      float = Field(0.0, description="Self-supervised LightGBM Stage 2 score")
-    ensemble_score:  float
+    lgbm_score:      float = Field(0.0, description="Deprecated; equals ae_score (LightGBM Stage 2 not adopted)")
+    ensemble_score:  float = Field(0.0, description="Alias of ae_score; retained for back-compat (no score fusion)")
     top_features:    List[ShapFeature] = Field(
         default_factory=list,
         description="Top 5 attribution features sorted by absolute value descending",

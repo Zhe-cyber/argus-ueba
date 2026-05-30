@@ -3,7 +3,7 @@
   "n_users": 1000,
   "n_insiders": 70,
   "models": {
-    "Autoencoder": {
+    "Autoencoder (final)": {
       "col": "ae_score",
       "auroc": 0.9763,
       "auprc": 0.8508,
@@ -11,6 +11,15 @@
       "precision": 0.8772,
       "recall": 0.7143,
       "threshold": 0.0662
+    },
+    "Weighted Avg (IF+AE)": {
+      "col": "wa_score",
+      "auroc": 0.951,
+      "auprc": 0.7404,
+      "f1": 0.7257,
+      "precision": 0.9535,
+      "recall": 0.5857,
+      "threshold": 0.3075
     },
     "Isolation Forest": {
       "col": "if_score",
@@ -29,24 +38,6 @@
       "precision": 0.2588,
       "recall": 0.6286,
       "threshold": 0.353
-    },
-    "Weighted Avg": {
-      "col": "wa_score",
-      "auroc": 0.951,
-      "auprc": 0.7404,
-      "f1": 0.7257,
-      "precision": 0.9535,
-      "recall": 0.5857,
-      "threshold": 0.3075
-    },
-    "Ensemble": {
-      "col": "ensemble_score",
-      "auroc": 0.9763,
-      "auprc": 0.8508,
-      "f1": 0.7874,
-      "precision": 0.8772,
-      "recall": 0.7143,
-      "threshold": 0.0662
     }
   },
   "cloud_ae": {
@@ -62,5 +53,15 @@
     "train_rows": 2709,
     "attacker_mean_normalised": 2.1845,
     "note": "Trained on 12-dim cloud features; evaluated on Level5/Level6 CTF attackers"
+  },
+  "live_pipeline": {
+    "auroc": 0.9172,
+    "auprc": 0.315,
+    "offline_auroc": 0.9763,
+    "offline_auprc": 0.8508,
+    "pearson_r": 0.3562,
+    "mean_abs_delta": 0.3822,
+    "n_users": 1000,
+    "peer_groups_active": true
   }
 }

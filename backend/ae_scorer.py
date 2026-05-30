@@ -207,12 +207,30 @@ class _AEScorer:
 
         # ── 1. Group per-event feature increments by calendar day ─────────
         daily: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+        # unique_pcs is a per-day DISTINCT count of logon PCs — it cannot be a
+        # per-event increment (extract() sees one event at a time), so collect
+        # the set of PCs per day here and fold the count into `daily` below.
+        daily_pcs: Dict[str, set] = defaultdict(set)
         for ev in events:
             day = str(ev.get("timestamp", ""))[:10]   # YYYY-MM-DD
             if not day or day == "":
                 continue
             for k, v in fex_extract(ev).items():
                 daily[day][k] += float(v)
+            if str(ev.get("source", "")) == "cert_logon":
+                meta = ev.get("metadata", {})
+                if isinstance(meta, str):
+                    import json as _json
+                    try:
+                        meta = _json.loads(meta)
+                    except Exception:
+                        meta = {}
+                pc = ev.get("resource") or (meta or {}).get("pc")
+                if pc:
+                    daily_pcs[day].add(str(pc))
+
+        for day, pcs in daily_pcs.items():
+            daily[day]["unique_pcs"] = float(len(pcs))
 
         if not daily:
             return None

@@ -77,21 +77,22 @@ def _parse_args() -> argparse.Namespace:
 # Models under evaluation
 # ---------------------------------------------------------------------------
 
+# The Autoencoder is the adopted final detector. The others are comparison
+# baselines. There is no fused "ensemble": ensemble_score in the data is a pure
+# alias of ae_score, so it is intentionally omitted to avoid a duplicate curve.
 MODELS = [
-    ("Autoencoder",      "ae_score"),
-    ("Isolation Forest", "if_score"),
-    ("Rule-based",       "rule_score"),
-    ("Weighted Avg",     "wa_score"),
-    ("Ensemble",         "ensemble_score"),
+    ("Autoencoder (final)",   "ae_score"),
+    ("Weighted Avg (IF+AE)",  "wa_score"),
+    ("Isolation Forest",      "if_score"),
+    ("Rule-based",            "rule_score"),
 ]
 
 # Colour palette (colour-blind safe — Okabe & Ito 2008)
 PALETTE = {
-    "Autoencoder":      "#E69F00",
-    "Isolation Forest": "#56B4E9",
-    "Rule-based":       "#009E73",
-    "Weighted Avg":     "#F0E442",
-    "Ensemble":         "#0072B2",
+    "Autoencoder (final)":   "#0072B2",
+    "Weighted Avg (IF+AE)":  "#E69F00",
+    "Isolation Forest":      "#56B4E9",
+    "Rule-based":            "#009E73",
 }
 
 
@@ -188,18 +189,25 @@ def compute_metrics(df, rng: np.random.Generator) -> dict:
     return results
 
 
-def print_metrics_table(metrics: dict) -> None:
+def print_metrics_table(metrics: dict, n_pos: int | None = None, n_total: int | None = None) -> None:
     if not metrics:
         print("\n[WARN] No models had sufficient columns — metrics table skipped.")
         return
-    header = f"{'Model':<22}{'AUROC':>7}{'AUPRC':>7}{'F1':>7}{'Prec':>7}{'Recall':>7}{'Thr':>8}"
+    # Class-balance banner: AUROC is optimistic on imbalanced data, so we lead
+    # with AUPRC (average precision) and state the positive rate up front.
+    if n_pos is not None and n_total:
+        pct = 100.0 * n_pos / n_total
+        print(f"\n[CLASS BALANCE] {n_pos} insiders / {n_total} users "
+              f"= {pct:.1f}% positive — AUPRC is the primary metric (AUROC is optimistic here).")
+    # AUPRC leads the table.
+    header = f"{'Model':<22}{'AUPRC':>7}{'AUROC':>7}{'F1':>7}{'Prec':>7}{'Recall':>7}{'Thr':>8}"
     sep = "-" * len(header)
     print(f"\n{sep}")
     print(header)
     print(sep)
     for name, m in metrics.items():
         print(
-            f"{name:<22}{m['auroc']:>7.4f}{m['auprc']:>7.4f}"
+            f"{name:<22}{m['auprc']:>7.4f}{m['auroc']:>7.4f}"
             f"{m['f1']:>7.4f}{m['precision']:>7.4f}{m['recall']:>7.4f}"
             f"{m['threshold']:>8.4f}"
         )
@@ -329,7 +337,7 @@ def plot_shap(shap_df, out_dir: Path, top_n: int = 15) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Chart 4: Confusion matrix (Ensemble at F1-optimal threshold)
+# Chart 4: Confusion matrix (Autoencoder — final detector — at F1-optimal threshold)
 # ---------------------------------------------------------------------------
 
 def plot_confusion(df, metrics: dict, out_dir: Path) -> None:
@@ -338,10 +346,10 @@ def plot_confusion(df, metrics: dict, out_dir: Path) -> None:
     import matplotlib.pyplot as plt
     from sklearn.metrics import confusion_matrix
 
-    model_name = "Ensemble"
-    col = "ensemble_score"
+    model_name = "Autoencoder (final)"
+    col = "ae_score"
     if col not in df.columns:
-        print("[SKIP] Confusion matrix — ensemble_score column missing.")
+        print("[SKIP] Confusion matrix — ae_score column missing.")
         return
 
     thr    = metrics[model_name]["threshold"]
@@ -363,7 +371,7 @@ def plot_confusion(df, metrics: dict, out_dir: Path) -> None:
     ax.set_xticklabels(["Predicted Normal", "Predicted Insider"], fontsize=10)
     ax.set_yticklabels(["Actual Normal", "Actual Insider"], fontsize=10)
     ax.set_title(
-        f"Confusion Matrix — Ensemble (threshold={thr:.3f})\n"
+        f"Confusion Matrix — Autoencoder (threshold={thr:.3f})\n"
         f"F1={metrics[model_name]['f1']:.3f}  "
         f"Prec={metrics[model_name]['precision']:.3f}  "
         f"Rec={metrics[model_name]['recall']:.3f}",
@@ -573,7 +581,7 @@ def main() -> None:
     # Compute metrics
     print("\n[INFO] Computing metrics…")
     metrics = compute_metrics(df, rng)
-    print_metrics_table(metrics)
+    print_metrics_table(metrics, n_pos=int(df["is_insider"].sum()), n_total=int(len(df)))
 
     # Load Cloud AE metrics if available (trained on flaws.cloud CloudTrail data)
     cloud_ae_metrics_path = Path("ml/models/cloud_ae_metrics.json")

@@ -141,15 +141,15 @@ def _row_to_summary(row: dict[str, Any]) -> UserSummary:
 
 def _derive_lgbm_score(row: dict[str, Any]) -> float:
     """
-    Return lgbm_score from CSV if present, otherwise back-calculate from
-    the known ensemble formula: ensemble = 0.40×AE + 0.60×LGBM.
+    Deprecated. The LightGBM Stage 2 model was never adopted and no score fusion
+    is used; the final detector is the Autoencoder alone. This field is retained
+    only for API/back-compat and mirrors ae_score (returns the CSV value if one
+    happens to be present, otherwise ae_score).
     """
     raw = float(row.get("lgbm_score", 0.0))
     if raw > 0.0:
         return raw
-    ae  = float(row.get("ae_score", 0.0))
-    ens = float(row.get("ensemble_score", ae))
-    return round(max(0.0, (ens - 0.40 * ae) / 0.60), 6)
+    return round(float(row.get("ae_score", 0.0)), 6)
 
 
 def _row_to_detail(
