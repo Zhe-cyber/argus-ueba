@@ -7,7 +7,8 @@ import { fetchUsers, fetchStats } from '@/lib/api'
 // Constants
 // ---------------------------------------------------------------------------
 
-const RISK_FILTERS = ['All', 'High', 'Medium', 'Low']
+const RISK_FILTERS   = ['All', 'High', 'Medium', 'Low']
+const SOURCE_FILTERS = ['All', 'CERT', 'Cloud']
 
 const RISK_STYLE = {
   High:   { badge: 'bg-red-100 text-red-700 ring-1 ring-red-300',   dot: 'bg-red-500'   },
@@ -89,13 +90,19 @@ function RiskBadge({ level }) {
   )
 }
 
-function ScenarioLabel({ scenario }) {
-  if (!scenario || scenario === 0) {
-    return <span className="text-slate-400 text-sm">—</span>
+function SourceBadge({ source }) {
+  if (source === 'cloud') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+        Cloud
+      </span>
+    )
   }
   return (
-    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-      Sc{scenario}
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      CERT
     </span>
   )
 }
@@ -107,11 +114,12 @@ function ScenarioLabel({ scenario }) {
 export default function Dashboard() {
   const router = useRouter()
 
-  const [stats, setStats]       = useState(null)
-  const [users, setUsers]       = useState([])
-  const [filter, setFilter]     = useState('All')
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const [stats, setStats]             = useState(null)
+  const [allUsers, setAllUsers]       = useState([])
+  const [filter, setFilter]           = useState('All')
+  const [sourceFilter, setSourceFilter] = useState('All')
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState(null)
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
@@ -122,10 +130,10 @@ export default function Dashboard() {
       const risk = activeFilter === 'All' ? null : activeFilter
       const [statsData, usersData] = await Promise.all([
         fetchStats(),
-        fetchUsers(risk, 500),   // load up to 500; table handles display
+        fetchUsers(risk, 1500),   // load up to 1500; client-side source filter applies
       ])
       setStats(statsData)
-      setUsers(usersData)
+      setAllUsers(usersData)
     } catch (err) {
       setError(err.message ?? 'Unknown error')
     } finally {
@@ -137,10 +145,21 @@ export default function Dashboard() {
     loadData(filter)
   }, [filter, loadData])
 
+  // ── Client-side source filter ──────────────────────────────────────────
+  const users = sourceFilter === 'All'
+    ? allUsers
+    : allUsers.filter(u =>
+        sourceFilter === 'Cloud'
+          ? (u.data_source === 'cloud')
+          : (u.data_source !== 'cloud')
+      )
+
   // ── Derived values ─────────────────────────────────────────────────────
 
   const total = stats?.total_users ?? 0
   const pct   = (n) => total ? Math.round((n / total) * 100) : 0
+  const certCount  = allUsers.filter(u => u.data_source !== 'cloud').length
+  const cloudCount = allUsers.filter(u => u.data_source === 'cloud').length
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -195,25 +214,55 @@ export default function Dashboard() {
                   {!loading && !error && (
                     <p className="text-xs text-slate-400 mt-0.5">
                       {users.length.toLocaleString()} user{users.length !== 1 ? 's' : ''} shown
-                      {filter !== 'All' ? ` · filtered to ${filter}` : ''}
+                      {filter !== 'All' ? ` · ${filter} risk` : ''}
+                      {!loading && certCount > 0 && (
+                        <span className="ml-2">
+                          <span className="text-slate-400">(</span>
+                          <span className="text-slate-500">{certCount} CERT</span>
+                          {cloudCount > 0 && <span className="text-slate-400">, <span className="text-indigo-500">{cloudCount} Cloud</span></span>}
+                          <span className="text-slate-400">)</span>
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 rounded-lg bg-slate-100 p-1" role="group" aria-label="Risk filter">
-                  {RISK_FILTERS.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      className={[
-                        'rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-150',
-                        filter === f
-                          ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                          : 'text-slate-500 hover:text-slate-700',
-                      ].join(' ')}
-                    >
-                      {f}
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                  {/* Source filter */}
+                  <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Source filter">
+                    {SOURCE_FILTERS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSourceFilter(s)}
+                        className={[
+                          'rounded-md px-2.5 py-1 text-xs font-semibold transition-all duration-150',
+                          sourceFilter === s
+                            ? s === 'Cloud'
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                            : 'text-slate-500 hover:text-slate-700',
+                        ].join(' ')}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Risk filter */}
+                  <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Risk filter">
+                    {RISK_FILTERS.map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={[
+                          'rounded-md px-2.5 py-1 text-xs font-semibold transition-all duration-150',
+                          filter === f
+                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                            : 'text-slate-500 hover:text-slate-700',
+                        ].join(' ')}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -244,7 +293,7 @@ export default function Dashboard() {
                           Risk Level
                         </th>
                         <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Scenario
+                          Source
                         </th>
                       </tr>
                     </thead>
@@ -272,7 +321,7 @@ export default function Dashboard() {
                             <RiskBadge level={user.risk_level} />
                           </td>
                           <td className="px-5 py-3.5">
-                            <ScenarioLabel scenario={user.scenario} />
+                            <SourceBadge source={user.data_source} />
                           </td>
                         </tr>
                       ))}

@@ -323,6 +323,7 @@ async def list_users(
             risk_level=rl,
             is_insider=0,
             scenario=0,
+            data_source="cloud",
         ))
 
     # Merge: cloud users first (sorted by score desc), then parquet users
@@ -464,8 +465,15 @@ async def get_stats() -> Stats:
     if store.scores_df is not None and "is_insider" in store.scores_df.columns:
         insiders = int((store.scores_df["is_insider"] == 1).sum())
 
+    # Count cloud-only users (live-ingested, not in CERT CSV)
+    cert_ids = set(store.scores_df["user"].astype(str)) if store.scores_df is not None else set()
+    cloud_user_count = sum(
+        1 for eu in evstore.list_event_store_users()
+        if str(eu["user"]) not in cert_ids
+    )
+
     return Stats(
-        total_users=raw["total_users"],
+        total_users=raw["total_users"] + cloud_user_count,
         high_risk=raw["risk_counts"]["High"],
         medium_risk=raw["risk_counts"]["Medium"],
         low_risk=raw["risk_counts"]["Low"],

@@ -66,6 +66,7 @@ class UserSummary(BaseModel):
     is_insider  : ground-truth label — 1 if confirmed insider, 0 otherwise
                   (used for evaluation dashboards only, not for decisions)
     scenario    : CERT scenario number (0 = benign, 1–3 = insider variant)
+    data_source : 'cert' for CERT dataset users, 'cloud' for live-ingested users
     """
 
     user: str
@@ -73,6 +74,7 @@ class UserSummary(BaseModel):
     risk_level: str = Field(..., description="'High', 'Medium', or 'Low'")
     is_insider: int = Field(..., ge=0, le=1, description="Ground-truth label: 0 or 1")
     scenario: int   = Field(..., ge=0, le=3, description="CERT scenario: 0–3")
+    data_source: str = Field("cert", description="'cert' or 'cloud'")
 
     @field_validator("risk_level")
     @classmethod
