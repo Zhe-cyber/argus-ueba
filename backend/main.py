@@ -276,7 +276,7 @@ async def root() -> dict[str, Any]:
 )
 async def list_users(
     risk:   Optional[str] = Query(None,  description="Filter by risk level: High | Medium | Low"),
-    limit:  int           = Query(100,   ge=1, le=1000, description="Page size"),
+    limit:  int           = Query(100,   ge=1, le=5000, description="Page size"),
     offset: int           = Query(0,     ge=0,          description="Records to skip"),
 ) -> list[UserSummary]:
     """
