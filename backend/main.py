@@ -317,14 +317,16 @@ async def list_users(
 
     parquet_ids = {u.user for u in combined}
 
-    # --- Cloud users from persisted live_scores (single query, no per-user AE) ---
+    # --- Cloud users: driven from live_scores table (single query).
+    # This covers BOTH users ingested via /ingest AND users seeded directly
+    # via /admin/seed-live-scores (the latter have no rows in events table,
+    # so list_event_store_users() would miss them).
     if source in ("all", "cloud"):
-        live_map = {str(r["user_id"]): r for r in evstore.get_all_live_scores()}
-        for eu in evstore.list_event_store_users():
-            uid = str(eu["user"])
+        for row in evstore.get_all_live_scores():
+            uid = str(row["user_id"])
             if uid in parquet_ids:
-                continue  # already represented in parquet
-            ae_live = float((live_map.get(uid) or {}).get("ae_live", 0.0) or 0.0)
+                continue  # already represented in CERT parquet
+            ae_live = float(row.get("ae_live", 0.0) or 0.0)
             if ae_live >= 0.7:
                 rl = "High"
             elif ae_live >= 0.4:
