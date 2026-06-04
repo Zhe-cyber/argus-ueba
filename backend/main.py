@@ -354,6 +354,40 @@ async def list_users(
     return UserListResponse(total=total, limit=limit, offset=offset, users=page)
 
 
+class LiveScoreSeed(BaseModel):
+    user_id:     str
+    ae_live:     float
+    rule_live:   float = 0.0
+    rarity:      float = 0.0
+    event_count: int   = 1
+
+
+@app.post("/admin/seed-live-scores", summary="Admin: bulk-upsert pre-computed live scores")
+def admin_seed_live_scores(
+    scores: List[LiveScoreSeed],
+    x_admin_token: Optional[str] = Header(None),
+):
+    """
+    Bulk-upsert pre-computed scores into the live_scores table.
+
+    Used to seed the dashboard with users whose scores were computed
+    offline (e.g. from the flaws.cloud training parquet) without routing
+    every individual event through /ingest.  Requires ADMIN_TOKEN header.
+    """
+    expected = os.getenv("ADMIN_TOKEN", "")
+    if not expected or x_admin_token != expected:
+        raise HTTPException(status_code=404, detail="Not found")
+    for s in scores:
+        evstore.upsert_live_score(
+            user_id=s.user_id,
+            ae_live=s.ae_live,
+            rule_live=s.rule_live,
+            rarity=s.rarity,
+            event_count=s.event_count,
+        )
+    return {"status": "ok", "upserted": len(scores)}
+
+
 @app.post("/admin/purge-live", summary="Admin: wipe accumulated live event-store data")
 def admin_purge_live(
     confirm: bool = Query(False, description="Must be true to actually wipe"),
