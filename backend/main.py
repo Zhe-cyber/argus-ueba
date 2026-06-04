@@ -550,18 +550,28 @@ async def get_stats() -> Stats:
     if store.scores_df is not None and "is_insider" in store.scores_df.columns:
         insiders = int((store.scores_df["is_insider"] == 1).sum())
 
-    # Count cloud-only users (live-ingested, not in CERT CSV)
+    # Count cloud-only users from live_scores (covers both /ingest and
+    # /admin/seed-live-scores) and bucket them into the same High/Medium/Low
+    # tiers the /users list uses, so the stat cards match the list exactly.
     cert_ids = set(store.scores_df["user"].astype(str)) if store.scores_df is not None else set()
-    cloud_user_count = sum(
-        1 for eu in evstore.list_event_store_users()
-        if str(eu["user"]) not in cert_ids
-    )
+    cloud_count = cloud_high = cloud_medium = cloud_low = 0
+    for row in evstore.get_all_live_scores():
+        if str(row["user_id"]) in cert_ids:
+            continue
+        cloud_count += 1
+        ae = float(row.get("ae_live", 0.0) or 0.0)
+        if ae >= 0.7:
+            cloud_high += 1
+        elif ae >= 0.4:
+            cloud_medium += 1
+        else:
+            cloud_low += 1
 
     return Stats(
-        total_users=raw["total_users"] + cloud_user_count,
-        high_risk=raw["risk_counts"]["High"],
-        medium_risk=raw["risk_counts"]["Medium"],
-        low_risk=raw["risk_counts"]["Low"],
+        total_users=raw["total_users"] + cloud_count,
+        high_risk=raw["risk_counts"]["High"] + cloud_high,
+        medium_risk=raw["risk_counts"]["Medium"] + cloud_medium,
+        low_risk=raw["risk_counts"]["Low"] + cloud_low,
         insiders=insiders,
         high_threshold=raw["high_threshold"],
         medium_threshold=raw["medium_threshold"],
