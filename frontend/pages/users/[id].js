@@ -773,13 +773,9 @@ export default function UserDetail() {
     setNotFound(false)
     setError(null)
 
-    // Core data: user detail, SHAP, investigation (critical path)
-    Promise.all([fetchUser(id), fetchUserShap(id), fetchInvestigation(id)])
-      .then(([userData, shapData, invData]) => {
-        setUser(userData)
-        setShap(shapData)
-        setInvRec(invData)   // null when no record exists yet — that's fine
-      })
+    // Core existence check: ONLY the user detail determines not-found.
+    fetchUser(id)
+      .then((userData) => setUser(userData))
       .catch((err) => {
         if (err.message?.includes('404') || err.message?.toLowerCase().includes('not found')) {
           setNotFound(true)
@@ -788,6 +784,17 @@ export default function UserDetail() {
         }
       })
       .finally(() => setLoading(false))
+
+    // SHAP: supplementary — cloud users have none, so a 404 here is expected,
+    // not a reason to treat the whole user as missing.
+    fetchUserShap(id)
+      .then((shapData) => setShap(shapData))
+      .catch(() => setShap(null))
+
+    // Investigation: null when no record exists yet (or 404 for cloud users).
+    fetchInvestigation(id)
+      .then((invData) => setInvRec(invData))
+      .catch(() => setInvRec(null))
 
     // Live events: non-critical, loads independently so it never blocks the main render
     fetchUserEvents(id, 20)
