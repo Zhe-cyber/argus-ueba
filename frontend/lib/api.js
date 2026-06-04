@@ -52,11 +52,14 @@ async function apiFetch(path, options = {}) {
  * @param {number}       offset — records to skip for pagination (default 0)
  * @returns {Promise<UserSummary[]>}
  */
-export async function fetchUsers(risk = null, limit = 100, offset = 0) {
+export async function fetchUsers({ risk = null, source = 'all', q = '', limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams()
   if (risk) params.set('risk', risk)
+  if (source && source !== 'all') params.set('source', source)
+  if (q) params.set('q', q)
   params.set('limit', String(limit))
   params.set('offset', String(offset))
+  // Returns { total, limit, offset, users }
   return apiFetch(`/users?${params}`)
 }
 

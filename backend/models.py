@@ -85,6 +85,15 @@ class UserSummary(BaseModel):
         return v
 
 
+class UserListResponse(BaseModel):
+    """Paginated, risk-ranked user list returned by GET /users."""
+
+    total:  int = Field(..., ge=0, description="Total matching users before paging")
+    limit:  int = Field(..., ge=1, description="Page size applied")
+    offset: int = Field(..., ge=0, description="Records skipped before this page")
+    users:  List[UserSummary]
+
+
 class PeerDeviation(BaseModel):
     """How much a user's behaviour deviates from their peer group mean."""
     feature:    str

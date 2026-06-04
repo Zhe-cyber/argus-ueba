@@ -46,6 +46,7 @@ from backend.models import (
     ShapFeature,
     Stats,
     UserDetail,
+    UserListResponse,
     UserShap,
     UserSummary,
 )
@@ -271,19 +272,24 @@ async def root() -> dict[str, Any]:
 
 @app.get(
     "/users",
-    response_model=List[UserSummary],
-    summary="List users with risk badges",
+    response_model=UserListResponse,
+    summary="List users — risk-ranked, searchable, paginated",
 )
 async def list_users(
-    risk:   Optional[str] = Query(None,  description="Filter by risk level: High | Medium | Low"),
-    limit:  int           = Query(100,   ge=1, le=5000, description="Page size"),
-    offset: int           = Query(0,     ge=0,          description="Records to skip"),
-) -> list[UserSummary]:
+    risk:   Optional[str] = Query(None, description="Filter by risk level: High | Medium | Low"),
+    source: str           = Query("all", description="Filter by data source: all | cert | cloud"),
+    q:      Optional[str] = Query(None, description="Case-insensitive substring match on user ID"),
+    limit:  int           = Query(50,  ge=1, le=5000, description="Page size"),
+    offset: int           = Query(0,   ge=0,          description="Records to skip"),
+) -> UserListResponse:
     """
-    Return a paginated list of users sorted by anomaly score (highest first).
+    Return a risk-ranked, searchable, paginated list of users.
 
-    Includes both CERT dataset users (from parquet) and cloud-sourced users
-    that exist only in the live event store (e.g. AWS CloudTrail, Azure AD).
+    The CERT parquet users and the cloud-sourced event-store users are merged
+    into a single list sorted by anomaly score (highest first), then filtered
+    (risk / source / search) and paginated server-side. This mirrors the
+    alert-prioritised model used by industry UEBA tools: the most suspicious
+    entities surface first, and analysts page or search to reach the rest.
     """
     _guard_loaded()
 
@@ -292,47 +298,60 @@ async def list_users(
             status_code=400,
             detail=f"Invalid risk level {risk!r}. Must be 'High', 'Medium', or 'Low'.",
         )
+    if source not in {"all", "cert", "cloud"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid source {source!r}. Must be 'all', 'cert', or 'cloud'.",
+        )
 
-    try:
-        result = store.get_users(risk=risk, limit=limit, offset=offset)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    combined: list[UserSummary] = []
 
-    parquet_users = [_row_to_summary(row) for row in result["users"]]
-    parquet_ids   = {u.user for u in parquet_users}
+    # --- CERT (parquet) users: full risk-sorted set, merged/paginated below ---
+    if source in ("all", "cert"):
+        try:
+            result = store.get_users(risk=risk, limit=10_000, offset=0)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        combined.extend(_row_to_summary(row) for row in result["users"])
 
-    # Augment with event-store-only users (cloud sources not in CERT parquet).
-    # Read persisted live scores in ONE query instead of recomputing the cloud
-    # AE per user — the latter issued N DB round-trips + N model inferences on
-    # every request, which made this endpoint take ~30s on the remote Postgres.
-    live_map = {str(r["user_id"]): r for r in evstore.get_all_live_scores()}
-    cloud_summaries: list[UserSummary] = []
-    for eu in evstore.list_event_store_users():
-        uid = str(eu["user"])
-        if uid in parquet_ids:
-            continue  # already represented
-        ae_live = float((live_map.get(uid) or {}).get("ae_live", 0.0) or 0.0)
-        if ae_live >= 0.7:
-            rl = "High"
-        elif ae_live >= 0.4:
-            rl = "Medium"
-        else:
-            rl = "Low"
-        # Apply risk filter if requested
-        if risk is not None and rl != risk:
-            continue
-        cloud_summaries.append(UserSummary(
-            user=uid,
-            ae_score=round(ae_live, 6),
-            risk_level=rl,
-            is_insider=0,
-            scenario=0,
-            data_source="cloud",
-        ))
+    parquet_ids = {u.user for u in combined}
 
-    # Merge: cloud users first (sorted by score desc), then parquet users
-    cloud_summaries.sort(key=lambda u: u.ae_score, reverse=True)
-    return cloud_summaries + parquet_users
+    # --- Cloud users from persisted live_scores (single query, no per-user AE) ---
+    if source in ("all", "cloud"):
+        live_map = {str(r["user_id"]): r for r in evstore.get_all_live_scores()}
+        for eu in evstore.list_event_store_users():
+            uid = str(eu["user"])
+            if uid in parquet_ids:
+                continue  # already represented in parquet
+            ae_live = float((live_map.get(uid) or {}).get("ae_live", 0.0) or 0.0)
+            if ae_live >= 0.7:
+                rl = "High"
+            elif ae_live >= 0.4:
+                rl = "Medium"
+            else:
+                rl = "Low"
+            if risk is not None and rl != risk:
+                continue
+            combined.append(UserSummary(
+                user=uid,
+                ae_score=round(ae_live, 6),
+                risk_level=rl,
+                is_insider=0,
+                scenario=0,
+                data_source="cloud",
+            ))
+
+    # --- Search filter (case-insensitive substring on user ID) ---
+    if q:
+        needle = q.strip().lower()
+        combined = [u for u in combined if needle in u.user.lower()]
+
+    # --- Rank by score desc, then paginate ---
+    combined.sort(key=lambda u: u.ae_score, reverse=True)
+    total = len(combined)
+    page  = combined[offset: offset + limit]
+
+    return UserListResponse(total=total, limit=limit, offset=offset, users=page)
 
 
 def _event_store_user_detail(user_id: str) -> UserDetail | None:
