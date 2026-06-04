@@ -301,8 +301,14 @@ export default function Dashboard() {
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 w-12">#</th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User ID</th>
-                          <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Risk Score</th>
-                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Risk Level</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
+                              title="Raw autoencoder reconstruction error. Scale differs by detector (CERT vs Cloud), so compare by Risk Level, not raw score.">
+                            Risk Score
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                              title="Calibrated per detector — CERT High threshold ≈ 0.066, Cloud High ≈ 0.70. This is the comparable signal across sources.">
+                            Risk Level
+                          </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Source</th>
                         </tr>
                       </thead>

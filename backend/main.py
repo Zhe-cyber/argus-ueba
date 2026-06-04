@@ -350,8 +350,13 @@ async def list_users(
         needle = q.strip().lower()
         combined = [u for u in combined if needle in u.user.lower()]
 
-    # --- Rank by score desc, then paginate ---
-    combined.sort(key=lambda u: u.ae_score, reverse=True)
+    # --- Rank by risk tier first, then score within tier, then paginate.
+    # CERT and cloud detectors use different score scales (CERT High >= ~0.066,
+    # cloud High >= 0.7), so a raw-score sort interleaves the two incompatible
+    # scales. Sorting by tier surfaces all High entities together — which is
+    # what an analyst wants — and keeps the badges monotonic down the list.
+    _RISK_RANK = {"High": 0, "Medium": 1, "Low": 2}
+    combined.sort(key=lambda u: (_RISK_RANK.get(u.risk_level, 3), -u.ae_score))
     total = len(combined)
     page  = combined[offset: offset + limit]
 
