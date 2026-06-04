@@ -301,13 +301,17 @@ async def list_users(
     parquet_users = [_row_to_summary(row) for row in result["users"]]
     parquet_ids   = {u.user for u in parquet_users}
 
-    # Augment with event-store-only users (cloud sources not in CERT parquet)
+    # Augment with event-store-only users (cloud sources not in CERT parquet).
+    # Read persisted live scores in ONE query instead of recomputing the cloud
+    # AE per user — the latter issued N DB round-trips + N model inferences on
+    # every request, which made this endpoint take ~30s on the remote Postgres.
+    live_map = {str(r["user_id"]): r for r in evstore.get_all_live_scores()}
     cloud_summaries: list[UserSummary] = []
     for eu in evstore.list_event_store_users():
         uid = str(eu["user"])
         if uid in parquet_ids:
             continue  # already represented
-        ae_live = ae_scorer.score_user(uid, peer_means=None) or 0.0
+        ae_live = float((live_map.get(uid) or {}).get("ae_live", 0.0) or 0.0)
         if ae_live >= 0.7:
             rl = "High"
         elif ae_live >= 0.4:
