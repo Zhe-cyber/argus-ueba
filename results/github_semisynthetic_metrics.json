@@ -1,0 +1,21 @@
+{
+  "design": "real GitHub background (label 0) + injected synthetic attacks (label 1)",
+  "n_users": 263,
+  "n_benign": 248,
+  "n_attackers": 15,
+  "attacker_pct": 5.7,
+  "seed": 42,
+  "detector": "source-agnostic rarity scorer (mean per-user rarity score)",
+  "auroc": 0.9923,
+  "auprc": 0.8991,
+  "f1": 0.8108,
+  "precision": 0.6818,
+  "recall": 1.0,
+  "threshold": 0.2143,
+  "confusion": {
+    "tn": 241,
+    "fp": 7,
+    "fn": 0,
+    "tp": 15
+  }
+}
