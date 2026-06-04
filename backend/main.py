@@ -412,16 +412,23 @@ def admin_purge_live(
 def _event_store_user_detail(user_id: str) -> UserDetail | None:
     """
     Build a synthetic UserDetail for a user that exists only in the event store
-    (e.g. a cloud/CloudTrail user not in the CERT parquet dataset).
+    OR was seeded directly into live_scores (e.g. via /admin/seed-live-scores).
 
-    Returns None if the user has no stored events at all.
+    Returns None only if the user has neither events nor a live_scores row.
     """
     total = evstore.get_total_event_count(user_id)
-    if total == 0:
+    live_row = evstore.get_live_score(user_id)
+
+    # User has no events and no live score — genuinely not found
+    if total == 0 and live_row is None:
         return None
 
-    # Compute live AE score (no peer means available for cloud-only users)
-    ae_live = ae_scorer.score_user(user_id, peer_means=None) or 0.0
+    # Prefer the persisted live score (works for bulk-seeded users too)
+    if live_row is not None:
+        ae_live = float(live_row.get("ae_live", 0.0) or 0.0)
+    else:
+        # Compute live AE score from events (no peer means for cloud-only users)
+        ae_live = ae_scorer.score_user(user_id, peer_means=None) or 0.0
 
     # Determine risk tier from AE score
     if ae_live >= 0.7:
@@ -636,8 +643,13 @@ async def upsert_investigation(
     body: InvestigationUpdate,
 ) -> InvestigationRecord:
     _guard_loaded()
-    # Accept both CERT parquet users and event-store-only (cloud) users
-    if store.get_user(user_id) is None and evstore.get_total_event_count(user_id) == 0:
+    # Accept CERT parquet users, event-store users, and bulk-seeded users
+    user_exists = (
+        store.get_user(user_id) is not None
+        or evstore.get_total_event_count(user_id) > 0
+        or evstore.get_live_score(user_id) is not None
+    )
+    if not user_exists:
         raise HTTPException(status_code=404, detail=f"User {user_id!r} not found.")
     try:
         record = inv_store.upsert(
