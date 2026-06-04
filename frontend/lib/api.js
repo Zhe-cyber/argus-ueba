@@ -59,8 +59,28 @@ export async function fetchUsers({ risk = null, source = 'all', q = '', limit = 
   if (q) params.set('q', q)
   params.set('limit', String(limit))
   params.set('offset', String(offset))
-  // Returns { total, limit, offset, users }
-  return apiFetch(`/users?${params}`)
+
+  const data = await apiFetch(`/users?${params}`)
+
+  // The current backend returns { total, limit, offset, users }. Older
+  // deployments return a bare array with no pagination metadata. Normalise so
+  // the dashboard works against both — and apply the search / source filters
+  // and risk-ranked sort client-side when talking to an older backend that
+  // ignores those params.
+  if (Array.isArray(data)) {
+    let users = [...data]
+    if (q) {
+      const needle = q.trim().toLowerCase()
+      users = users.filter((u) => String(u.user).toLowerCase().includes(needle))
+    }
+    if (source && source !== 'all') {
+      const want = source === 'cloud' ? 'cloud' : 'cert'
+      users = users.filter((u) => (u.data_source === 'cloud' ? 'cloud' : 'cert') === want)
+    }
+    users.sort((a, b) => b.ae_score - a.ae_score)
+    return { total: users.length, limit, offset, users }
+  }
+  return data
 }
 
 /**
