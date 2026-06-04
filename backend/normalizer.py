@@ -225,13 +225,21 @@ def parse_azure_ad(event: dict) -> dict:
       2. Audit logs      — ActivityDateTime / TimeGenerated, InitiatedBy (JSON),
                            OperationName / ActivityDisplayName, TargetResources
       3. M365 Defender   — Timestamp, AccountUpn, ActionType, FileName / RemoteUrl
+      4. Azure Monitor diagnostic logs (SignInLogs / AuditLogs via Log Analytics)
+                         — top-level `time`/`callerIpAddress`/`location`, with the
+                         real fields nested under `properties`.
     """
+    # ── Azure Monitor schema: flatten `properties` so the lookups below work ──
+    if isinstance(event.get("properties"), dict):
+        event = {**event, **event["properties"]}
+
     # ── Timestamp ────────────────────────────────────────────────────────────
     timestamp = (
         event.get("createdDateTime")
         or event.get("ActivityDateTime")
         or event.get("TimeGenerated")
         or event.get("Timestamp")
+        or event.get("time")
         or ""
     )
 
@@ -256,8 +264,17 @@ def parse_azure_ad(event: dict) -> dict:
         event.get("ipAddress")
         or event.get("IPAddress")
         or event.get("RemoteIP")
+        or event.get("callerIpAddress")
         or ""
     )
+
+    # ── Country (Azure Monitor / sign-in location) ───────────────────────────
+    loc = event.get("location")
+    country = ""
+    if isinstance(loc, dict):
+        country = loc.get("countryOrRegion") or loc.get("country") or ""
+    elif isinstance(loc, str):
+        country = loc
 
     # ── Metadata ─────────────────────────────────────────────────────────────
     metadata: dict = {}
@@ -271,6 +288,8 @@ def parse_azure_ad(event: dict) -> dict:
         val = event.get(key)
         if val is not None:
             metadata[key] = val
+    if country:
+        metadata["country"] = country
 
     return _build(
         source=SOURCE_AZURE,
