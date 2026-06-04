@@ -157,7 +157,7 @@ def push_scores(api: str, scores: list[dict]) -> None:
             f"{api}/admin/seed-live-scores",
             json=scores,
             headers={"x-admin-token": ADMIN_TOKEN, "Content-Type": "application/json"},
-            timeout=60,
+            timeout=240,
         )
         print(f"\n[INFO] POST /admin/seed-live-scores -> HTTP {r.status_code}")
         print(f"       {r.json()}")
@@ -169,7 +169,7 @@ def push_scores(api: str, scores: list[dict]) -> None:
             headers={"x-admin-token": ADMIN_TOKEN, "Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=240) as resp:
             print(f"\n[INFO] POST -> HTTP {resp.status}  {json.loads(resp.read())}")
 
 
