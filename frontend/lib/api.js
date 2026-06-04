@@ -279,3 +279,8 @@ export async function updateAlertStatus(alertId, status) {
     body: JSON.stringify({ status }),
   })
 }
+
+/** Escalate an alert into an investigation case (POST /alerts/{id}/escalate). */
+export async function escalateAlert(alertId) {
+  return apiFetch(`/alerts/${alertId}/escalate`, { method: 'POST' })
+}

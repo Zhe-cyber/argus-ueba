@@ -131,6 +131,42 @@ def update_status(alert_id: int, status: str) -> dict[str, Any] | None:
     return _parse(rows[0]) if rows else None
 
 
+def get_alert(alert_id: int) -> dict[str, Any] | None:
+    """Return a single alert by id, or None."""
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f"SELECT * FROM alerts WHERE id = {_PH}", (alert_id,))
+        rows = _rows(cur)
+    return _parse(rows[0]) if rows else None
+
+
+def purge_all() -> int:
+    """Delete every alert. Returns the number removed."""
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute("SELECT COUNT(*) AS c FROM alerts")
+        n = int(dict(cur.fetchone()).get("c", 0))
+        cur.execute("DELETE FROM alerts")
+    return n
+
+
+def bulk_create(alerts: list[dict[str, Any]]) -> int:
+    """Insert many Open alerts in one transaction (no per-row SELECT-back)."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _db() as con:
+        cur = _cursor(con)
+        for a in alerts:
+            cur.execute(
+                f"""
+                INSERT INTO alerts (user_id, alert_type, severity, title, details, status, created_at)
+                VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, 'Open', {_PH})
+                """,
+                (a["user_id"], a["alert_type"], a["severity"], a["title"],
+                 json.dumps(a.get("details", {})), now),
+            )
+    return len(alerts)
+
+
 # ---------------------------------------------------------------------------
 # Read
 # ---------------------------------------------------------------------------

@@ -79,7 +79,14 @@ export default function InvestigationQueue() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">Investigations</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Case management — open cases come from <span className="font-semibold text-indigo-600">escalated alerts</span>; track status, AI guidance and verdict to resolution.
+            </p>
+          </div>
 
           <div className="rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden">
 
@@ -98,8 +105,9 @@ export default function InvestigationQueue() {
                 <button
                   onClick={handleBulkImport}
                   disabled={importing}
-                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2
-                             text-sm font-semibold text-white hover:bg-red-700
+                  title="Quick-start: bulk-create cases for every High-risk user (for evaluation/demo)"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2
+                             text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800
                              disabled:opacity-50 transition-colors self-start sm:self-auto"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -108,7 +116,7 @@ export default function InvestigationQueue() {
                          0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1
                          0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1v-4.59z" />
                   </svg>
-                  {importing ? 'Importing…' : 'Import all High-risk users'}
+                  {importing ? 'Importing…' : 'Quick-start: import High-risk'}
                 </button>
               </div>
               {importMsg && (

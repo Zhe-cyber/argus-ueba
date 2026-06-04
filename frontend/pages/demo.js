@@ -331,11 +331,10 @@ export default function DemoPage() {
 
           {/* Intro + pipeline steps */}
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Multi-Cloud Log Ingestion Pipeline</h2>
+            <h2 className="text-lg font-bold text-slate-800">Demo Lab · Live Detection Pipeline</h2>
             <p className="mt-1 text-sm text-slate-500 max-w-2xl">
-              Paste any raw log, choose the source, and click <strong className="text-slate-700">Run Pipeline</strong>.
-              Each event is normalized, features are extracted, the event is persisted, and the
-              user&apos;s live risk score is updated — all in one API call.
+              A sandbox that proves the engine works in real time: paste any raw log, choose the source, and click <strong className="text-slate-700">Run Pipeline</strong>.
+              The event is normalized into the unified schema, scored by the autoencoder, checked for rarity flags, persisted, and — if it crosses a threshold — raises an <strong className="text-slate-700">alert</strong> you&apos;ll see in the Alerts queue. All in one API call.
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
               <StepBadge n="1" label="Normalize"         done={!!result} />

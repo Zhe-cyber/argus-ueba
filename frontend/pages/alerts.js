@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import { fetchAlerts, fetchAlertStats, updateAlertStatus } from '@/lib/api'
+import { fetchAlerts, fetchAlertStats, updateAlertStatus, escalateAlert } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Style maps
@@ -87,7 +87,8 @@ function StatCard({ label, count, color, bg }) {
   )
 }
 
-function AlertRow({ alert, onUserClick, onStatusUpdate, updating }) {
+function AlertRow({ alert, onUserClick, onStatusUpdate, onEscalate, updating }) {
+  const canEscalate = alert.status === 'Open' || alert.status === 'Acknowledged'
   const sev = SEV_STYLE[alert.severity] ?? SEV_STYLE.Low
 
   // Status → available next actions
@@ -167,15 +168,26 @@ function AlertRow({ alert, onUserClick, onStatusUpdate, updating }) {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
           </svg>
         ) : (
-          actions.map(({ label, next, style }) => (
-            <button
-              key={next}
-              onClick={() => onStatusUpdate(next)}
-              className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all ${style}`}
-            >
-              {label}
-            </button>
-          ))
+          <>
+            {canEscalate && (
+              <button
+                onClick={onEscalate}
+                title="Open an investigation case for this user"
+                className="rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Escalate →
+              </button>
+            )}
+            {actions.map(({ label, next, style }) => (
+              <button
+                key={next}
+                onClick={() => onStatusUpdate(next)}
+                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all ${style}`}
+              >
+                {label}
+              </button>
+            ))}
+          </>
         )}
       </div>
 
@@ -194,6 +206,7 @@ export default function AlertsPage() {
   const [filter,   setFilter]   = useState('Open')  // default to Open alerts
   const [loading,  setLoading]  = useState(true)
   const [updating, setUpdating] = useState(null)    // alert id being updated
+  const [escalated, setEscalated] = useState(null)  // banner after escalation
 
   const load = useCallback(async (f) => {
     setLoading(true)
@@ -231,6 +244,20 @@ export default function AlertsPage() {
     }
   }
 
+  async function handleEscalate(alertId, userId) {
+    setUpdating(alertId)
+    try {
+      await escalateAlert(alertId)
+      setEscalated(userId)
+      setTimeout(() => setEscalated(null), 6000)
+      await load(filter)
+    } catch (e) {
+      console.error('Escalation failed:', e)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
   return (
     <>
       <Head>
@@ -245,7 +272,7 @@ export default function AlertsPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-800">Security Alerts</h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Auto-generated from the live ingestion pipeline · refreshes every 15 s
+              Triage queue — review each detection, then <span className="font-semibold text-indigo-600">Escalate</span> real threats into an investigation
             </p>
           </div>
           <button
@@ -264,6 +291,21 @@ export default function AlertsPage() {
             Refresh
           </button>
         </div>
+
+        {/* Escalation banner */}
+        {escalated && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 flex items-center gap-2 text-sm">
+            <span className="text-indigo-700 font-medium">
+              Escalated <span className="font-mono">{escalated}</span> to an investigation.
+            </span>
+            <button
+              onClick={() => router.push(`/users/${encodeURIComponent(escalated)}`)}
+              className="text-indigo-600 hover:text-indigo-800 underline font-medium text-xs"
+            >
+              Open case →
+            </button>
+          </div>
+        )}
 
         {/* Stats row */}
         {stats && (
@@ -351,6 +393,7 @@ export default function AlertsPage() {
                   updating={updating === alert.id}
                   onUserClick={() => router.push(`/users/${encodeURIComponent(alert.user_id)}`)}
                   onStatusUpdate={(status) => handleStatusUpdate(alert.id, status)}
+                  onEscalate={() => handleEscalate(alert.id, alert.user_id)}
                 />
               ))}
             </div>

@@ -1025,3 +1025,82 @@ async def update_alert(alert_id: int, body: AlertStatusUpdate) -> Alert:
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found.")
     return Alert(**updated)
+
+
+@app.post(
+    "/alerts/{alert_id}/escalate",
+    summary="Escalate an alert into an investigation case",
+)
+async def escalate_alert(alert_id: int) -> dict:
+    """
+    Promote a triaged alert into a tracked investigation: opens (or updates)
+    the investigation record for the alert's user with status 'Under
+    Investigation', then marks the alert 'Acknowledged'. This is the SOC
+    bridge from the triage queue (Alerts) to case management (Investigations).
+    """
+    _guard_loaded()
+    alert = astore.get_alert(alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found.")
+
+    uid  = str(alert["user_id"])
+    note = f"Escalated from alert #{alert_id}: {alert.get('title', '')}"
+    record = inv_store.upsert(uid, "Under Investigation", "Analyst", note)
+    astore.update_status(alert_id, "Acknowledged")
+
+    return {"status": "ok", "alert_id": alert_id, "user_id": uid, "investigation": record}
+
+
+@app.post(
+    "/admin/rebuild-alerts",
+    summary="Admin: clear alerts and regenerate from current high-risk users",
+)
+def admin_rebuild_alerts(
+    confirm: bool = Query(False, description="Must be true to proceed"),
+    x_admin_token: Optional[str] = Header(None),
+):
+    """
+    Wipe the alert queue and regenerate one alert per current High-risk entity
+    (CERT parquet + cloud live_scores). Gives a clean triage queue that
+    reflects the real detector output instead of accumulated test ingestions.
+    """
+    expected = os.getenv("ADMIN_TOKEN", "")
+    if not expected or x_admin_token != expected:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not confirm:
+        raise HTTPException(status_code=400, detail="Pass ?confirm=true to proceed.")
+
+    removed = astore.purge_all()
+    batch: list[dict] = []
+
+    # CERT High-risk users
+    try:
+        res = store.get_users(risk="High", limit=10_000, offset=0)
+        for row in res["users"]:
+            uid = str(row["user_id"])
+            sc  = float(row.get("ae_score", 0.0))
+            batch.append({
+                "user_id": uid,
+                "alert_type": "high_risk_entity",
+                "severity": "Critical" if sc >= 0.85 else "High",
+                "title": f"High-risk entity flagged: {uid} (AE {sc:.3f})",
+                "details": {"ae_score": round(sc, 4), "source": "cert"},
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Cloud High-risk users (from persisted live scores)
+    for r in evstore.get_all_live_scores():
+        ae = float(r.get("ae_live", 0.0) or 0.0)
+        if ae >= 0.7:
+            uid = str(r["user_id"])
+            batch.append({
+                "user_id": uid,
+                "alert_type": "high_risk_entity",
+                "severity": "Critical" if ae >= 0.85 else "High",
+                "title": f"High-risk cloud entity flagged: {uid} (AE {ae:.3f})",
+                "details": {"ae_live": round(ae, 4), "source": "cloud"},
+            })
+
+    created = astore.bulk_create(batch) if batch else 0
+    return {"status": "ok", "removed": removed, "created": created}
