@@ -323,6 +323,13 @@ async def list_users(
     # via /admin/seed-live-scores (the latter have no rows in events table,
     # so list_event_store_users() would miss them).
     if source in ("all", "cloud"):
+        # Map each event-store user -> their first/primary source (aws_cloudtrail,
+        # azure_ad, github_events, …) so the dashboard can show WHICH source.
+        src_map: dict[str, str] = {}
+        for eu in evstore.list_event_store_users():
+            srcs = str(eu.get("sources", "") or "")
+            if srcs:
+                src_map[str(eu["user"])] = srcs.split(",")[0]
         for row in evstore.get_all_live_scores():
             uid = str(row["user_id"])
             if uid in parquet_ids:
@@ -343,6 +350,7 @@ async def list_users(
                 is_insider=0,
                 scenario=0,
                 data_source="cloud",
+                source=src_map.get(uid),
             ))
 
     # --- Search filter (case-insensitive substring on user ID) ---

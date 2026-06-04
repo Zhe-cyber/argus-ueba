@@ -309,6 +309,7 @@ const SOURCE_STYLE = {
   aws_cloudtrail:    { bg: 'bg-orange-100',  text: 'text-orange-700',  label: 'AWS'        },
   azure_ad:          { bg: 'bg-sky-100',     text: 'text-sky-700',     label: 'Azure'      },
   cloudflare_access: { bg: 'bg-yellow-100',  text: 'text-yellow-700',  label: 'Cloudflare' },
+  github_events:     { bg: 'bg-slate-200',   text: 'text-slate-700',   label: 'GitHub'     },
 }
 
 function SourceBadge({ source }) {

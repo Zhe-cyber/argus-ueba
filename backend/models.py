@@ -75,6 +75,7 @@ class UserSummary(BaseModel):
     is_insider: int = Field(..., ge=0, le=1, description="Ground-truth label: 0 or 1")
     scenario: int   = Field(..., ge=0, le=3, description="CERT scenario: 0–3")
     data_source: str = Field("cert", description="'cert' or 'cloud'")
+    source: Optional[str] = Field(None, description="Specific cloud source, e.g. aws_cloudtrail, azure_ad, github_events, cloudflare_access")
 
     @field_validator("risk_level")
     @classmethod

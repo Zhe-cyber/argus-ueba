@@ -91,8 +91,24 @@ function RiskBadge({ level }) {
   )
 }
 
-function SourceBadge({ source }) {
-  if (source === 'cloud') {
+const CLOUD_SOURCE_STYLE = {
+  aws_cloudtrail:    { label: 'AWS',        badge: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-400' },
+  azure_ad:          { label: 'Azure',      badge: 'bg-sky-50 text-sky-700 ring-sky-200',          dot: 'bg-sky-400'    },
+  github_events:     { label: 'GitHub',     badge: 'bg-slate-100 text-slate-700 ring-slate-300',   dot: 'bg-slate-500'  },
+  cloudflare_access: { label: 'Cloudflare', badge: 'bg-yellow-50 text-yellow-700 ring-yellow-200', dot: 'bg-yellow-400' },
+}
+
+function SourceBadge({ source, dataSource }) {
+  const s = CLOUD_SOURCE_STYLE[source]
+  if (s) {
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ${s.badge}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+        {s.label}
+      </span>
+    )
+  }
+  if (dataSource === 'cloud') {
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
         <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
@@ -336,7 +352,7 @@ export default function Dashboard() {
                               <RiskBadge level={user.risk_level} />
                             </td>
                             <td className="px-5 py-3.5">
-                              <SourceBadge source={user.data_source} />
+                              <SourceBadge source={user.source} dataSource={user.data_source} />
                             </td>
                           </tr>
                         ))}
