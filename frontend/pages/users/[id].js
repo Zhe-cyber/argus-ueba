@@ -107,8 +107,26 @@ function ScoreCard({ label, value, title, highlight = false }) {
 // ---------------------------------------------------------------------------
 
 /** Truncate long feature names for the Y-axis label */
-function truncate(str, n = 22) {
+function truncate(str, n = 26) {
   return str.length > n ? str.slice(0, n - 1) + '…' : str
+}
+
+/** Custom Y-axis tick: renders the full feature name without recharts'
+ *  internal width-based truncation (which clipped names to 1-3 chars). */
+function FeatureTick({ x, y, payload }) {
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={4}
+      textAnchor="end"
+      fontSize={11}
+      fontFamily="ui-monospace, monospace"
+      fill="#475569"
+    >
+      {truncate(String(payload?.value ?? ''), 24)}
+    </text>
+  )
 }
 
 /** Custom tooltip shown on bar hover */
@@ -156,9 +174,9 @@ function ShapChart({ features }) {
         <YAxis
           type="category"
           dataKey="feature"
-          tickFormatter={truncate}
-          width={160}
-          tick={{ fontSize: 11, fill: '#475569', fontFamily: 'ui-monospace, monospace' }}
+          width={196}
+          interval={0}
+          tick={<FeatureTick />}
           axisLine={false}
           tickLine={false}
         />

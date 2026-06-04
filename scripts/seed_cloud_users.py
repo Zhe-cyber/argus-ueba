@@ -43,15 +43,25 @@ def compute_scores(dry_run: bool) -> list[dict]:
     df = pd.read_parquet(str(DATA_PATH))
     print(f"[INFO] {len(df):,} user-days, {df['user'].nunique()} users")
 
-    # One row per user — aggregate across all their days
-    # Use mean of feature values across all days (captures full behavioural baseline)
-    # Aggregate each feature as mean across all user-days; sum event_count
+    # Merge case-variant duplicates of the same actor (flaws.cloud logs the
+    # same principal as both 'Level6' and 'level6' across different fields).
+    df = df.copy()
+    df["_canon"] = df["user"].str.lower()
+    # Display name per canonical key = the casing seen on the most user-days
+    name_map = (
+        df.groupby(["_canon", "user"]).size()
+          .reset_index(name="n").sort_values("n", ascending=False)
+          .drop_duplicates("_canon").set_index("_canon")["user"].to_dict()
+    )
+
+    # One row per (canonical) user — mean each feature across days, sum events
     feat_agg = {f: (f, "mean") for f in CLOUD_FEATURES if f != "event_count"}
-    agg = df.groupby("user").agg(
+    agg = df.groupby("_canon").agg(
         is_attacker  = ("is_attacker", "max"),
         total_events = ("event_count", "sum"),  # total events across all days
         **feat_agg,
     ).reset_index()
+    agg["user"] = agg["_canon"].map(name_map)
 
     # event_count was aggregated as total_events; restore for feature matrix
     if "event_count" in CLOUD_FEATURES and "event_count" not in agg.columns:
