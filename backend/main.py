@@ -19,7 +19,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Any, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 import os
@@ -352,6 +352,32 @@ async def list_users(
     page  = combined[offset: offset + limit]
 
     return UserListResponse(total=total, limit=limit, offset=offset, users=page)
+
+
+@app.post("/admin/purge-live", summary="Admin: wipe accumulated live event-store data")
+def admin_purge_live(
+    confirm: bool = Query(False, description="Must be true to actually wipe"),
+    user: Optional[str] = Query(None, description="If set, delete only this user"),
+    x_admin_token: Optional[str] = Header(None, description="Must equal ADMIN_TOKEN env"),
+):
+    """
+    Remove accumulated test / demo ingestions from the event store and
+    live_scores tables. The CERT parquet dataset is untouched. Destructive, so
+    it is hidden unless an ADMIN_TOKEN env var is configured and supplied.
+
+    - Whole reset:  POST /admin/purge-live?confirm=true
+    - Single user:  POST /admin/purge-live?confirm=true&user=<id>
+    """
+    expected = os.getenv("ADMIN_TOKEN", "")
+    if not expected or x_admin_token != expected:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not confirm:
+        raise HTTPException(status_code=400, detail="Pass ?confirm=true to proceed.")
+    if user is not None:
+        removed = evstore.delete_event_store_user(user)
+        return {"status": "ok", "scope": "user", "user": user, "events_removed": removed}
+    removed = evstore.purge_all_live()
+    return {"status": "ok", "scope": "all", "events_removed": removed}
 
 
 def _event_store_user_detail(user_id: str) -> UserDetail | None:

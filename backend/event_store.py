@@ -237,6 +237,33 @@ def get_total_event_count(user_id: str) -> int:
     return int(dict(row).get("cnt", 0))
 
 
+def delete_event_store_user(user_id: str) -> int:
+    """Delete a single user's events and live score. Returns events removed."""
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'DELETE FROM events WHERE "user" = {_PH}', (str(user_id),))
+        removed = cur.rowcount or 0
+        cur.execute(f'DELETE FROM live_scores WHERE user_id = {_PH}', (str(user_id),))
+        con.commit()
+    return int(removed)
+
+
+def purge_all_live() -> int:
+    """Wipe ALL event-store rows and live scores (CERT parquet data untouched).
+
+    Returns the number of event rows removed. Use to clear accumulated test /
+    demo ingestions before a clean demo run.
+    """
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute("SELECT COUNT(*) AS cnt FROM events")
+        before = int(dict(cur.fetchone()).get("cnt", 0))
+        cur.execute("DELETE FROM events")
+        cur.execute("DELETE FROM live_scores")
+        con.commit()
+    return before
+
+
 def list_event_store_users() -> list[dict[str, Any]]:
     """
     Return one row per distinct user in the event store.
