@@ -89,10 +89,16 @@ def compute_scores(dry_run: bool) -> list[dict]:
     with torch.no_grad():
         x_t   = torch.tensor(X_scaled)
         recon = model(x_t)
-        errors = ((x_t - recon) ** 2).mean(dim=1).numpy()
+        diff   = (x_t - recon).numpy()             # (N, 12) signed residual
+        errors = (diff ** 2).mean(axis=1)          # per-user mean recon error
 
     ae_range = ae_max - ae_min
     scores_norm = np.clip((errors - ae_min) / ae_range if ae_range > 0 else errors, 0.0, 1.0)
+
+    # Per-feature signed attribution: sign(residual) * residual^2.
+    # A feature far above its normal reconstruction increases risk (+),
+    # far below decreases risk (-). This is the cloud-AE analogue of SHAP.
+    signed_contrib = np.sign(diff) * (diff ** 2)   # (N, 12)
 
     results = []
     print(f"\n{'User':<35} {'Score':>7}  {'Risk':<6}  Label")
@@ -103,12 +109,41 @@ def compute_scores(dry_run: bool) -> list[dict]:
         label   = "ATTACKER" if row["is_attacker"] else "normal"
         risk    = "High" if score >= 0.7 else "Medium" if score >= 0.4 else "Low"
         print(f"  {user:<33} {score:>7.4f}  {risk:<6}  {label}")
+
+        # Build the SHAP-style feature list, sorted by |contribution| desc.
+        # Normalise to the anomaly-score scale so values read like proper
+        # attributions (top driver ~= score) instead of raw squared residuals.
+        contribs = signed_contrib[i]
+        max_abs  = float(np.abs(contribs).max())
+        if max_abs > 0:
+            contribs = contribs / max_abs * max(score, 1e-3)
+        order    = np.argsort(np.abs(contribs))[::-1]
+        feats    = []
+        for j in order[:10]:
+            val = float(contribs[j])
+            if abs(val) < 1e-4:
+                continue
+            feats.append({
+                "feature":    CLOUD_FEATURES[j],
+                "shap_value": round(val, 6),
+                "direction":  "increases_risk" if val > 0 else "decreases_risk",
+            })
+
+        top_pos = [f["feature"] for f in feats if f["shap_value"] > 0][:3]
+        reason  = (
+            f"{risk} risk driven by {', '.join(top_pos)}."
+            if top_pos else
+            f"{risk} risk: cloud activity reconstructs close to the normal baseline."
+        )
+
         results.append({
             "user_id":     user,
             "ae_live":     round(score, 6),
             "rule_live":   0.0,
             "rarity":      0.0,
             "event_count": int(row.get("total_events", 1)),
+            "features":    feats,
+            "reason":      reason,
         })
 
     return results

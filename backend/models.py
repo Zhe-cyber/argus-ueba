@@ -102,6 +102,9 @@ class LiveScoreSeed(BaseModel):
     rule_live:   float = 0.0
     rarity:      float = 0.0
     event_count: int   = 1
+    # Optional cloud-AE feature attribution, surfaced as SHAP on the detail page
+    features:    List[ShapFeature] = []
+    reason:      str = ""
 
 
 class PeerDeviation(BaseModel):

@@ -22,6 +22,7 @@ from typing import Any, List, Optional
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+import json
 import os
 from backend.config import DEMO_MODE
 from backend.loader import store
@@ -380,6 +381,11 @@ def admin_seed_live_scores(
             rarity=s.rarity,
             event_count=s.event_count,
         )
+        # Persist the cloud-AE feature attribution so the detail page can
+        # show SHAP and the AI assistant has feature context.
+        if s.features:
+            feats_json = json.dumps([f.model_dump() for f in s.features])
+            evstore.upsert_cloud_shap(s.user_id, feats_json, s.reason)
     return {"status": "ok", "upserted": len(scores)}
 
 
@@ -508,7 +514,17 @@ async def get_user_shap(user_id: str) -> UserShap:
     # Confirm user exists in scores table first
     row = store.get_user(user_id)
     if row is None:
-        raise HTTPException(status_code=404, detail=f"User {user_id!r} not found.")
+        # Cloud user fallback: serve the stored cloud-AE attribution if present
+        cs = evstore.get_cloud_shap(user_id)
+        if cs is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"SHAP values for user {user_id!r} not found.",
+            )
+        raw_feats = json.loads(cs["features_json"])
+        features  = [ShapFeature(**f) for f in raw_feats][:SHAP_TOP_N]
+        reason    = cs.get("reason") or _build_reason(features, "Low")
+        return UserShap(user=user_id, features=features, reason=reason)
 
     shap_data = store.get_user_shap(user_id)
     if shap_data is None:
@@ -708,20 +724,35 @@ async def suggest_investigation(user_id: str) -> dict:
     _guard_loaded()
 
     row = store.get_user(user_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"User {user_id!r} not found.")
-
-    shap_data = store.get_user_shap(user_id)
-    features  = shap_data["features"] if shap_data else []
+    if row is not None:
+        risk_level = str(row.get("risk", "Low"))
+        ae_score   = float(row.get("ae_score", 0.0))
+        if_score   = float(row.get("if_score", 0.0))
+        rule_score = float(row.get("rule_score", 0.0))
+        scenario   = int(row.get("scenario", 0))
+        shap_data  = store.get_user_shap(user_id)
+        features   = shap_data["features"] if shap_data else []
+    else:
+        # Cloud user fallback: use the persisted live score + cloud attribution
+        cloud = _event_store_user_detail(user_id)
+        if cloud is None:
+            raise HTTPException(status_code=404, detail=f"User {user_id!r} not found.")
+        risk_level = cloud.risk_level
+        ae_score   = cloud.ae_score
+        if_score   = 0.0
+        rule_score = 0.0
+        scenario   = 0
+        cs         = evstore.get_cloud_shap(user_id)
+        features   = json.loads(cs["features_json"]) if cs else []
 
     try:
         result = ai_suggest.generate_ensemble(
             user_id    = user_id,
-            risk_level = str(row.get("risk", "Low")),
-            ae_score   = float(row.get("ae_score", 0.0)),
-            if_score   = float(row.get("if_score", 0.0)),
-            rule_score = float(row.get("rule_score", 0.0)),
-            scenario   = int(row.get("scenario", 0)),
+            risk_level = risk_level,
+            ae_score   = ae_score,
+            if_score   = if_score,
+            rule_score = rule_score,
+            scenario   = scenario,
             features   = features,
         )
     except Exception as exc:

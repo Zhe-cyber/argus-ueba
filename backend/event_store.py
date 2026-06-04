@@ -60,6 +60,17 @@ _DDL_LIVE_SCORES = """
     )
 """
 
+# Per-feature attribution for cloud users (seeded offline from the cloud AE).
+# Lets cloud-only users show a SHAP-style breakdown + AI suggestion context.
+_DDL_CLOUD_SHAP = """
+    CREATE TABLE IF NOT EXISTS cloud_shap (
+        user_id       TEXT PRIMARY KEY,
+        features_json TEXT NOT NULL,
+        reason        TEXT DEFAULT '',
+        updated_at    TEXT NOT NULL
+    )
+"""
+
 # Aggregate function for comma-separated distinct values
 _GROUP_CONCAT = "STRING_AGG(DISTINCT source, ',')" if _PG else "GROUP_CONCAT(DISTINCT source)"
 
@@ -125,6 +136,7 @@ def init_db() -> None:
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_user ON events(\"user\")")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_ts   ON events(ingested_at)")
         cur.execute(_DDL_LIVE_SCORES)
+        cur.execute(_DDL_CLOUD_SHAP)
 
 
 # ---------------------------------------------------------------------------
@@ -350,3 +362,33 @@ def get_all_live_scores() -> list[dict[str, Any]]:
         cur = _cursor(con)
         cur.execute("SELECT * FROM live_scores ORDER BY rarity DESC")
         return _rows(cur)
+
+
+def upsert_cloud_shap(user_id: str, features_json: str, reason: str = "") -> None:
+    """Insert or update the cloud SHAP attribution for *user_id*."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"""
+            INSERT INTO cloud_shap (user_id, features_json, reason, updated_at)
+            VALUES ({_PH}, {_PH}, {_PH}, {_PH})
+            ON CONFLICT (user_id) DO UPDATE SET
+                features_json = EXCLUDED.features_json,
+                reason        = EXCLUDED.reason,
+                updated_at    = EXCLUDED.updated_at
+            """,
+            (str(user_id), features_json, reason, now),
+        )
+
+
+def get_cloud_shap(user_id: str) -> dict[str, Any] | None:
+    """Return the cloud SHAP record for *user_id*, or None if not found."""
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"SELECT * FROM cloud_shap WHERE user_id = {_PH}",
+            (str(user_id),),
+        )
+        rows = _rows(cur)
+    return rows[0] if rows else None
