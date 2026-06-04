@@ -94,6 +94,16 @@ class UserListResponse(BaseModel):
     users:  List[UserSummary]
 
 
+class LiveScoreSeed(BaseModel):
+    """One pre-computed live score row for bulk upsert via /admin/seed-live-scores."""
+
+    user_id:     str
+    ae_live:     float
+    rule_live:   float = 0.0
+    rarity:      float = 0.0
+    event_count: int   = 1
+
+
 class PeerDeviation(BaseModel):
     """How much a user's behaviour deviates from their peer group mean."""
     feature:    str

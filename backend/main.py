@@ -47,6 +47,7 @@ from backend.models import (
     Stats,
     UserDetail,
     UserListResponse,
+    LiveScoreSeed,
     UserShap,
     UserSummary,
 )
@@ -352,14 +353,6 @@ async def list_users(
     page  = combined[offset: offset + limit]
 
     return UserListResponse(total=total, limit=limit, offset=offset, users=page)
-
-
-class LiveScoreSeed(BaseModel):
-    user_id:     str
-    ae_live:     float
-    rule_live:   float = 0.0
-    rarity:      float = 0.0
-    event_count: int   = 1
 
 
 @app.post("/admin/seed-live-scores", summary="Admin: bulk-upsert pre-computed live scores")
