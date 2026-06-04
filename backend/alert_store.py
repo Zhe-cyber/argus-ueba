@@ -140,6 +140,26 @@ def get_alert(alert_id: int) -> dict[str, Any] | None:
     return _parse(rows[0]) if rows else None
 
 
+def resolve_user_alerts(user_id: str, status: str) -> int:
+    """
+    Set all still-active (Open / Acknowledged) alerts for *user_id* to a
+    terminal *status* ('Resolved' or 'False Positive') and stamp resolved_at.
+    Returns the number of alerts updated. Used to close the loop when an
+    investigation reaches a verdict.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(
+            f"""
+            UPDATE alerts SET status = {_PH}, resolved_at = {_PH}
+            WHERE user_id = {_PH} AND status IN ('Open', 'Acknowledged')
+            """,
+            (status, now, str(user_id)),
+        )
+        return cur.rowcount or 0
+
+
 def purge_all() -> int:
     """Delete every alert. Returns the number removed."""
     with _db() as con:

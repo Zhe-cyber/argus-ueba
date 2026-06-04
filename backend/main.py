@@ -686,6 +686,17 @@ async def upsert_investigation(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Close the loop: a verdict resolves the user's still-active alerts.
+    # Confirmed Insider → Resolved (true positive); Cleared → False Positive.
+    try:
+        if body.status == "Confirmed Insider":
+            astore.resolve_user_alerts(user_id, "Resolved")
+        elif body.status == "Cleared":
+            astore.resolve_user_alerts(user_id, "False Positive")
+    except Exception:  # noqa: BLE001 — never fail the save on alert sync
+        pass
+
     return InvestigationRecord(**record)
 
 
