@@ -15,9 +15,10 @@
 Argus is a **cloud-native User and Entity Behaviour Analytics (UEBA) platform** that detects
 insider threats, compromised accounts and data exfiltration **without any labelled attack
 data**. It ingests activity logs from four cloud/enterprise sources, normalises them into a
-single schema, scores each user with an **unsupervised deep autoencoder**, explains every alert
-with **SHAP attribution and an LLM analyst assistant**, and surfaces results through a full
-**SOC workflow** (dashboard → alert triage → investigation case → resolution).
+single schema, scores each user with a **one-class deep autoencoder** (trained on benign-assumed
+data — no attack labels in the objective), explains every alert with **SHAP attribution and an LLM
+analyst assistant**, and surfaces results through a full **SOC workflow** (dashboard → alert triage
+→ investigation case → resolution).
 
 **Headline results (CERT r4.2, 1,000 users, 70 insiders, label-free):**
 
@@ -406,6 +407,48 @@ CERT r4.2.
 
 ![Figure 7. Live-vs-offline per-user scores — the streaming pipeline (AUROC 0.917) preserves most of the offline detector's accuracy (0.976).](results/report_png/live_vs_offline.png){width=5in}
 
+### 6.2 Threats to validity and honest caveats
+
+A rigorous reading of the evaluation requires the following disclosures. They are stated
+proactively because pre-empting them is what makes the result defensible.
+
+1. **One-class, not fully unsupervised.** The autoencoder is trained only on user-days *assumed
+   benign*. On the CERT benchmark the 70 insiders were excluded from training **using the
+   ground-truth labels**; in deployment the model instead relies on the assumption that benign
+   behaviour dominates (tolerating a small contamination). The precise claim is therefore *"no
+   labelled attacks in the training objective,"* not *"no labels at all."*
+
+2. **Transductive evaluation.** Reconstruction error is scored over the full 1,000-user population.
+   The 70 insiders are never seen during training (a clean test for the positive class), but the
+   negative class includes the ~80% of normal users used to fit the manifold. This is standard for
+   one-class anomaly detection, but it means the headline **AUROC 0.976 is a transductive estimate
+   that is mildly optimistic** relative to a fully held-out normal set; the held-out validation
+   reconstruction loss is monitored as an overfitting check.
+
+3. **Threshold selection.** AUROC and AUPRC are threshold-free and are the **primary** metrics. The
+   reported F1 / precision / recall are taken at the F1-optimal operating point, chosen with
+   reference to the labels — a common but optimistic convention.
+
+4. **Score normalisation.** The [0,1] mapping uses the population min/max reconstruction error.
+   Because AUROC and AUPRC are rank-based, this scaling **does not affect them**; it affects only
+   the displayed score and the numeric threshold value.
+
+5. **Live-vs-offline gap (a known train/serve approximation).** The offline metrics use the exact
+   training feature pipeline. The real-time path constructs a few of the 71 features
+   approximately — notably the four `peer_ratio` features, whose behavioural peer groups are
+   recomputed at serving time (`loader.py`) with a **different clustering configuration than
+   training** (10 features / K=8 at serving vs 4 features / K=5 in the notebook), and which are
+   unavailable for cloud-only entities. This approximation is the principal reason the streaming
+   live-replay AUROC (0.917) sits below the offline 0.976 and the per-user correlation is modest.
+   **The offline figures are the rigorous result; the live figures are an operational lower bound.**
+   Aligning the serving-time clustering to the training configuration is a concrete future fix.
+
+6. **Cloud and GitHub are secondary evidence.** The cloud autoencoder is evaluated on the same
+   dataset (flaws.cloud) it trained on, time-held-out (§2.2). The GitHub result is *semi-synthetic*
+   (injected, designed attacks; §6.1). Neither is an independent benchmark on the level of CERT
+   r4.2, and they are presented as real-world / real-time *corroboration*, not as primary accuracy
+   claims.
+
 ---
 
 ## 7. Deployment
@@ -634,8 +677,10 @@ the label-free, explainable detection pipeline.
 
 ## 10. Academic Contributions (defensible claims)
 
-1. **Label-free multi-cloud insider detection** reaching AUROC 0.976 / AUPRC 0.851 — ~90% of a
-   supervised LightGBM upper-bound **with zero labelled attacks**.
+1. **One-class insider detection without labelled attacks** reaching AUROC 0.976 / AUPRC 0.851 —
+   ~90% of a supervised LightGBM upper bound. The autoencoder is trained only on benign-assumed
+   data (no attack labels in the objective); the precise label assumption and evaluation caveats
+   are disclosed in §6.2.
 2. **A source-agnostic normalisation layer** unifying four structurally distinct cloud/enterprise
    log formats (AWS, Azure, Cloudflare, GitHub) into one 8-field schema, extensible by one parser
    per source (AWS and Azure unit-tested; all four demonstrated live). *This is a normalisation
@@ -656,6 +701,10 @@ the label-free, explainable detection pipeline.
   explainability + human-in-the-loop review matter.
 - No model-drift detection yet (future: KL-divergence drift + periodic retraining).
 - Peer groups are behavioural only; combining with role/HR attributes is future work.
+- **Train/serve consistency:** the serving-time peer-group clustering (`loader.py`, 10 features /
+  K=8) does not exactly reproduce the training-time configuration (4 features / K=5), so the four
+  `peer_ratio` features are approximated in the live path (§6.2). Aligning them is a concrete fix
+  that should narrow the live-vs-offline gap.
 - Baseline-poisoning by a patient insider is partially mitigated by peer comparison; adversarial
   robustness is unevaluated.
 
