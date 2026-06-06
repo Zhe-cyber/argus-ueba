@@ -132,7 +132,7 @@ status differs, and the distinction matters for examination:
 
 | File | Responsibility |
 |---|---|
-| `cert_ae_full_pipeline.ipynb` | Trains the **CERT autoencoder**, Isolation Forest, Weighted-Avg, LightGBM (supervised baseline), peer clustering; calibrates thresholds; exports `autoencoder_v4.pt`, `scaler_v4.pkl`, `user_scores_v4.csv`, SHAP values. |
+| `cert_ae_full_pipeline.ipynb` | Trains the **CERT autoencoder**, Isolation Forest, Weighted-Avg, and supervised references (stacking ensemble + LightGBM), peer clustering; calibrates thresholds; exports `autoencoder_v4.pt`, `scaler_v4.pkl`, `user_scores_v4.csv`, SHAP values. |
 | `ml/models/cloud_ae_v1.pt` | Trained 12-dim cloud autoencoder weights + calibration (`ae_min`,`ae_max`). |
 | `ml/models/cloud_scaler_v1.pkl` | StandardScaler fitted on normal cloud user-days. |
 | `ml/models/cloud_ae_metrics.json` | Cloud AE training metrics (val loss, attacker separation). |
@@ -282,9 +282,13 @@ unsupervised score distribution, `StandardScaler` input. AUROC 0.860 but very lo
 higher because its AUROC is substantially higher. AUROC 0.951 — still below the pure AE,
 which is *why the AE alone is the final detector*.
 
-**(e) LightGBM (supervised reference only)** — `n_estimators=200, max_depth=6, lr=0.05`,
-5-fold StratifiedKFold. Included to show the unsupervised AE reaches ~90% of supervised
-accuracy *without labels*; not part of the deployed detector.
+**(e) Supervised references (not deployable — require labels).** Two supervised models are trained
+with `StratifiedKFold` purely to establish an *accuracy ceiling*: a **stacking ensemble** (the true
+ceiling, **AUROC ≈ 0.980, F1 ≈ 0.878**) and **LightGBM** (`n_estimators=200, max_depth=6, lr=0.05`).
+The unsupervised autoencoder (AUROC ≈ 0.976, F1 ≈ 0.787) reaches **~99% of the supervised stacking
+ensemble's AUROC and ~90% of its F1 — with no labels** — and in fact *outperforms* the LightGBM
+baseline (AUROC ≈ 0.895), so LightGBM is a baseline, not the ceiling. Neither supervised model is
+part of the deployed detector.
 
 ### 5.6 Cloud Autoencoder (`train_cloud_ae.py`, `cloud_feature_extractor.py`)
 
@@ -464,6 +468,16 @@ proactively because pre-empting them is what makes the result defensible.
    AWS case study**, not a statistical benchmark. Neither cloud nor GitHub is an independent
    benchmark on the level of CERT r4.2; they are real-world / real-time *corroboration*.
 
+7. **Per-scenario detection is uneven — Scenario 2 is the weak spot.** CERT r4.2 contains three
+   insider scenarios. The autoencoder detects **Scenario 1 (after-hours USB data exfiltration)
+   30/30** and **Scenario 3 (sysadmin sabotage) 10/10**, but only **Scenario 2 (job-site browsing +
+   relative thumb-drive IP theft) 12/30** (recall ≈ 0.40). Scenario 2 is a *low-and-slow,
+   relative-deviation* signal rather than the burst-y USB/after-hours pattern the reconstruction
+   manifold keys on. The supervised stacking ensemble recovers Scenario 2 (27/30), confirming the
+   signal exists in the features but is missed by the unsupervised detector — the same low-and-slow
+   blind spot seen with flaws.cloud's Level5. Closing it is the main detection-quality future work
+   (see §11).
+
 ---
 
 ## 7. Deployment
@@ -484,7 +498,7 @@ proactively because pre-empting them is what makes the result defensible.
 |---|---|
 | **PyTorch** | Defining and training both autoencoders (71-d CERT, 12-d cloud); the encoder/decoder `nn.Module`, BatchNorm/LeakyReLU/Dropout layers, Adam optimiser, MSE loss, `ReduceLROnPlateau` scheduler; CPU-only inference in production (`ae_scorer.py`). |
 | **scikit-learn** | `IsolationForest` (baseline), `KMeans` (K=8 peer clustering), `StandardScaler`/`RobustScaler`/`MinMaxScaler` (feature scaling), `train_test_split`, `StratifiedKFold`, and all metrics (`roc_auc_score`, `precision_recall_curve`, `average_precision_score`). |
-| **LightGBM** | Supervised gradient-boosting reference model (upper bound to show the AE reaches ~90% of supervised accuracy without labels). |
+| **LightGBM** | Supervised gradient-boosting *baseline* (the accuracy ceiling is the supervised **stacking ensemble** ≈0.980 AUROC; the unsupervised AE reaches ~99% of it without labels and outperforms LightGBM). |
 | **SHAP** | Per-alert feature attribution for the explainability layer (notebook + dashboard). |
 | **pandas** | All tabular data wrangling — streaming CERT CSVs in chunks, per-(user,day) aggregation, parquet I/O, feature engineering. |
 | **NumPy** | Vectorised feature math, reconstruction-error computation, score normalisation. |
@@ -629,10 +643,11 @@ learns a compact manifold of legitimate behaviour; user-days that lie off this m
 insiders — reconstruct poorly and therefore receive high anomaly scores.
 
 Three unsupervised baselines (Isolation Forest, a rule-based scorer, and a weighted average of the
-Isolation Forest and autoencoder scores) and one supervised reference (LightGBM, trained with
-labels using stratified cross-validation) are implemented for comparison. The supervised model is
-included solely as an upper bound, to quantify how much accuracy is sacrificed by abandoning
-labels. A separate, training-free **rarity scorer** computes six interpretable boolean signals
+Isolation Forest and autoencoder scores) and two supervised references (a **stacking ensemble** and
+**LightGBM**, trained with labels via stratified cross-validation) are implemented for comparison.
+The supervised stacking ensemble (AUROC ≈ 0.980) is the *accuracy ceiling*; it quantifies how little
+is sacrificed by abandoning labels — the unsupervised AE reaches ~99% of its AUROC and ~90% of its
+F1, and exceeds the LightGBM baseline. A separate, training-free **rarity scorer** computes six interpretable boolean signals
 (first-time action, new IP, off-hours, high volume, sensitive resource, geo-rarity) directly from
 the normalised schema, providing a fast, human-readable corroboration of the model score.
 
@@ -693,9 +708,10 @@ the label-free, explainable detection pipeline.
 ## 10. Academic Contributions (defensible claims)
 
 1. **One-class insider detection without labelled attacks** reaching AUROC 0.976 / AUPRC 0.851 —
-   ~90% of a supervised LightGBM upper bound. The autoencoder is trained only on benign-assumed
-   data (no attack labels in the objective); the precise label assumption and evaluation caveats
-   are disclosed in §6.2.
+   **~99% of a supervised stacking ensemble's AUROC (≈0.980) and ~90% of its F1**, while
+   *outperforming* the LightGBM baseline. The autoencoder is trained only on benign-assumed data
+   (no attack labels in the objective); the precise label assumption and evaluation caveats are
+   disclosed in §6.2.
 2. **A source-agnostic normalisation layer** unifying four structurally distinct cloud/enterprise
    log formats (AWS, Azure, Cloudflare, GitHub) into one 8-field schema, extensible by one parser
    per source (AWS and Azure unit-tested; all four demonstrated live). *This is a normalisation
@@ -714,6 +730,15 @@ the label-free, explainable detection pipeline.
 - Unsupervised detection conflates *anomaly* with *malice*: high-volume service accounts become
   false positives, and low-and-slow attacks (e.g. flaws.cloud `Level5`) are missed — the reason
   explainability + human-in-the-loop review matter.
+- **Scenario-2 under-detection (the main detection-quality gap).** The autoencoder recovers
+  Scenario 1 (30/30) and Scenario 3 (10/10) but only Scenario 2 (12/30) — a low-and-slow,
+  relative-deviation pattern (job-site browsing + thumb-drive IP theft) that the per-user-day
+  reconstruction manifold under-weights. The supervised stacking ensemble gets 27/30, so the signal
+  is present. The intended fix is a **sequence / Transformer autoencoder** over each user's daily
+  timeline (to model gradual temporal drift rather than single-day aggregates). A prototype was
+  trained but did **not yet** improve results — plausibly because only 70 insiders limits training a
+  sequence model; richer temporal features or pre-training are likely needed. This remains the
+  primary future-work direction for detection quality.
 - No model-drift detection yet (future: KL-divergence drift + periodic retraining).
 - Peer groups are behavioural only; combining with role/HR attributes is future work.
 - **Train/serve consistency:** the serving-time peer-group clustering (`loader.py`, 10 features /
