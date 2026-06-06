@@ -187,6 +187,27 @@ const FEAT_LABELS = {
   n_afterhours_http:   'After-hours HTTP',
 }
 
+// Cloud sources route to the 12-dim cloud AE; CERT sources to the 71-dim AE.
+const CLOUD_SOURCES = new Set(['aws_cloudtrail', 'azure_ad', 'cloudflare_access', 'github_events'])
+
+// High-value, source-specific signals that the unified schema PRESERVES in
+// `metadata` — surfaced to show normalization retains value, not discards it.
+function preservedSignals(result) {
+  if (!result) return []
+  const m = result.metadata || {}
+  const loc = (m.location && typeof m.location === 'object') ? m.location : {}
+  const country = m.country || loc.countryOrRegion || loc.country || ''
+  const out = []
+  if (country)                    out.push({ label: 'Geo-location',       value: String(country) })
+  if (m.riskLevelAggregated)      out.push({ label: 'Native risk level',  value: String(m.riskLevelAggregated) })
+  if (m.conditionalAccessStatus)  out.push({ label: 'Conditional access', value: String(m.conditionalAccessStatus) })
+  if (m.errorCode)                out.push({ label: 'Error code',         value: String(m.errorCode) })
+  if (m.awsRegion)                out.push({ label: 'AWS region',         value: String(m.awsRegion) })
+  if (m.eventSource)              out.push({ label: 'Service',            value: String(m.eventSource) })
+  if (m.clientAppUsed)            out.push({ label: 'Client app',         value: String(m.clientAppUsed) })
+  return out
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -319,6 +340,12 @@ export default function DemoPage() {
   }
 
   const hasFeatures = result && Object.keys(result.extracted_features ?? {}).length > 0
+
+  const isCloudSource = result ? CLOUD_SOURCES.has(result.source) : false
+  const aeName  = isCloudSource ? 'cloud_ae_v1.pt' : 'autoencoder_v4.pt'
+  const aeLabel = isCloudSource ? 'Cloud AE ★' : 'Behavioral AE ★'
+  const aeSub   = isCloudSource ? '12-dim cloud model' : '71-dim behavioral model'
+  const signals = preservedSignals(result)
 
   return (
     <>
@@ -465,6 +492,29 @@ export default function DemoPage() {
                       {SCHEMA_FIELDS.map(({ key, desc }) => (
                         <FieldRow key={key} fieldKey={key} value={result[key]} desc={desc} />
                       ))}
+
+                      {/* Preserved source-specific signals — proves the schema retains value */}
+                      {signals.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider mb-2">
+                            Source signals preserved in metadata
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {signals.map(({ label, value }) => (
+                              <span key={label}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200
+                                           bg-emerald-50 px-2.5 py-1 text-xs">
+                                <span className="font-medium text-emerald-700">{label}</span>
+                                <span className="font-mono font-semibold text-emerald-900">{value}</span>
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2 leading-snug">
+                            High-value, source-specific fields survive normalization and feed the rarity engine —
+                            the unified schema retains them rather than flattening them away.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -524,17 +574,17 @@ export default function DemoPage() {
                         </div>
                         {result.ae_live_score != null ? (
                           <div className={`rounded-lg border px-4 py-3 text-center ${scoreBg(result.ae_live_score)}`}>
-                            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">AE Score ★</p>
+                            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">{aeLabel}</p>
                             <p className={`text-2xl font-bold tabular-nums ${scoreColor(result.ae_live_score)}`}>
                               {result.ae_live_score.toFixed(3)}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">trained model</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{aeSub}</p>
                           </div>
                         ) : (
                           <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">AE Score ★</p>
-                            <p className="text-sm text-slate-400 mt-1">model not loaded</p>
-                            <p className="text-[10px] text-slate-300 mt-0.5">add autoencoder_v4.pt</p>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{aeLabel}</p>
+                            <p className="text-sm text-slate-400 mt-1">score unavailable</p>
+                            <p className="text-[10px] text-slate-300 mt-0.5">{aeName} not loaded</p>
                           </div>
                         )}
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-center">
@@ -628,7 +678,7 @@ export default function DemoPage() {
                             { key: 'off_hours',          label: 'Off Hours',          desc: 'Outside Mon–Fri 07:00–19:00 UTC' },
                             { key: 'high_volume',        label: 'High Volume',        desc: `More than 50 events in last hour` },
                             { key: 'sensitive_resource', label: 'Sensitive Resource', desc: 'Resource matches high-risk pattern (IAM, secrets, admin…)' },
-                            { key: 'geo_rarity',         label: 'New Country',        desc: 'Country code never seen for this user (Cloudflare Access)' },
+                            { key: 'geo_rarity',         label: 'New Country',        desc: 'Country code never seen for this user (Azure AD / Cloudflare — sources that carry geo data)' },
                           ].map(({ key, label, desc }) => {
                             const fired = result.rarity_flags[key] === true
                             return (
