@@ -132,7 +132,7 @@ status differs, and the distinction matters for examination:
 
 | File | Responsibility |
 |---|---|
-| `ueba_training_v4.ipynb` | Trains the **CERT autoencoder**, Isolation Forest, Weighted-Avg, LightGBM (supervised baseline), peer clustering; calibrates thresholds; exports `autoencoder_v4.pt`, `scaler_v4.pkl`, `user_scores_v4.csv`, SHAP values. |
+| `cert_ae_full_pipeline.ipynb` | Trains the **CERT autoencoder**, Isolation Forest, Weighted-Avg, LightGBM (supervised baseline), peer clustering; calibrates thresholds; exports `autoencoder_v4.pt`, `scaler_v4.pkl`, `user_scores_v4.csv`, SHAP values. |
 | `ml/models/cloud_ae_v1.pt` | Trained 12-dim cloud autoencoder weights + calibration (`ae_min`,`ae_max`). |
 | `ml/models/cloud_scaler_v1.pkl` | StandardScaler fitted on normal cloud user-days. |
 | `ml/models/cloud_ae_metrics.json` | Cloud AE training metrics (val loss, attacker separation). |
@@ -292,7 +292,7 @@ accuracy *without labels*; not part of the deployed detector.
 after_hours_events, sensitive_events, error_events, new_action_count, iam_sts_events,
 data_exfil_events, admin_events, assume_role_events`.
 
-**Training note:** unlike the CERT AE (trained in the `ueba_training_v4.ipynb` Google Colab
+**Training note:** unlike the CERT AE (trained in the `cert_ae_full_pipeline.ipynb` Google Colab
 notebook on GPU), the cloud AE is trained by the standalone script `scripts/train_cloud_ae.py`
 (`device = cuda if available else cpu`). Because the cloud training set is small (2,709 normal
 user-days × 12 features) it trains in seconds **on CPU locally** — no GPU required.
@@ -489,7 +489,7 @@ proactively because pre-empting them is what makes the result defensible.
 | **pandas** | All tabular data wrangling — streaming CERT CSVs in chunks, per-(user,day) aggregation, parquet I/O, feature engineering. |
 | **NumPy** | Vectorised feature math, reconstruction-error computation, score normalisation. |
 | **joblib** | Serialising/loading the fitted scalers (`scaler_v4.pkl`, `cloud_scaler_v1.pkl`). |
-| **Jupyter / Google Colab** | `ueba_training_v4.ipynb` — trains the **CERT** autoencoder + baselines, threshold calibration, artefact export (GPU runtime). *The smaller cloud AE is trained separately by `scripts/train_cloud_ae.py`, locally on CPU.* |
+| **Jupyter / Google Colab** | `cert_ae_full_pipeline.ipynb` — trains the **CERT** autoencoder + baselines, threshold calibration, artefact export (GPU runtime). *The smaller cloud AE is trained separately by `scripts/train_cloud_ae.py`, locally on CPU.* |
 | **Matplotlib** | All evaluation charts (ROC, PR, confusion, calibration, SHAP) and the poster architecture diagram. |
 | **SciPy + Pillow (PIL)** | `scipy.ndimage` + `PIL` for logo background removal in the architecture diagram generation. |
 
@@ -726,5 +726,5 @@ the label-free, explainable detection pipeline.
 ---
 
 *Every metric, formula, hyperparameter and file description above is sourced from the
-implemented codebase (`backend/`, `ml/`, `scripts/`, `ueba_training_v4.ipynb`) and
+implemented codebase (`backend/`, `ml/`, `scripts/`, `cert_ae_full_pipeline.ipynb`) and
 `results/metrics.json`.*

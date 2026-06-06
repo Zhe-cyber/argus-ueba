@@ -13,23 +13,23 @@ const NAVY = "002060", WHITE = "FFFFFF", LIGHT = "F2F2F2", ACCENT = "0072B2";
 // ---- helpers ----------------------------------------------------------------
 const P = (text, opts = {}) => new Paragraph({
   alignment: opts.align || AlignmentType.JUSTIFIED,
-  spacing: { after: opts.after ?? 140, line: 276, ...(opts.before ? { before: opts.before } : {}) },
+  spacing: { after: opts.after ?? 110, line: 258, ...(opts.before ? { before: opts.before } : {}) },
   children: Array.isArray(text) ? text : [new TextRun({ text, size: 22, ...opts.run })],
   ...(opts.p || {}),
 });
-const H1 = (t) => new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 260, after: 140 },
+const H1 = (t) => new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 },
   children: [new TextRun({ text: t, bold: true, size: 30, color: NAVY })] });
-const H2 = (t) => new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 110 },
+const H2 = (t) => new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 150, after: 80 },
   children: [new TextRun({ text: t, bold: true, size: 25, color: "1F3864" })] });
 const bullet = (text, level = 0) => new Paragraph({
-  numbering: { reference: "bul", level }, spacing: { after: 70, line: 268 },
+  numbering: { reference: "bul", level }, spacing: { after: 56, line: 252 },
   children: Array.isArray(text) ? text : [new TextRun({ text, size: 22 })],
 });
-const num = (text) => new Paragraph({ numbering: { reference: "ord", level: 0 }, spacing: { after: 70, line: 268 },
+const num = (text) => new Paragraph({ numbering: { reference: "ord", level: 0 }, spacing: { after: 56, line: 252 },
   children: Array.isArray(text) ? text : [new TextRun({ text, size: 22 })] });
-const caption = (t) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 60, after: 180 },
+const caption = (t) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 40, after: 120 },
   children: [new TextRun({ text: t, italics: true, size: 19, color: "555555" })] });
-const img = (file, w, h) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 30 },
+const img = (file, w, h) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 80, after: 20 },
   children: [new ImageRun({ type: "png", data: fs.readFileSync(file),
     transformation: { width: w, height: h },
     altText: { title: file, description: file, name: file } })] });
@@ -140,7 +140,7 @@ const lit = [
 const design = [
   H1("3.  System Design and Architecture"),
   P("The platform implements a decoupled, layered pipeline in which each stage communicates through well-defined interfaces, so any layer can be replaced without affecting the others. Figure 1 shows the full architecture and the technology used at each layer."),
-  img("results/report_png/architecture.png", 600, 448),
+  img("results/report_png/architecture.png", 520, 388),
   caption("Figure 1.  System architecture and tool stack, from multi-cloud ingestion to the analyst dashboard."),
   H2("3.1  Multi-Cloud Log Normalisation"),
   P("The normalisation layer is the primary architectural contribution. Each provider uses a structurally distinct JSON schema: AWS CloudTrail exposes eventTime, userIdentity.userName, eventName, and sourceIPAddress; Azure AD uses createdDateTime, userPrincipalName, appDisplayName, and ipAddress; Cloudflare Access uses created_at, user_email, and ip_address with a reliable country field; GitHub Events uses actor.login, type, and repo. A router dispatches each record to a source-specific parser that maps it to a unified eight-field schema — {timestamp, user, action, source_ip, bytes_transferred, resource, location_country, source_system}. This decouples the machine-learning pipeline from any provider: adding a new source requires only one additional parser function (NFR4)."),
@@ -192,10 +192,10 @@ const evalSec = [
   ]),
   caption("Table 3.  Detector performance on CERT r4.2 (1,000 users, 70 insiders). The Autoencoder is the adopted final detector; the others are comparison baselines."),
   P("The Autoencoder is the strongest detector, achieving AUROC 0.976 and AUPRC 0.851 — a decisive margin over the Isolation Forest (AUPRC 0.206) and rule-based (AUPRC 0.207) baselines, directly answering RQ4. Critically, fusing the Isolation Forest into a weighted IF+AE average (AUROC 0.951, AUPRC 0.740) lowers performance relative to the standalone Autoencoder, because the noisier Isolation Forest dilutes the Autoencoder's high-precision signal; this is why no fused ensemble is adopted and the Autoencoder reconstruction error is used directly as the final score. The Isolation Forest and rule baselines achieve high recall but very low precision, confirming the false-positive problem that motivates this work, whereas the Autoencoder balances precision (0.877) and recall (0.714). Its AUROC of 0.976 corresponds to roughly 90% of the supervised performance ceiling while requiring no labelled training data, answering RQ3."),
-  img("results/report_png/roc.png", 430, 350),
+  img("results/report_png/roc.png", 370, 301),
   caption("Figure 2.  ROC curves for the Autoencoder and three baselines on CERT r4.2."),
   P("At the F1-optimal Autoencoder threshold the system correctly identifies the majority of insiders while keeping false positives low across 930 normal users, as shown in the confusion matrix below."),
-  img("results/report_png/confusion.png", 360, 315),
+  img("results/report_png/confusion.png", 300, 263),
   caption("Figure 3.  Autoencoder confusion matrix at the F1-optimal threshold."),
   H2("5.2  Live-Pipeline Validation (Closing the Evaluation Loop)"),
   P("The metrics in Table 3 score a static results file produced by the offline training notebook. They do not, by themselves, prove that the deployed /ingest pipeline — which performs its own feature aggregation, scaling, and peer-ratio computation at request time — reproduces that detection performance. To close this evaluation loop, a replay harness drives the live model file, scaler, and feature pipeline over all 1,000 cohort users, reconstructed from 330,452 user-days of behavioural features, and recomputes the Autoencoder score exactly as the production endpoint would, with peer-group baselines active. Table 4 compares the replayed live pipeline against the offline benchmark on the identical user set."),
@@ -205,10 +205,10 @@ const evalSec = [
     ["Live pipeline (replayed /ingest path)", "0.917", "0.315"],
   ]),
   caption("Table 4.  Offline benchmark versus the replayed live detection pipeline on the same 1,000 CERT users."),
-  P("The live pipeline preserves the offline ranking strongly (AUROC 0.917), confirming that the deployed system genuinely separates insiders from normal users rather than replaying a precomputed file. However, the absolute scores diverge (Pearson r = 0.36, mean absolute difference 0.38), which lowers the precision-recall area to 0.315. This calibration gap — invisible to any offline-only evaluation — arises from three reproducible sources: minor feature-engineering differences between the live extractor and the training notebook, a scikit-learn version drift between the environment that fitted the scaler and the one that loads it at serving time, and the online reconstruction of the unique-host feature. The practical implication is that ranking-based alerting (top-N risk) transfers faithfully to production, whereas any fixed score threshold must be recalibrated against live traffic. Surfacing this distinction is itself a contribution: it demonstrates why deployment-time validation, and not offline benchmarking alone, is necessary before an insider-detection model can be trusted in operation."),
+  P("The live pipeline preserves the offline ranking strongly (AUROC 0.917), confirming that the deployed system genuinely separates insiders from normal users rather than replaying a precomputed file. However, the absolute scores diverge (Pearson r = 0.36, mean absolute difference 0.38), which lowers the precision-recall area to 0.315. This calibration gap — invisible to any offline-only evaluation — arises from feature-engineering differences between the live extractor and the training notebook, a scikit-learn version drift between the environments that fit and load the scaler, and the online reconstruction of the unique-host feature. The practical implication is that ranking-based alerting (top-N risk) transfers faithfully to production, whereas any fixed score threshold must be recalibrated against live traffic — demonstrating why deployment-time validation, not offline benchmarking alone, is necessary before an insider-detection model can be trusted in operation."),
   H2("5.3  Explainability"),
   P("SHAP analysis over the flagged population confirms that detection is driven by interpretable behavioural features rather than spurious correlations. Figure 4 ranks the features by mean absolute SHAP contribution; device and file-access behaviour dominate, matching the known signature of the USB-exfiltration scenario."),
-  img("results/report_png/shap.png", 500, 333),
+  img("results/report_png/shap.png", 430, 286),
   caption("Figure 4.  Top feature importances by mean |SHAP value| across flagged users."),
   H2("5.4  Cloud-Native Detection (flaws.cloud)"),
   P("To validate generalisation beyond endpoint data, the 12-dimensional cloud Autoencoder was trained on normal AWS CloudTrail behaviour and tested against the Level5/Level6 privilege-escalation actors. It achieves AUROC 0.724 — a substantial improvement over the 0.5 random baseline — with attackers scoring on average more than twice the calibrated normal threshold. The principal false positive is an automated security-scanning identity (SecurityMonkey), whose high-volume behaviour is explainable. This demonstrates that the same architecture transfers from synthetic endpoint logs to real cloud API attacks, answering RQ2."),
@@ -219,7 +219,7 @@ const evalSec = [
 const discussion = [
   H1("6.  Discussion and Limitations"),
   P("The results confirm the central hypothesis: an unsupervised, reconstruction-based model can detect insider threats at near-supervised accuracy while remaining deployable where labelled data is legally unavailable. An important secondary finding is that score fusion did not help: the high-precision Autoencoder outperforms a weighted IF+AE average, because blending in the low-precision Isolation Forest reintroduces the very false positives the Autoencoder suppresses. The standalone Autoencoder is therefore adopted as the final detector, with the Isolation Forest and rule scorers retained only as interpretive baselines. Adding SHAP and LLM explanations addresses the interpretability barrier identified by Inayat et al. (2024) and the regulatory requirement of the EU AI Act (European Parliament, 2024)."),
-  P("A further methodological finding strengthens confidence in the deployment. Replaying the live /ingest pipeline over the full cohort (Section 5.2) confirmed that the production path — not just the offline notebook — separates insiders from normal users, preserving the offline ranking at AUROC 0.917. It also exposed a score-calibration gap (Pearson r = 0.36 against the offline scores) that purely offline evaluation would have concealed, attributable to feature-engineering and library-version differences between the training and serving environments. This validates ranking-based alerting for production use while motivating live-traffic threshold recalibration."),
+  P("A further methodological finding strengthens confidence in the deployment. Replaying the live /ingest pipeline over the full cohort (Section 5.2) confirmed that the production path preserves the offline ranking at AUROC 0.917, while exposing a score-calibration gap (Pearson r = 0.36) that offline evaluation alone would have concealed. This validates ranking-based alerting for production use while motivating live-traffic threshold recalibration."),
   P("Several limitations remain. The CERT dataset is synthetic, so absolute performance may not transfer directly to production telemetry; the cloud Autoencoder's lower AUROC (0.724) reflects the harder, noisier reality of real CloudTrail logs and a small attacker population. The cloud model also currently treats each user-day independently, ignoring temporal sequence. Finally, SHAP KernelExplainer is computationally expensive, which constrains real-time explanation throughput."),
 ];
 

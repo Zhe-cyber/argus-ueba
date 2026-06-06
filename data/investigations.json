@@ -1,0 +1,505 @@
+{
+  "CTA0020": {
+    "status": "Pending",
+    "analyst": "alice",
+    "notes": "Initial review.",
+    "created_at": "2026-05-23T20:49:47.366627+00:00",
+    "updated_at": "2026-05-23T20:49:47.366627+00:00",
+    "history": []
+  },
+  "JGT0221": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=1.0000)",
+    "created_at": "2026-05-23T20:58:05.877209+00:00",
+    "updated_at": "2026-05-25T06:54:29.454053+00:00",
+    "history": [],
+    "ai_suggestion": "**Priority:** Investigate lateral movement and data manipulation first, as the combination of high `unique_pcs` activity and `files_accessed_burst_ratio` strongly suggests potential IT sabotage, especially when occurring `after_hours` and involving `usb_events_burst_ratio`.\n\n**Evidence to pull:**\n*   **Endpoint/Server logs for JGT0221:** Focus on file access, modifications, and deletions for the last 72 hours, particularly on systems beyond their usual scope.\n*   **Active Directory/Authentication logs:** Review all login attempts by JGT0221, including source IPs and target systems, for the past week, noting `unique_pcs` and `after_hours` activity.\n*   **USB Device Connection logs (if available):** Correlate `usb_events_burst_ratio` with device type and files transferred/accessed from the USB, for the period of the anomaly.\n\n**Confirm vs Clear:**\n*   **Confirm insider:** JGT0221 accessed critical infrastructure or multiple sensitive servers they don't normally use, modified/deleted system files, or transferred large, unapproved files via USB.\n*   **Clear:** JGT0221 was performing pre-approved, documented after-hours maintenance across multiple systems, or was using an authorized USB device for a specific, legitimate task.\n\n**Recommendation:** Escalate to IR. The extreme AE score, high-risk profile, and specific behavioral anomalies strongly align with the \"IT sabotage\" scenario, requiring immediate containment and deeper investigation."
+  },
+  "JTM0223": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9914)",
+    "created_at": "2026-05-23T20:58:05.879219+00:00",
+    "updated_at": "2026-05-23T20:58:05.879219+00:00",
+    "history": []
+  },
+  "JLM0364": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9752)",
+    "created_at": "2026-05-23T20:58:05.880618+00:00",
+    "updated_at": "2026-05-23T20:58:05.880618+00:00",
+    "history": []
+  },
+  "WDD0366": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9503)",
+    "created_at": "2026-05-23T20:58:05.881872+00:00",
+    "updated_at": "2026-05-23T20:58:05.881872+00:00",
+    "history": []
+  },
+  "CSC0217": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9443)",
+    "created_at": "2026-05-23T20:58:05.882890+00:00",
+    "updated_at": "2026-05-23T20:58:05.882890+00:00",
+    "history": []
+  },
+  "BBS0039": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9434)",
+    "created_at": "2026-05-23T20:58:05.883709+00:00",
+    "updated_at": "2026-05-23T20:58:05.883709+00:00",
+    "history": []
+  },
+  "MSO0222": {
+    "status": "Under Investigation",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.9311)",
+    "created_at": "2026-05-23T20:58:05.884551+00:00",
+    "updated_at": "2026-05-23T21:27:52.349491+00:00",
+    "history": [
+      {
+        "timestamp": "2026-05-23T21:27:52.349491+00:00",
+        "analyst": "System",
+        "status": "Under Investigation",
+        "note": "Auto-imported: High-risk user (ae_score=0.9311)"
+      }
+    ]
+  },
+  "RKD0604": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8504)",
+    "created_at": "2026-05-23T20:58:05.885402+00:00",
+    "updated_at": "2026-05-23T20:58:05.885402+00:00",
+    "history": []
+  },
+  "BIH0745": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8416)",
+    "created_at": "2026-05-23T20:58:05.886471+00:00",
+    "updated_at": "2026-05-23T20:58:05.886471+00:00",
+    "history": []
+  },
+  "BDV0168": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8407)",
+    "created_at": "2026-05-23T20:58:05.887628+00:00",
+    "updated_at": "2026-05-23T20:58:05.887628+00:00",
+    "history": []
+  },
+  "LQC0479": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8401)",
+    "created_at": "2026-05-23T20:58:05.889072+00:00",
+    "updated_at": "2026-05-23T20:58:05.889072+00:00",
+    "history": []
+  },
+  "KLH0596": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8304)",
+    "created_at": "2026-05-23T20:58:05.890088+00:00",
+    "updated_at": "2026-05-23T20:58:05.890088+00:00",
+    "history": []
+  },
+  "JMB0308": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8228)",
+    "created_at": "2026-05-23T20:58:05.891339+00:00",
+    "updated_at": "2026-05-23T20:58:05.891339+00:00",
+    "history": []
+  },
+  "MAS0025": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8193)",
+    "created_at": "2026-05-23T20:58:05.892299+00:00",
+    "updated_at": "2026-05-23T20:58:05.892299+00:00",
+    "history": []
+  },
+  "MAR0955": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8153)",
+    "created_at": "2026-05-23T20:58:05.893275+00:00",
+    "updated_at": "2026-05-23T20:58:05.893275+00:00",
+    "history": []
+  },
+  "MCF0600": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8133)",
+    "created_at": "2026-05-23T20:58:05.895019+00:00",
+    "updated_at": "2026-05-23T20:58:05.895019+00:00",
+    "history": []
+  },
+  "AJR0932": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8091)",
+    "created_at": "2026-05-23T20:58:05.896341+00:00",
+    "updated_at": "2026-05-23T20:58:05.896341+00:00",
+    "history": []
+  },
+  "EHB0824": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.8079)",
+    "created_at": "2026-05-23T20:58:05.897621+00:00",
+    "updated_at": "2026-05-23T20:58:05.897621+00:00",
+    "history": []
+  },
+  "PPF0435": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7977)",
+    "created_at": "2026-05-23T20:58:05.898685+00:00",
+    "updated_at": "2026-05-23T20:58:05.898685+00:00",
+    "history": []
+  },
+  "FTM0406": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7939)",
+    "created_at": "2026-05-23T20:58:05.899654+00:00",
+    "updated_at": "2026-05-23T20:58:05.899654+00:00",
+    "history": []
+  },
+  "MYD0978": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7902)",
+    "created_at": "2026-05-23T20:58:05.900619+00:00",
+    "updated_at": "2026-05-23T20:58:05.900619+00:00",
+    "history": []
+  },
+  "GHL0460": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7878)",
+    "created_at": "2026-05-23T20:58:05.901574+00:00",
+    "updated_at": "2026-05-23T20:58:05.901574+00:00",
+    "history": []
+  },
+  "JRG0207": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7739)",
+    "created_at": "2026-05-23T20:58:05.902637+00:00",
+    "updated_at": "2026-05-23T20:58:05.902637+00:00",
+    "history": []
+  },
+  "HJB0742": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7733)",
+    "created_at": "2026-05-23T20:58:05.903674+00:00",
+    "updated_at": "2026-05-23T20:58:05.903674+00:00",
+    "history": []
+  },
+  "DCH0843": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7635)",
+    "created_at": "2026-05-23T20:58:05.904779+00:00",
+    "updated_at": "2026-05-23T20:58:05.904779+00:00",
+    "history": []
+  },
+  "FMG0527": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7614)",
+    "created_at": "2026-05-23T20:58:05.905846+00:00",
+    "updated_at": "2026-05-23T20:58:05.905846+00:00",
+    "history": []
+  },
+  "LJR0523": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7535)",
+    "created_at": "2026-05-23T20:58:05.906969+00:00",
+    "updated_at": "2026-05-23T20:58:05.906969+00:00",
+    "history": []
+  },
+  "BLS0678": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7489)",
+    "created_at": "2026-05-23T20:58:05.908259+00:00",
+    "updated_at": "2026-05-23T20:58:05.908259+00:00",
+    "history": []
+  },
+  "CAH0936": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7485)",
+    "created_at": "2026-05-23T20:58:05.909889+00:00",
+    "updated_at": "2026-05-23T20:58:05.909889+00:00",
+    "history": []
+  },
+  "KPC0073": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7425)",
+    "created_at": "2026-05-23T20:58:05.913634+00:00",
+    "updated_at": "2026-05-23T20:58:05.913634+00:00",
+    "history": []
+  },
+  "RGG0064": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7369)",
+    "created_at": "2026-05-23T20:58:05.915431+00:00",
+    "updated_at": "2026-05-23T20:58:05.915431+00:00",
+    "history": []
+  },
+  "RAB0589": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7343)",
+    "created_at": "2026-05-23T20:58:05.917200+00:00",
+    "updated_at": "2026-05-23T20:58:05.917200+00:00",
+    "history": []
+  },
+  "AAM0658": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7306)",
+    "created_at": "2026-05-23T20:58:05.919286+00:00",
+    "updated_at": "2026-05-23T20:58:05.919286+00:00",
+    "history": []
+  },
+  "EHD0584": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7280)",
+    "created_at": "2026-05-23T20:58:05.921450+00:00",
+    "updated_at": "2026-05-23T20:58:05.921450+00:00",
+    "history": []
+  },
+  "TAP0551": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7182)",
+    "created_at": "2026-05-23T20:58:05.924505+00:00",
+    "updated_at": "2026-05-23T20:58:05.924505+00:00",
+    "history": []
+  },
+  "BTL0226": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.7042)",
+    "created_at": "2026-05-23T20:58:05.927858+00:00",
+    "updated_at": "2026-05-23T20:58:05.927858+00:00",
+    "history": []
+  },
+  "GTD0219": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.3461)",
+    "created_at": "2026-05-23T20:58:05.930028+00:00",
+    "updated_at": "2026-05-23T20:58:05.930028+00:00",
+    "history": []
+  },
+  "MPM0220": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.2147)",
+    "created_at": "2026-05-23T20:58:05.932377+00:00",
+    "updated_at": "2026-05-23T20:58:05.932377+00:00",
+    "history": []
+  },
+  "BSS0369": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.1613)",
+    "created_at": "2026-05-23T20:58:05.933897+00:00",
+    "updated_at": "2026-05-23T20:58:05.933897+00:00",
+    "history": []
+  },
+  "AJF0370": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.1484)",
+    "created_at": "2026-05-23T20:58:05.935174+00:00",
+    "updated_at": "2026-05-23T20:58:05.935174+00:00",
+    "history": []
+  },
+  "MOS0047": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.1393)",
+    "created_at": "2026-05-23T20:58:05.936533+00:00",
+    "updated_at": "2026-05-23T20:58:05.936533+00:00",
+    "history": []
+  },
+  "DLM0051": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.1257)",
+    "created_at": "2026-05-23T20:58:05.938089+00:00",
+    "updated_at": "2026-05-23T20:58:05.938089+00:00",
+    "history": []
+  },
+  "CCA0046": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.1216)",
+    "created_at": "2026-05-23T20:58:05.939580+00:00",
+    "updated_at": "2026-05-23T20:58:05.939580+00:00",
+    "history": []
+  },
+  "HBO0413": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0929)",
+    "created_at": "2026-05-23T20:58:05.941187+00:00",
+    "updated_at": "2026-05-23T20:58:05.941187+00:00",
+    "history": []
+  },
+  "HCS0003": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0880)",
+    "created_at": "2026-05-23T20:58:05.942819+00:00",
+    "updated_at": "2026-05-23T20:58:05.942819+00:00",
+    "history": []
+  },
+  "XHW0498": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0822)",
+    "created_at": "2026-05-23T20:58:05.944091+00:00",
+    "updated_at": "2026-05-23T20:58:05.944091+00:00",
+    "history": []
+  },
+  "ESH0283": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0804)",
+    "created_at": "2026-05-23T20:58:05.946456+00:00",
+    "updated_at": "2026-05-23T20:58:05.946456+00:00",
+    "history": []
+  },
+  "KRL0501": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0780)",
+    "created_at": "2026-05-23T20:58:05.948184+00:00",
+    "updated_at": "2026-05-23T20:58:05.948184+00:00",
+    "history": []
+  },
+  "THR0873": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0750)",
+    "created_at": "2026-05-23T20:58:05.949472+00:00",
+    "updated_at": "2026-05-23T20:58:05.949472+00:00",
+    "history": []
+  },
+  "NWT0098": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0733)",
+    "created_at": "2026-05-23T20:58:05.950571+00:00",
+    "updated_at": "2026-05-23T20:58:05.950571+00:00",
+    "history": []
+  },
+  "HSB0196": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0711)",
+    "created_at": "2026-05-23T20:58:05.951920+00:00",
+    "updated_at": "2026-05-23T20:58:05.951920+00:00",
+    "history": []
+  },
+  "RHL0992": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0709)",
+    "created_at": "2026-05-23T20:58:05.953331+00:00",
+    "updated_at": "2026-05-23T20:58:05.953331+00:00",
+    "history": []
+  },
+  "CEJ0109": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0706)",
+    "created_at": "2026-05-23T20:58:05.954843+00:00",
+    "updated_at": "2026-05-23T20:58:05.954843+00:00",
+    "history": []
+  },
+  "LCC0819": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0705)",
+    "created_at": "2026-05-23T20:58:05.956023+00:00",
+    "updated_at": "2026-05-23T20:58:05.956023+00:00",
+    "history": []
+  },
+  "MDM0625": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0688)",
+    "created_at": "2026-05-23T20:58:05.957151+00:00",
+    "updated_at": "2026-05-23T20:58:05.957151+00:00",
+    "history": []
+  },
+  "IUB0565": {
+    "status": "Pending",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0684)",
+    "created_at": "2026-05-23T20:58:05.959125+00:00",
+    "updated_at": "2026-05-23T20:58:05.959125+00:00",
+    "history": []
+  },
+  "CCL0068": {
+    "status": "Under Investigation",
+    "analyst": "System",
+    "notes": "Auto-imported: High-risk user (ae_score=0.0662)",
+    "created_at": "2026-05-23T20:58:05.960436+00:00",
+    "updated_at": "2026-05-24T07:25:00.432726+00:00",
+    "history": [
+      {
+        "timestamp": "2026-05-23T21:07:25.149880+00:00",
+        "analyst": "System",
+        "status": "Under Investigation",
+        "note": "Auto-imported: High-risk user (ae_score=0.0662)"
+      }
+    ],
+    "ai_suggestion": "**Priority:** Prioritize investigating CCL0068's significantly elevated USB device activity and file access, as these anomalies are highly indicative of potential data staging or exfiltration, aligning with the \"disgruntled employee\" scenario.\n\n**Evidence to pull:**\n*   **Endpoint (DLP/EDR) logs:** Review USB device connection/disconnection events and file transfer logs for CCL0068 over the past 7-14 days.\n*   **File audit logs:** Analyze file access patterns (volume, type, location) from shared drives and cloud storage for CCL0068 during the same period.\n*   **Proxy/Firewall logs:** Check for connections to personal cloud storage services or large external email attachments for CCL0068 over the last 7-14 days.\n\n**Confirm vs Clear:**\n*   **Confirm insider:**\n    1.  Detection of sensitive company data copied to USB devices.\n    2.  Unapproved file transfers to personal cloud storage or large external email addresses.\n    3.  Elevated activity during non-working hours (e.g., if `after_hours_*` metrics also show high deviation).\n*   **Clear:**\n    1.  Documented and approved business justification for increased USB/file activity, such as a specific project requiring local data transfer.\n    2.  USB devices are company-issued, encrypted, and no unauthorized data was transferred.\n    3.  Recent IT or business process change in the user's role requiring increased use of local files or specific USB peripherals.\n\n**Recommendation:** Escalate to IR. The strong correlation of multiple high-deviation USB and file access anomalies with the high-risk score warrants immediate investigation for potential data exfiltration."
+  },
+  "Level6": {
+    "status": "Under Investigation",
+    "analyst": "demo",
+    "notes": "test",
+    "created_at": "2026-06-04T10:58:24.184206+00:00",
+    "updated_at": "2026-06-04T10:58:24.184206+00:00",
+    "history": []
+  },
+  "flaws": {
+    "status": "Confirmed Insider",
+    "analyst": "demo",
+    "notes": "verified",
+    "created_at": "2026-06-04T13:16:04.084409+00:00",
+    "updated_at": "2026-06-04T16:46:51.763994+00:00",
+    "history": [
+      {
+        "timestamp": "2026-06-04T16:46:51.763994+00:00",
+        "analyst": "demo",
+        "status": "Confirmed Insider",
+        "note": "verified"
+      }
+    ]
+  }
+}
