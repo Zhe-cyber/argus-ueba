@@ -15,8 +15,18 @@ ml/models/
 !demo/demo_shap.parquet
 
 # ── Runtime-generated files ───────────────────────────────────────────────
-data/events.db          # SQLite (local dev only — production uses PostgreSQL)
+# SQLite (local dev only — production uses PostgreSQL)
+data/events.db
 data/events/
+
+# Local build / intermediate artifacts (poster, diagram, doc unpacking)
+_logos/
+_pp/
+_proposal*
+_template_local.pptx
+_proposal_unpacked/
+_tpl_unpacked/
+_conf_unpacked/
 
 .env
 .env.local

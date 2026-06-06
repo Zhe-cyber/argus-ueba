@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ds:datastoreItem xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml" ds:itemID="{EEED1356-D7E0-4167-80B4-5B4B3314F8AD}">
-  <ds:schemaRefs>
-    <ds:schemaRef ds:uri="http://schemas.microsoft.com/sharepoint/v3/contenttype/forms"/>
-  </ds:schemaRefs>
-</ds:datastoreItem>
