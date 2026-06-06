@@ -140,8 +140,9 @@ A(para("abstract", run(
   "country data) are retained as interpretable baselines. Every alert is explained "
   "through SHAP feature attribution and a natural-language large-language-model "
   "assistant. On the CERT r4.2 benchmark (1,000 users, 70 insiders) the autoencoder "
-  "attains AUROC 0.976, AUPRC 0.851 and F1 0.787 — roughly 90% of supervised "
-  "accuracy with zero labels — decisively outperforming the rule and isolation "
+  "attains AUROC 0.976, AUPRC 0.851 and F1 0.787 — within ~99% of a supervised "
+  "stacking ensemble's AUROC (0.980) and ~90% of its F1, with zero labels — "
+  "decisively outperforming the rule and isolation "
   "baselines. External validity is demonstrated on the flaws.cloud AWS dataset "
   "(AUROC 0.724) and a streaming live-replay (AUROC 0.917). The system is "
   "containerised and deployed on Docker, Hugging Face Spaces and Vercel.")))
@@ -365,8 +366,9 @@ A(para("heading1", run("Discussion")))
 A(para("heading2", run("Strengths")))
 A(para("p1a", run(
   "Training only on normal behaviour means Argus needs no labelled attacks, which are "
-  "scarce and quickly stale in practice; yet it reaches roughly 90% of supervised "
-  "accuracy. The rarity signals and SHAP attribution give analysts an immediate, "
+  "scarce and quickly stale in practice; yet it reaches roughly 99% of a supervised "
+  "stacking ensemble's AUROC (0.980) and 90% of its F1. The rarity signals and SHAP "
+  "attribution give analysts an immediate, "
   "human-readable rationale for each alert — a capability absent from every "
   "open-source tool evaluated — and the LLM assistant lowers cognitive load by "
   "narrating that rationale in plain language. The source-agnostic normalisation layer "
@@ -376,8 +378,16 @@ A(para("heading2", run("Limitations and Future Work")))
 A(para("p1a", run(
   "Several limitations remain. The CERT dataset, though the standard academic benchmark, "
   "is simulated; the flaws.cloud and live-replay results mitigate but do not fully remove "
-  "this concern. The system does not yet detect model drift as legitimate behaviour "
-  "evolves; future work will add KL-divergence drift detection with periodic retraining. "
+  "this concern. Detection is also uneven across the three CERT insider scenarios: the "
+  "autoencoder recovers the burst-like Scenario 1 (30/30) and Scenario 3 (10/10) but only "
+  "the low-and-slow Scenario 2 (12/30), which a supervised stacking ensemble detects "
+  "(27/30) — the signal is present in the features but missed by the per-day reconstruction "
+  "objective. The principal planned extension is therefore a sequence / Transformer "
+  "autoencoder over each user's daily timeline, modelling gradual temporal drift rather "
+  "than single-day aggregates; an initial prototype did not yet improve Scenario 2 "
+  "detection, plausibly constrained by only 70 insider entities, and remains the main "
+  "direction for future work. The system does not yet detect model drift as legitimate "
+  "behaviour evolves; future work will add KL-divergence drift detection with periodic retraining. "
   "A patient adversary could behave normally during baseline construction to poison it; "
   "adversarial-robustness evaluation is warranted. Finally, full streaming ingestion via "
   "a message bus such as Kafka is deferred as a scaling extension.")))
