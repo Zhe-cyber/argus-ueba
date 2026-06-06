@@ -453,11 +453,16 @@ proactively because pre-empting them is what makes the result defensible.
    **The offline figures are the rigorous result; the live figures are an operational lower bound.**
    Aligning the serving-time clustering to the training configuration is a concrete future fix.
 
-6. **Cloud and GitHub are secondary evidence.** The cloud autoencoder is evaluated on the same
-   dataset (flaws.cloud) it trained on, time-held-out (§2.2). The GitHub result is *semi-synthetic*
-   (injected, designed attacks; §6.1). Neither is an independent benchmark on the level of CERT
-   r4.2, and they are presented as real-world / real-time *corroboration*, not as primary accuracy
-   claims.
+6. **Cloud and GitHub are secondary evidence.** The GitHub result is *semi-synthetic* (injected,
+   designed attacks; §6.1). For the **cloud autoencoder** (flaws.cloud), two disclosures matter:
+   *(a)* a 5-fold inductive cross-validation (`scripts/cloud_kfold_inductive_eval.py`) gives AUROC
+   **0.723 ± 0.039**, essentially equal to the reported **0.724** — so that figure is *not*
+   transductively inflated; but *(b)* the binding limitation is **attacker scarcity** — flaws.cloud
+   contains only ~2 distinct attacker entities (Level5, Level6), with **Level6 accounting for ~99%
+   of the attacker user-days**. The attacker class therefore cannot be robustly cross-validated
+   (hence the higher ±0.039 fold variance), and the cloud result is best read as a **2-entity real
+   AWS case study**, not a statistical benchmark. Neither cloud nor GitHub is an independent
+   benchmark on the level of CERT r4.2; they are real-world / real-time *corroboration*.
 
 ---
 
