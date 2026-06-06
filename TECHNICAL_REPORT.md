@@ -32,6 +32,10 @@ analyst assistant**, and surfaces results through a full **SOC workflow** (dashb
 **External validity:** flaws.cloud AWS CloudTrail (real breach data) **AUROC 0.724**;
 streaming live-replay through the production `/ingest` endpoint **AUROC 0.917** (vs 0.976 offline).
 
+> *Rigour note:* the 0.976 is a transductive figure; a **5-fold inductive cross-validation
+> (held-out users only) gives AUROC 0.959 ± 0.004** (§6.2), confirming the result generalises and is
+> not a training-set-overlap artefact.
+
 ---
 
 ## 2. Datasets
@@ -418,12 +422,18 @@ proactively because pre-empting them is what makes the result defensible.
    behaviour dominates (tolerating a small contamination). The precise claim is therefore *"no
    labelled attacks in the training objective,"* not *"no labels at all."*
 
-2. **Transductive evaluation.** Reconstruction error is scored over the full 1,000-user population.
-   The 70 insiders are never seen during training (a clean test for the positive class), but the
-   negative class includes the ~80% of normal users used to fit the manifold. This is standard for
-   one-class anomaly detection, but it means the headline **AUROC 0.976 is a transductive estimate
-   that is mildly optimistic** relative to a fully held-out normal set; the held-out validation
-   reconstruction loss is monitored as an overfitting check.
+2. **Transductive vs inductive evaluation — verified by cross-validation.** The headline AUROC
+   0.976 is *transductive*: reconstruction error is scored over the full 1,000-user population, and
+   although the 70 insiders are never seen in training (a clean test for the positive class), the
+   negative class includes the ~80% of normal users used to fit the manifold. To remove this
+   optimism, a **5-fold stratified cross-validation** was performed
+   (`scripts/kfold_inductive_eval.py`): in each fold the one-class autoencoder, the `StandardScaler`
+   and the behavioural peer-group clustering are fit on the **training folds' normals only**, and
+   the **held-out fold is scored** — so every user is scored by a model that never saw it. The
+   resulting **inductive, out-of-fold AUROC is 0.959 ± 0.004 (AUPRC 0.766, F1 0.69)** — only ~0.017
+   below the transductive figure and highly stable across folds. This **confirms the headline
+   result is not an artefact of training-set overlap** and that the detector generalises to unseen
+   users; the transductive 0.976 and inductive 0.959 are reported together for full transparency.
 
 3. **Threshold selection.** AUROC and AUPRC are threshold-free and are the **primary** metrics. The
    reported F1 / precision / recall are taken at the F1-optimal operating point, chosen with
