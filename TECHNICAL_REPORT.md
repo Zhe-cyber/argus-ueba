@@ -475,8 +475,9 @@ proactively because pre-empting them is what makes the result defensible.
    relative-deviation* signal rather than the burst-y USB/after-hours pattern the reconstruction
    manifold keys on. The supervised stacking ensemble recovers Scenario 2 (27/30), confirming the
    signal exists in the features but is missed by the unsupervised detector — the same low-and-slow
-   blind spot seen with flaws.cloud's Level5. Closing it is the main detection-quality future work
-   (see §11).
+   blind spot seen with flaws.cloud's Level5. It is a temporal-representation gap (each day looks
+   normal; the signal is in the accumulation), addressed in future work by a graded comparison of
+   change-point detection, longitudinal features, and sequence models (see §11).
 
 ---
 
@@ -730,15 +731,24 @@ the label-free, explainable detection pipeline.
 - Unsupervised detection conflates *anomaly* with *malice*: high-volume service accounts become
   false positives, and low-and-slow attacks (e.g. flaws.cloud `Level5`) are missed — the reason
   explainability + human-in-the-loop review matter.
-- **Scenario-2 under-detection (the main detection-quality gap).** The autoencoder recovers
-  Scenario 1 (30/30) and Scenario 3 (10/10) but only Scenario 2 (12/30) — a low-and-slow,
-  relative-deviation pattern (job-site browsing + thumb-drive IP theft) that the per-user-day
-  reconstruction manifold under-weights. The supervised stacking ensemble gets 27/30, so the signal
-  is present. The intended fix is a **sequence / Transformer autoencoder** over each user's daily
-  timeline (to model gradual temporal drift rather than single-day aggregates). A prototype was
-  trained but did **not yet** improve results — plausibly because only 70 insiders limits training a
-  sequence model; richer temporal features or pre-training are likely needed. This remains the
-  primary future-work direction for detection quality.
+- **Scenario-2 under-detection.** The autoencoder recovers Scenario 1 (30/30) and Scenario 3
+  (10/10) but only Scenario 2 (12/30) — a low-and-slow, relative-deviation pattern (job-site
+  browsing + thumb-drive IP theft) that the per-user-day reconstruction manifold under-weights. The
+  supervised stacking ensemble gets 27/30, so the signal is present. This is a **temporal-
+  representation gap, not a model-capacity gap**: each day looks normal in isolation; the signal is
+  in the accumulation over time. The planned remedy is therefore a **graded comparison of time-aware
+  methods** — change-point detection (CUSUM, consistent with the statistical-process-control basis
+  in §3), longitudinal trend/cumulative features, and sequence models (LSTM / Transformer
+  autoencoders) — to quantify *how much* temporal modelling low-and-slow detection actually needs. A
+  Transformer prototype did **not yet** improve results (plausibly the 70-insider limit), so the
+  contribution is the comparison itself rather than any single technique; the cheap, theory-grounded
+  methods (CUSUM + longitudinal features) are expected to recover most of the signal without the
+  data-scarcity wall.
+- **Multi-cloud detection quality (primary detection-quality direction).** The cloud AE was trained
+  on AWS CloudTrail, so its pattern features fire sparsely for Azure/GitHub/Cloudflare (those rely
+  more on the source-agnostic rarity layer). Per-source feature engineering — notably feeding
+  Azure's native risk signals (`riskLevelAggregated`, conditional-access status) directly as
+  features — is the main route to uniform multi-cloud detection.
 - No model-drift detection yet (future: KL-divergence drift + periodic retraining).
 - Peer groups are behavioural only; combining with role/HR attributes is future work.
 - **Train/serve consistency:** the serving-time peer-group clustering (`loader.py`, 10 features /
