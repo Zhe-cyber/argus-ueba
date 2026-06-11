@@ -133,7 +133,8 @@ A(para("abstract", run(
   "labelled attack data. Heterogeneous activity logs from four cloud sources — "
   "AWS CloudTrail, Microsoft Azure AD sign-ins, Cloudflare Access and GitHub audit "
   "events — are normalised into a single eight-field schema. Per-user behavioural "
-  "baselines are built from 30-day rolling statistics over 71 engineered features. The "
+  "baselines are built from 71 engineered features capturing volume, timing, device, "
+  "file and communication patterns, contextualised against K-Means behavioural peer groups. The "
   "final detector is a deep autoencoder trained only on normal user-days; its "
   "reconstruction error is the risk score, while an Isolation Forest, a rule scorer and "
   "a six-signal rarity scorer (including a geo-rarity flag derived from Cloudflare "
@@ -218,7 +219,7 @@ A(para("p1a", run(
 A(para("heading2", run("Limitations of Existing Tools")))
 A(para("p1a", run(
   "Wazuh encodes its detection logic as static XML rules with no adaptive learning [10]. "
-  "OpenUBA offers basic statistical profiling but no per-user rolling baselines, while "
+  "OpenUBA offers basic statistical profiling but no per-user behavioural baselines, while "
   "HELK exposes Elasticsearch machine-learning primitives without a custom training "
   "pipeline or explanation layer. None of the evaluated tools normalise multiple cloud "
   "sources or provide per-alert explanations, which is precisely the gap this work "
@@ -257,12 +258,13 @@ A(body("Normal",
 A(para("heading2", run("Feature Engineering and Behavioural Baselines")))
 A(para("p1a", run(
   "Normalised events are aggregated into daily behavioural vectors per user. For CERT "
-  "data, a 71-dimensional feature vector is computed over a 30-day rolling window, "
-  "capturing volume, timing, device, file and communication patterns; for live cloud "
-  "data, a compact 12-dimensional per-user-day feature vector is used. A 30-day rolling "
-  "window yields the per-user mean (μ) and standard deviation (σ) of each "
-  "feature, and the daily deviation z = (x − μ)/σ quantifies how far a "
-  "user's behaviour departs from their own established norm.")))
+  "data, daily activity is aggregated into a 71-dimensional per-user vector — the mean, "
+  "maximum and sum of 21 base behavioural features capturing volume, timing, device, "
+  "file and communication patterns, augmented with burst ratios (peak-to-average "
+  "activity spikes) and peer-group ratios; for live cloud data, a compact 12-dimensional "
+  "per-user-day feature vector is used. K-Means clustering, fitted on normal users only, "
+  "assigns each user to a behavioural peer group, and per-feature peer ratios quantify "
+  "how far a user's behaviour departs from the norm of behaviourally similar users.")))
 
 A(para("heading2", run("Label-Free Detection")))
 A(para("p1a", run(
@@ -316,7 +318,10 @@ A(para("p1a", run(
   "configurations on the CERT r4.2 test set. Because insiders are a small minority, AUPRC "
   "is reported alongside AUROC, as AUROC alone can overstate performance on imbalanced "
   "data. The autoencoder dominates every metric, and the corresponding ROC curves are "
-  "shown in Fig. 2.")))
+  "shown in Fig. 2. To rule out transductive optimism, a five-fold inductive "
+  "cross-validation — retraining the autoencoder on each training fold's normal users "
+  "and scoring held-out users only — yields AUROC 0.959 ± 0.004, confirming that the "
+  "headline result generalises to unseen users.")))
 A(para("tablecaption", run("Table 1. Detector performance on CERT r4.2 "
                            "(1,000 users, 70 insiders).")))
 A(table(
@@ -332,13 +337,17 @@ A(add_image("results/report_png/roc.png", int(CONTENT_TWIP*0.72),
 
 A(para("heading2", run("Real-World Validation")))
 A(para("p1a", run(
-  "Benchmarks on simulated data can flatter a detector, so two external checks are "
+  "Benchmarks on simulated data can flatter a detector, so three external checks are "
   "performed. First, the cloud feature autoencoder is evaluated on the flaws.cloud AWS "
   "CloudTrail dataset, where it separates the Level-5/Level-6 attacker activity from "
   "benign API calls at AUROC 0.724 despite being trained without any attack labels. "
   "Second, a streaming live-replay drives events through the production /ingest endpoint "
   "and scores them online; the live pipeline attains AUROC 0.917 against an offline "
-  "0.976, confirming that the real-time path preserves most of the detector's accuracy.")))
+  "0.976, confirming that the real-time path preserves most of the detector's accuracy. "
+  "Third, a semi-synthetic evaluation on real GitHub activity — 240 genuine users with "
+  "labelled attacker behaviour injected, following the same construction principle as "
+  "CERT — yields AUROC 0.992, corroborating that the cloud pipeline separates planted "
+  "attacks from authentic user behaviour.")))
 
 A(para("heading2", run("Capability Comparison")))
 A(para("p1a", run(
@@ -413,8 +422,10 @@ A(para("p1a", run(
 
 # --- Acknowledgments ---
 A(para("acknowlegments", run(
-  "Acknowledgments. The author thanks the supervisor and the Faculty of Computer Science "
-  "and Information Technology, Universiti Malaya, for their guidance and support, and "
+  "Acknowledgments. The author thanks Dr. Firdaus Sahran and the Faculty of Computer Science "
+  "and Information Technology, Universiti Malaya, for their guidance and support; "
+  "Mohd Akbar bin Abu Bakar (Lead Engineer, ECLOGIC Sdn Bhd) for industry collaboration "
+  "validating the system's operational relevance; and "
   "Carnegie Mellon University for providing the CERT Insider Threat Dataset.")))
 A(para("acknowlegments", run(
   "Disclosure of Interests. The authors declare that they have no competing interests.")))
