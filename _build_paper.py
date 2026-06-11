@@ -146,7 +146,10 @@ A(para("abstract", run(
   "decisively outperforming the rule and isolation "
   "baselines. External validity is demonstrated on the flaws.cloud AWS dataset "
   "(AUROC 0.724) and a streaming live-replay (AUROC 0.917). The system is "
-  "containerised and deployed on Docker, Hugging Face Spaces and Vercel.")))
+  "containerised and deployed on Docker, Hugging Face Spaces and Vercel. The results "
+  "indicate that explainable, label-free insider detection is practical on free-tier "
+  "infrastructure, with low-and-slow behaviour identified as the principal remaining "
+  "challenge.")))
 
 A(para("keywords", run(
   "Keywords: UEBA · Insider threat detection · Unsupervised learning · "
@@ -188,6 +191,18 @@ A(body("Normal",
   "SHAP attribution with a large-language-model (LLM) analyst assistant; and (4) an "
   "evaluation that goes beyond the CERT benchmark to real cloud-breach data and a live "
   "streaming replay."))
+A(body("Normal",
+  "Four objectives guide the work: (i) to study the limitations of rule-based and "
+  "open-source UEBA tools; (ii) to design a multi-cloud log-normalisation layer and "
+  "behavioural-profiling pipeline; (iii) to develop a functional prototype combining "
+  "autoencoder detection with SHAP per-alert explanations; and (iv) to evaluate the "
+  "system on CERT r4.2 against rule-based baselines. The scope covers application-layer "
+  "behavioural logs from the four cloud sources above; packet-level inspection and "
+  "production-scale streaming are deferred to future work. Development followed an "
+  "iterative design–build–evaluate cycle over a 14-week schedule. The remainder "
+  "of this paper is organised as follows: Section 2 reviews related work, Section 3 "
+  "presents the system design, Section 4 reports the evaluation, Section 5 discusses "
+  "strengths and limitations, and Section 6 concludes."))
 
 # --- 2 Related Work ---
 A(para("heading1", run("Related Work")))
@@ -233,6 +248,17 @@ A(para("p1a", run(
   "explainability, and an analyst dashboard. Each layer communicates through a "
   "well-defined interface so that the detection and presentation layers remain entirely "
   "source-agnostic. The overall architecture and tool stack are shown in Fig. 1.")))
+A(body("Normal",
+  "The design is driven by eight functional requirements — normalisation to a unified "
+  "schema, per-user feature aggregation, peer-group assignment, autoencoder risk "
+  "scoring, SHAP explanation generation, a REST API, an analyst dashboard, and "
+  "real-time ingestion — and six non-functional requirements covering accuracy "
+  "(AUROC ≥ 0.90), explainability (≥ 3 SHAP features per high-risk alert), "
+  "extensibility (a new source requires only one parser), portability (single "
+  "docker-compose deployment), performance, and input-validation security. "
+  "Requirements were gathered through review of provider log-schema documentation, "
+  "consultation with an industry collaborator (ECLOGIC Sdn Bhd), and analysis of the "
+  "CERT attack scenarios."))
 A(add_image("results/report_png/architecture.png", CONTENT_TWIP,
             "Fig. 1. Argus system architecture and tool stack: four cloud sources are "
             "normalised into one schema, scored by a label-free autoencoder with rarity "
@@ -382,7 +408,12 @@ A(para("p1a", run(
   "human-readable rationale for each alert — a capability absent from every "
   "open-source tool evaluated — and the LLM assistant lowers cognitive load by "
   "narrating that rationale in plain language. The source-agnostic normalisation layer "
-  "makes adding a new cloud provider a one-parser change.")))
+  "makes adding a new cloud provider a one-parser change. Fig. 4 shows the "
+  "analyst-facing result: a risk-ranked dashboard with severity tiers and per-source "
+  "badges.")))
+A(add_image("slides_assets/01_dashboard.png", int(CONTENT_TWIP*0.9),
+            "Fig. 4. The analyst dashboard: entities ranked by autoencoder risk score "
+            "with severity tiers and per-source badges."))
 
 A(para("heading2", run("Limitations and Future Work")))
 A(para("p1a", run(
