@@ -233,7 +233,7 @@ A(para("p1a", run(
   "explainability, and an analyst dashboard. Each layer communicates through a "
   "well-defined interface so that the detection and presentation layers remain entirely "
   "source-agnostic. The overall architecture and tool stack are shown in Fig. 1.")))
-A(add_image("results/report_png/architecture_logos.png", CONTENT_TWIP,
+A(add_image("results/report_png/architecture.png", CONTENT_TWIP,
             "Fig. 1. Argus system architecture and tool stack: four cloud sources are "
             "normalised into one schema, scored by a label-free autoencoder with rarity "
             "and rule baselines, explained via SHAP and an LLM assistant, then surfaced "
@@ -246,8 +246,9 @@ A(para("p1a", run(
   "sign-in logs use createdDateTime, userPrincipalName and ipAddress; Cloudflare Access "
   "uses created_at, user_email, app_domain and a country field; GitHub audit events use "
   "their own actor and action keys. A normalisation layer maps all four onto a single "
-  "eight-field internal schema: {timestamp, user, action, source_ip, bytes, resource, "
-  "country, source}.")))
+  "eight-field internal schema: {timestamp, user, source, action, resource, ip_address, "
+  "metadata, raw}, where metadata preserves source-specific fields (e.g. geo-location, "
+  "Azure conditional-access status) and raw retains the unmodified original event.")))
 A(body("Normal",
   "This design keeps the downstream pipeline source-agnostic: adding a new provider "
   "requires only a single parser function, with no change to feature extraction, "

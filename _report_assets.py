@@ -55,17 +55,17 @@ def architecture():
     band_label(80, "INGESTION")
     box(12, 75, 37, 6.5, "FastAPI  POST /ingest\n(Pydantic validation)", C["norm"], fs=9)
     box(54, 75, 37, 6.5, "Normalizer  -  source-specific\nPython parsers (router dispatch)", C["norm"], fs=8.5)
-    box(14, 66.5, 72, 5.5, "Unified 8-field schema  {timestamp, user, action, source_ip, bytes, resource, country, source}", C["norm"], fs=7.6)
+    box(14, 66.5, 72, 5.5, "Unified 8-field schema  {timestamp, user, source, action, resource, ip_address, metadata, raw}", C["norm"], fs=7.6)
 
     # ---- Layer 3: feature engineering ----
     band_label(60, "FEATURES")
-    box(12, 55, 37, 7, "CERT daily vectors  (71-dim)\nPandas / NumPy  -  30-day rolling", C["feat"], fs=8.5)
+    box(12, 55, 37, 7, "CERT user vectors  (71-dim)\nmean/max/sum + burst + peer ratios", C["feat"], fs=8.5)
     box(54, 55, 37, 7, "Cloud window features  (12-dim)\nPandas / NumPy  -  per user-day", C["feat"], fs=8.5)
 
     # ---- Layer 4: detection ----
     band_label(48, "DETECTION")
     box(7, 40, 17, 7.5, "Rule\nScorer", C["det"], fs=8.5)
-    box(26, 40, 17, 7.5, "Rarity Scorer\n(6 flags + geo)", C["det"], fs=8.5)
+    box(26, 40, 17, 7.5, "Rarity Scorer\n(6 flags incl. geo)", C["det"], fs=8.5)
     box(45, 40, 19, 7.5, "Isolation Forest\n(scikit-learn)", C["det"], fs=8.5)
     box(66, 40, 26, 7.5, "Autoencoder x2  (PyTorch)\nCERT AE 71d  +  Cloud AE 12d", C["det"], fs=8.5)
     box(20, 31.5, 60, 5.5, "Final risk score [0,1]  =  Autoencoder reconstruction error   (IF / Rule / Rarity = comparison baselines)", C["det"], fs=7.3)
@@ -107,7 +107,7 @@ def architecture():
     arrow(65, 21, 55, 16)          # LLM -> store
     arrow(50, 10, 50, 6.5)         # store -> UI
 
-    ax.text(50, 99.2, "Figure 1.  Cloud-native UEBA Platform — System Architecture and Tool Stack",
+    ax.text(50, 99.2, "Cloud-native UEBA Platform — System Architecture and Tool Stack",
             ha="center", va="top", fontsize=11, weight="bold")
     fig.savefig(OUT / "architecture.png", dpi=200, bbox_inches="tight", facecolor="white")
     plt.close(fig)
