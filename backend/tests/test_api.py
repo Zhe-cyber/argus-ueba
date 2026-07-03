@@ -137,18 +137,18 @@ class TestRoot:
         assert "users"   in body,    "Missing 'users' field"
         assert body["version"] == "v4"
         assert body["users"]   == N_USERS
-        assert body["mode"] in ("demo", "local")
+        assert body["mode"] in ("sqlite", "postgres")
 
 
 class TestGetUsers:
     def test_get_users(self, client):
-        """GET /users returns a non-empty list; each item has ae_score."""
+        """GET /users returns a paginated envelope; each item has ae_score."""
         r = client.get("/users")
         assert r.status_code == 200
-        users = r.json()
-        assert isinstance(users, list)
-        assert len(users) > 0
-        assert "ae_score" in users[0], "ae_score missing from user summary"
+        body = r.json()
+        assert isinstance(body["users"], list)
+        assert len(body["users"]) > 0
+        assert "ae_score" in body["users"][0], "ae_score missing from user summary"
 
     def test_get_users_pagination(self, client):
         """limit / offset correctly page the results."""
@@ -156,15 +156,15 @@ class TestGetUsers:
         r_page2 = client.get("/users?limit=5&offset=5")
         assert r_full.status_code  == 200
         assert r_page2.status_code == 200
-        ids_p1 = [u["user"] for u in r_full.json()]
-        ids_p2 = [u["user"] for u in r_page2.json()]
+        ids_p1 = [u["user"] for u in r_full.json()["users"]]
+        ids_p2 = [u["user"] for u in r_page2.json()["users"]]
         # Pages must not overlap
         assert not set(ids_p1) & set(ids_p2), "Pages overlap — offset not working"
 
     def test_get_users_sorted_by_score(self, client):
         """Users must be returned highest ae_score first."""
         r = client.get("/users?limit=10")
-        users = r.json()
+        users = r.json()["users"]
         scores = [u["ae_score"] for u in users]
         assert scores == sorted(scores, reverse=True), "Results are not score-sorted"
 
@@ -172,7 +172,7 @@ class TestGetUsers:
         """GET /users?risk=High returns only High-risk users."""
         r = client.get("/users?risk=High")
         assert r.status_code == 200
-        users = r.json()
+        users = r.json()["users"]
         assert len(users) > 0, "Expected at least one High-risk user"
         assert all(u["risk_level"] == "High" for u in users), (
             "Non-High user in High-filtered results"
@@ -182,7 +182,7 @@ class TestGetUsers:
         """GET /users?risk=Medium returns only Medium-risk users."""
         r = client.get("/users?risk=Medium")
         assert r.status_code == 200
-        users = r.json()
+        users = r.json()["users"]
         assert len(users) > 0
         assert all(u["risk_level"] == "Medium" for u in users)
 
@@ -190,7 +190,7 @@ class TestGetUsers:
         """GET /users?risk=Low returns only Low-risk users."""
         r = client.get("/users?risk=Low")
         assert r.status_code == 200
-        users = r.json()
+        users = r.json()["users"]
         assert len(users) > 0
         assert all(u["risk_level"] == "Low" for u in users)
 
@@ -202,7 +202,7 @@ class TestGetUsers:
     def test_get_users_summary_schema(self, client, known_user_id):
         """Every user summary contains the full required schema."""
         r = client.get("/users?limit=5")
-        for user in r.json():
+        for user in r.json()["users"]:
             assert "user"       in user
             assert "ae_score"   in user
             assert "risk_level" in user
@@ -238,12 +238,12 @@ class TestGetUserDetail:
         assert len(features) <= 5, f"Expected ≤ 5 features, got {len(features)}"
 
     def test_get_user_detail_top_features_schema(self, client, known_user_id):
-        """Each top_feature must have feature, value, and direction fields."""
+        """Each top_feature must have feature, shap_value, and direction fields."""
         r = client.get(f"/users/{known_user_id}")
         for feat in r.json()["top_features"]:
-            assert "feature"   in feat
-            assert "value"     in feat
-            assert "direction" in feat
+            assert "feature"    in feat
+            assert "shap_value" in feat
+            assert "direction"  in feat
             assert feat["direction"] in ("increases_risk", "decreases_risk")
 
     def test_get_user_not_found(self, client):
@@ -278,31 +278,31 @@ class TestGetUserShap:
         assert len(features) <= 10, f"Expected ≤ 10 features, got {len(features)}"
 
     def test_get_user_shap_feature_schema(self, client, known_user_id):
-        """Each feature must have feature, value, and direction fields."""
+        """Each feature must have feature, shap_value, and direction fields."""
         r = client.get(f"/users/{known_user_id}/shap")
         for feat in r.json()["features"]:
-            assert "feature"   in feat
-            assert "value"     in feat
-            assert "direction" in feat
+            assert "feature"    in feat
+            assert "shap_value" in feat
+            assert "direction"  in feat
             assert feat["direction"] in ("increases_risk", "decreases_risk"), (
                 f"Bad direction: {feat['direction']!r}"
             )
 
     def test_get_user_shap_direction_matches_sign(self, client, known_user_id):
-        """direction must be consistent with the sign of value."""
+        """direction must be consistent with the sign of shap_value."""
         r = client.get(f"/users/{known_user_id}/shap")
         for feat in r.json()["features"]:
-            if feat["value"] > 0:
+            if feat["shap_value"] > 0:
                 assert feat["direction"] == "increases_risk"
             else:
                 assert feat["direction"] == "decreases_risk"
 
     def test_get_user_shap_sorted_by_abs_value(self, client, known_user_id):
-        """Features must be sorted by |value| descending."""
+        """Features must be sorted by |shap_value| descending."""
         r = client.get(f"/users/{known_user_id}/shap")
-        abs_vals = [abs(f["value"]) for f in r.json()["features"]]
+        abs_vals = [abs(f["shap_value"]) for f in r.json()["features"]]
         assert abs_vals == sorted(abs_vals, reverse=True), (
-            "SHAP features are not sorted by |value| descending"
+            "SHAP features are not sorted by |shap_value| descending"
         )
 
     def test_get_user_shap_reason_is_string(self, client, known_user_id):

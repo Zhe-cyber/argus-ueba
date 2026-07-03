@@ -28,6 +28,7 @@ jobs:
         run: pytest backend/tests/ -v --tb=short
         env:
           DEMO_MODE: "true"
+          DATABASE_URL: "sqlite-local"
 
   # ── Backend → Hugging Face Spaces ────────────────────────────────────────
   # NOTE: Model files (*.pt, *.pkl, *.parquet, *.csv) are gitignored and
