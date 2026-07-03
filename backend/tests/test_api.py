@@ -161,6 +161,57 @@ class TestGetUsers:
         # Pages must not overlap
         assert not set(ids_p1) & set(ids_p2), "Pages overlap — offset not working"
 
+    def test_get_users_envelope_total_consistent_across_pages(self, client):
+        """
+        'total' is the full matching-user count and must NOT change with
+        limit/offset — it describes the whole result set, not the page.
+        """
+        r_page1 = client.get("/users?limit=5&offset=0")
+        r_page2 = client.get("/users?limit=5&offset=5")
+        r_all   = client.get("/users?limit=5000&offset=0")
+        total_p1  = r_page1.json()["total"]
+        total_p2  = r_page2.json()["total"]
+        total_all = r_all.json()["total"]
+        assert total_p1 == total_p2 == total_all, (
+            f"total drifted across pages: {total_p1}, {total_p2}, {total_all}"
+        )
+        # And it must equal the actual count of users when every page fits
+        assert total_all == len(r_all.json()["users"])
+
+    def test_get_users_envelope_echoes_limit_and_offset(self, client):
+        """The envelope's limit/offset fields must echo the query params."""
+        r = client.get("/users?limit=7&offset=3")
+        body = r.json()
+        assert body["limit"]  == 7
+        assert body["offset"] == 3
+        assert len(body["users"]) <= body["limit"]
+
+    def test_get_users_envelope_limit_caps_page_size(self, client):
+        """len(users) must never exceed the requested limit, at any offset."""
+        for limit, offset in ((1, 0), (5, 0), (5, 20), (1000, 0)):
+            body = client.get(f"/users?limit={limit}&offset={offset}").json()
+            assert len(body["users"]) <= limit, (
+                f"limit={limit} offset={offset}: got {len(body['users'])} users"
+            )
+
+    def test_get_users_envelope_filtered_total_matches_filtered_count(self, client):
+        """
+        When ?risk= filters the result set, 'total' must equal the FILTERED
+        count (i.e. the number of matching users), not the global user count.
+        """
+        for level in ("High", "Medium", "Low"):
+            body = client.get(f"/users?risk={level}&limit=5000").json()
+            assert body["total"] == len(body["users"]), (
+                f"risk={level}: total={body['total']} but "
+                f"{len(body['users'])} users returned on a single page"
+            )
+            assert all(u["risk_level"] == level for u in body["users"])
+            # And the filtered total must be strictly less than (or equal to,
+            # in a degenerate all-one-tier fixture) the unfiltered total —
+            # it must never equal the count of a DIFFERENT tier.
+            unfiltered_total = client.get("/users?limit=5000").json()["total"]
+            assert body["total"] <= unfiltered_total
+
     def test_get_users_sorted_by_score(self, client):
         """Users must be returned highest ae_score first."""
         r = client.get("/users?limit=10")
