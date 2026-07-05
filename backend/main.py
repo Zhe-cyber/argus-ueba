@@ -23,6 +23,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 import json
+import logging
 import os
 from backend.config import DEMO_MODE
 from backend.loader import store
@@ -62,6 +63,21 @@ from backend.rarity_scorer import compute_rarity_flags, rarity_score as calc_rar
 API_VERSION    = "v4"
 SHAP_TOP_N     = 10   # features returned by /users/{id}/shap
 REASON_TOP_N   = 3    # positive features used in the plain-English reason
+
+# Live (cloud) AE score → risk-tier thresholds. Single source of truth for
+# every place that maps an ae_live score to High/Medium/Low. FYP2 item #3
+# (label-free threshold calibration) will replace these constants.
+LIVE_HIGH_THRESHOLD   = 0.7
+LIVE_MEDIUM_THRESHOLD = 0.4
+
+
+def _live_risk_tier(ae_live: float) -> str:
+    """Map a live AE score in [0, 1] to a High / Medium / Low risk tier."""
+    if ae_live >= LIVE_HIGH_THRESHOLD:
+        return "High"
+    if ae_live >= LIVE_MEDIUM_THRESHOLD:
+        return "Medium"
+    return "Low"
 
 
 # ---------------------------------------------------------------------------
@@ -248,8 +264,12 @@ def _maybe_alert(
     try:
         if not astore.recent_alert_exists(user_id, alert_type, dedup_minutes):
             astore.create_alert(user_id, alert_type, severity, title, details)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        # Never crash the ingest pipeline over alerting — but do leave a trace
+        # so storage failures and coding bugs are not silently invisible.
+        logging.getLogger(__name__).warning(
+            "Alert creation failed for user=%s type=%s: %s", user_id, alert_type, exc
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -335,12 +355,7 @@ async def list_users(
             if uid in parquet_ids:
                 continue  # already represented in CERT parquet
             ae_live = float(row.get("ae_live", 0.0) or 0.0)
-            if ae_live >= 0.7:
-                rl = "High"
-            elif ae_live >= 0.4:
-                rl = "Medium"
-            else:
-                rl = "Low"
+            rl = _live_risk_tier(ae_live)
             if risk is not None and rl != risk:
                 continue
             combined.append(UserSummary(
@@ -450,12 +465,7 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
         ae_live = ae_scorer.score_user(user_id, peer_means=None) or 0.0
 
     # Determine risk tier from AE score
-    if ae_live >= 0.7:
-        risk_level = "High"
-    elif ae_live >= 0.4:
-        risk_level = "Medium"
-    else:
-        risk_level = "Low"
+    risk_level = _live_risk_tier(ae_live)
 
     return UserDetail(
         user=user_id,
@@ -463,6 +473,7 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
         risk_level=risk_level,
         is_insider=0,
         scenario=0,
+        data_source="cloud",
         if_score=0.0,
         rule_score=0.0,
         wa_score=0.0,
@@ -589,9 +600,10 @@ async def get_stats() -> Stats:
             continue
         cloud_count += 1
         ae = float(row.get("ae_live", 0.0) or 0.0)
-        if ae >= 0.7:
+        tier = _live_risk_tier(ae)
+        if tier == "High":
             cloud_high += 1
-        elif ae >= 0.4:
+        elif tier == "Medium":
             cloud_medium += 1
         else:
             cloud_low += 1
@@ -853,7 +865,7 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     #   • Cloud sources (aws_cloudtrail, azure_ad, cloudflare_access, github_events)
     #     → cloud_ae_scorer (12-dim cloud behavioral features, trained on CloudTrail)
     #   • CERT sources (cert_logon, cert_file, cert_email, cert_http, cert_device)
-    #     → ae_scorer (71-dim CERT behavioral features, trained on CERT r6.2)
+    #     → ae_scorer (71-dim CERT behavioral features, trained on CERT r4.2)
     event_source = normalised.get("source", "")
     if event_source in CLOUD_SOURCES:
         ae_live = cloud_ae_scorer.score_user(user_id)

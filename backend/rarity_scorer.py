@@ -1,7 +1,7 @@
 """
 rarity_scorer.py — Source-agnostic rarity flags for live cloud log scoring.
 
-Computes 5 boolean anomaly signals per event using only the 8-field
+Computes 6 boolean anomaly signals per event using only the 8-field
 normalised schema. No training data required — mirrors Microsoft Sentinel's
 ActivityInsights architecture and Cloudflare's identity-perimeter model.
 
@@ -44,7 +44,13 @@ from typing import Any
 VOLUME_THRESHOLD: int = 50
 VOLUME_WINDOW_HOURS: int = 1
 
-# Off-hours definition (UTC): flag events outside Mon–Fri 07:00–19:00
+# Off-hours definition (UTC): flag events outside Mon–Fri 07:00–19:00.
+# NOTE: this window (07–19) is intentionally WIDER than the AE feature
+# window in feature_extractor.py (_BIZ_START=7, _BIZ_END=18). The AE window
+# must stay frozen to match the trained model's feature semantics; the
+# rarity flag is a conservative analyst-facing signal and tolerates the
+# extra hour. Both are replaced by learned per-user active-hours profiles
+# in FYP2 (plan item #4).
 OFF_HOURS_START: int = 7   # inclusive
 OFF_HOURS_END: int = 19    # exclusive (so 19:00 is off-hours)
 
@@ -103,7 +109,7 @@ def compute_rarity_flags(
     recent_events: list[dict[str, Any]],
 ) -> dict[str, bool]:
     """
-    Compute the 5 rarity flags for a single normalised event.
+    Compute the 6 rarity flags for a single normalised event.
 
     Parameters
     ----------
