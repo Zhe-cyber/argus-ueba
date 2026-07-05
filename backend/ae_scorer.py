@@ -31,8 +31,9 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -424,13 +425,88 @@ class _CloudAEScorer:
             logger.error("Failed to load cloud AE: %s", exc, exc_info=True)
             return False
 
+    @staticmethod
+    def _day_of(ts_raw: str) -> str:
+        """
+        Return the UTC calendar day (YYYY-MM-DD) for a timestamp, or "" on
+        failure.
+
+        Mirrors scripts/build_cloud_dataset.py::_day_of — the training contract
+        groups each user's events by UTC calendar day, so serving must derive
+        the day the same way (naive timestamps assumed UTC; tz-aware timestamps
+        converted to UTC before taking the date).
+        """
+        if not ts_raw:
+            return ""
+        try:
+            clean = ts_raw.replace("Z", "+00:00")
+            try:
+                dt = datetime.fromisoformat(clean)
+            except ValueError:
+                dt = None
+                for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+                    try:
+                        dt = datetime.strptime(ts_raw, fmt)
+                        break
+                    except ValueError:
+                        continue
+                if dt is None:
+                    # Last-resort: a bare YYYY-MM-DD prefix, matching training's
+                    # `return ts[:10]` fallback. Reject anything that is not a
+                    # plausible date so malformed rows are skipped, not scored.
+                    head = ts_raw[:10]
+                    if (len(head) == 10 and head[4] == "-" and head[7] == "-"
+                            and head[:4].isdigit() and head[5:7].isdigit()
+                            and head[8:10].isdigit()):
+                        return head
+                    return ""
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+        except Exception:
+            return ""
+
+    @classmethod
+    def _split_latest_day(cls, events: list) -> Tuple[list, list]:
+        """
+        Split a user's cloud events into (window, history), mirroring the
+        training-time day grouping (scripts/build_cloud_dataset.py:207-233).
+
+        Training scored each user-day as
+        ``aggregate_window(day_events, history=all_events_before_that_day)``.
+        The live serving path produces a single score per user, so we score the
+        user's LATEST UTC calendar day as the window, with every strictly
+        earlier cloud event as history (which feeds new_action_count).
+
+        Events whose timestamps cannot be parsed to a UTC day are dropped, so a
+        malformed row can never crash scoring or leak into the wrong bucket.
+
+        Returns ([], []) when no event has a usable timestamp.
+        """
+        dated = [(cls._day_of(str(e.get("timestamp", ""))), e) for e in events]
+        dated = [(d, e) for (d, e) in dated if d]
+        if not dated:
+            return [], []
+
+        latest_day = max(d for (d, _) in dated)
+        window  = [e for (d, e) in dated if d == latest_day]
+        history = [e for (d, e) in dated if d < latest_day]
+        return window, history
+
     def score_user(self, user_id: str) -> Optional[float]:
         """
         Score a user's cloud events using the cloud AE.
 
-        Fetches the user's cloud-source events from the event store,
-        aggregates 12 behavioral features over the last 7 days, runs the
-        cloud AE, and returns a normalised anomaly score in [0, 1].
+        Fetches the user's cloud-source events from the event store (up to
+        50,000, i.e. effectively their full history) and mirrors the training
+        contract's day-window semantics: the LATEST UTC calendar day present is
+        the scoring *window*; every strictly earlier cloud event is *history*.
+        The 12 behavioural features are aggregated as
+        ``aggregate_window(window, history=history)`` — exactly how each
+        user-day was built for training in
+        scripts/build_cloud_dataset.py:207-233 — so new_action_count is now
+        populated at serving time (previously history=None zeroed it). The
+        result is a normalised anomaly score in [0, 1].
 
         Returns None if the model is unavailable or the user has no cloud events.
         """
@@ -450,8 +526,12 @@ class _CloudAEScorer:
             if not cloud_events:
                 return None
 
-            # Use events from last 7 days as the window
-            feats = aggregate_window(cloud_events, history=None)
+            # Mirror training: score the latest UTC day; prior days are history.
+            window, history = self._split_latest_day(cloud_events)
+            if not window:
+                return None
+
+            feats = aggregate_window(window, history=history)
             x_raw = np.array([feats.get(f, 0.0) for f in CLOUD_FEATURES], dtype=np.float32)
 
             if x_raw.sum() == 0:
