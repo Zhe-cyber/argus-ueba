@@ -364,6 +364,27 @@ class _CloudAEScorer:
         self._ready   = False
         self._tried   = False
 
+    def readiness(self) -> dict:
+        """Describe readiness without loading weights or exposing filesystem/errors."""
+        from backend.config import CLOUD_MODEL_PROFILE
+        origin = ('flaws.cloud AWS benchmark' if CLOUD_MODEL_PROFILE == 'flaws-cloud-prototype'
+                  else 'Local model; training provenance unverified')
+        if self._ready:
+            status, message = 'ready', 'The cloud model is loaded. Its anomaly scores are provisional and have not been validated on these connected accounts.'
+        elif not _CLOUD_AE_PATH.is_file() or not _CLOUD_SCALER_PATH.is_file():
+            status, message = 'missing_artifacts', 'The cloud anomaly model is not configured in this live instance. Events are collected, but AE risk scores are unavailable.'
+        elif self._tried:
+            status, message = 'load_failed', 'The configured cloud model could not be loaded. Risk remains Unknown until the model is repaired.'
+        else:
+            status, message = 'not_loaded', 'Cloud model files are present, but this process has not loaded them. Existing accounts have not been scored by this model.'
+        return {
+            'status': status, 'message': message, 'model_ready': status == 'ready',
+            'model_origin': origin if status != 'missing_artifacts' else None,
+            'provisional': True,
+            'next_step': ('Collect normal baseline activity and validate source coverage and thresholds.'
+                          if status == 'ready' else 'Configure a compatible cloud model and explicitly refresh account scores, or collect data for a new validated baseline.'),
+        }
+
     def _load(self) -> bool:
         if self._tried:
             return self._ready

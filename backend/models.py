@@ -54,6 +54,15 @@ class ShapFeature(BaseModel):
 # User schemas
 # ---------------------------------------------------------------------------
 
+class CloudScoringStatus(BaseModel):
+    status: str
+    message: str
+    model_ready: bool
+    model_origin: Optional[str] = None
+    provisional: bool = True
+    next_step: str
+
+
 class UserSummary(BaseModel):
     """
     Lightweight user row returned by GET /users.
@@ -135,6 +144,7 @@ class UserDetail(UserSummary):
     """
 
     application_mode: str = 'benchmark'
+    scoring_status: Optional[CloudScoringStatus] = None
     if_score:        float
     rule_score:      float
     wa_score:        float
@@ -191,6 +201,7 @@ class Stats(BaseModel):
     medium_threshold: float = Field(..., description="AE cutoff for Medium risk in the active mode")
     application_mode: str = Field('benchmark', description="live, benchmark or demo")
     unscored_users: int = Field(0, ge=0, description="Accounts without an available AE score")
+    scoring_status: Optional[CloudScoringStatus] = None
 
 
 # ---------------------------------------------------------------------------
