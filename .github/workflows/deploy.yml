@@ -11,6 +11,19 @@ jobs:
   test:
     name: Run backend tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: argus_ingest_test
+          POSTGRES_PASSWORD: argus-test-only
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +43,12 @@ jobs:
         env:
           DEMO_MODE: "true"
           DATABASE_URL: "sqlite-local"
+
+      - name: Test atomic ingestion against isolated PostgreSQL
+        run: python -m pytest scripts/tests/test_postgres_ingest.py -v --tb=short
+        env:
+          DATABASE_URL: "sqlite-local"
+          ARGUS_TEST_PG_URL: "postgresql://postgres:argus-test-only@127.0.0.1:55432/argus_ingest_test"
 
   frontend:
     name: Build frontend

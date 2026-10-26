@@ -310,6 +310,7 @@ async def root() -> dict[str, Any]:
         "version": API_VERSION,
         "mode":    db_mode,
         "application_mode": ARGUS_MODE,
+        "ingestion_protocol": "native-receipt-v1",
         "users":   len(_mode_live_scores()) if LIVE_MODE else len(store.scores_df),
     }
 
