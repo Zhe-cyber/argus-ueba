@@ -96,4 +96,8 @@ skipped unless ARGUS_TEST_PG_URL is set. Four Worker tests also passed. A guarde
 PostgreSQL test uses only 127.0.0.1:55432/argus_ingest_test and a temporary schema;
 the CI workflow supplies a disposable PostgreSQL 17 service. It must never use
 Neon or a production DATABASE_URL. Initial local Docker startup did not become
-ready, so do not claim a successful local PostgreSQL run.
+ready and Docker was shut back down. The GitHub Actions run subsequently passed
+the main suite (132 passed, one intentional skip), the isolated PostgreSQL test
+(one passed), Worker checks and the frontend build. PostgreSQL migration, receipt,
+NULL-score, rollback, alert savepoint and concurrent-insert paths are therefore
+runtime-validated in CI, while no local PostgreSQL success is claimed.

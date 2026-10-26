@@ -12,8 +12,11 @@ https://attack.mitre.org/techniques/T1078/004/
 
 ## Starting design
 
-Use five normal personas and one controlled compromised-account scenario. Personas
-are workload generators, not automatically distinct provider users. Start with
+Use six personas: five remain normal; the sixth first builds normal history and
+then enters the controlled compromised-account phase. Personas
+are workload generators, not automatically distinct provider users. Use neutral
+account names; keep any compromise label in the separate experiment manifest.
+Start with
 repeatable scripts and seeded variation. An LLM may choose among bounded approved
 actions later; it must not invent tools, targets, credentials or destructive steps.
 
