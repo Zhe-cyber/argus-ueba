@@ -219,6 +219,8 @@ class NormalizedEvent(BaseModel):
     ip_address: str          = Field(..., description="Source IP address or empty string")
     metadata:   Dict[str, Any] = Field(default_factory=dict, description="Additional source-specific fields")
     raw:        Dict[str, Any] = Field(..., description="Original unmodified event")
+    event_id: Optional[str] = Field(None, description="Native provider record ID; absent for CERT replay")
+    source_account_id: str = Field('', max_length=128, description="Provider account namespace; not authorization")
 
     @field_validator("source")
     @classmethod
@@ -329,6 +331,8 @@ class PipelineResult(NormalizedEvent):
     and a summary of the user's accumulated event history.
     """
 
+    duplicate: bool = Field(False, description="A committed native event was returned without processing it again")
+
     # Step 2 — feature extraction
     extracted_features: Dict[str, int] = Field(
         default_factory=dict,
@@ -416,6 +420,7 @@ class IngestRequest(BaseModel):
     """
 
     event:  Dict[str, Any] = Field(..., description="Raw log event as received from the source")
+    source_account_id: str = Field('', max_length=128, description="Configured provider account namespace; not authorization")
     source: str = Field(
         ...,
         description=(

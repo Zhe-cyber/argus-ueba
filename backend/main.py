@@ -282,8 +282,9 @@ def _maybe_alert(
     a storage failure never crashes the ingest pipeline.
     """
     try:
-        if not astore.recent_alert_exists(user_id, alert_type, dedup_minutes):
-            astore.create_alert(user_id, alert_type, severity, title, details)
+        with evstore.savepoint():
+            if not astore.recent_alert_exists(user_id, alert_type, dedup_minutes):
+                astore.create_alert(user_id, alert_type, severity, title, details)
     except Exception as exc:  # noqa: BLE001
         # Never crash the ingest pipeline over alerting — but do leave a trace
         # so storage failures and coding bugs are not silently invisible.
@@ -885,6 +886,11 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     computes a rule-based risk score using the same feature weights as the
     training pipeline's rule_score component.
     """
+    with evstore.transaction():
+        return _process_ingest(body)
+
+
+def _process_ingest(body: IngestRequest) -> PipelineResult:
     if LIVE_MODE and body.source not in CLOUD_SOURCES:
         raise HTTPException(status_code=422, detail="Live mode accepts cloud sources only")
 
@@ -895,6 +901,16 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TypeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    namespace = body.source_account_id.strip()
+    if body.source == 'aws_cloudtrail':
+        identity = body.event.get('userIdentity') or {}
+        native_account = str(body.event.get('recipientAccountId') or identity.get('accountId') or '')
+        if namespace and native_account and namespace != native_account:
+            raise HTTPException(status_code=422, detail='AWS record and source account namespace disagree')
+        namespace = namespace or native_account
+    normalised['source_account_id'] = namespace
+    evstore.lock_user(normalised['user'])
 
     # ── Stage 2: Feature extraction ──────────────────────────────────────
     features = fex.extract(normalised)
@@ -908,7 +924,16 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     history_events = evstore.get_user_events_full(user_id, limit=500)
 
     # ── Stage 3: Persist ─────────────────────────────────────────────────
-    evstore.insert_event(normalised)
+    try:
+        inserted = evstore.insert_event(normalised)
+    except evstore.EventConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not inserted:
+        cached = evstore.get_ingest_result(normalised)
+        if cached is None:
+            raise HTTPException(status_code=409, detail='Existing event has no committed pipeline receipt')
+        cached['duplicate'] = True
+        return PipelineResult(**normalised, **cached)
 
     # ── Stage 4: Live score (24-hour rolling window, rule-based) ──────────
     window_events    = evstore.get_user_events_window(normalised["user"], hours=24)
@@ -984,7 +1009,7 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
              "timestamp": normalised["timestamp"]},
         )
 
-    return PipelineResult(
+    result = PipelineResult(
         **normalised,
         extracted_features  = features,
         live_score          = score,
@@ -995,6 +1020,10 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
         rarity_flags        = r_flags,
         rarity_score        = r_score,
     )
+    evstore.save_ingest_result(
+        normalised, result.model_dump(exclude=set(NormalizedEvent.model_fields)),
+    )
+    return result
 
 
 @app.get(
