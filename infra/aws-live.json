@@ -1,0 +1,92 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Argus management-event collection: CloudTrail, EventBridge and SQS. No application compute.",
+  "Parameters": {
+    "CollectorUser": {"Type": "String", "AllowedPattern": "[A-Za-z0-9+=,.@_-]+", "Description": "Existing IAM collector user"}
+  },
+  "Resources": {
+    "AuditBucket": {
+      "Type": "AWS::S3::Bucket", "DeletionPolicy": "Retain", "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {"Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-${AWS::Region}"},
+        "PublicAccessBlockConfiguration": {"BlockPublicAcls": true, "BlockPublicPolicy": true, "IgnorePublicAcls": true, "RestrictPublicBuckets": true},
+        "OwnershipControls": {"Rules": [{"ObjectOwnership": "BucketOwnerEnforced"}]},
+        "BucketEncryption": {"ServerSideEncryptionConfiguration": [{"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
+        "LifecycleConfiguration": {"Rules": [{"Id": "ExpireAuditAfter30Days", "Status": "Enabled", "ExpirationInDays": 30, "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 1}}]},
+        "Tags": [{"Key": "Project", "Value": "Argus"}]
+      }
+    },
+    "AuditBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {"Ref": "AuditBucket"},
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Sid": "TrailAclCheck", "Effect": "Allow", "Principal": {"Service": "cloudtrail.amazonaws.com"}, "Action": "s3:GetBucketAcl", "Resource": {"Fn::GetAtt": ["AuditBucket", "Arn"]}, "Condition": {"StringEquals": {"aws:SourceArn": {"Fn::Sub": "arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-trail"}}}},
+            {"Sid": "TrailDelivery", "Effect": "Allow", "Principal": {"Service": "cloudtrail.amazonaws.com"}, "Action": "s3:PutObject", "Resource": {"Fn::Sub": "${AuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*"}, "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control", "aws:SourceArn": {"Fn::Sub": "arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-trail"}}}},
+            {"Sid": "RequireTLS", "Effect": "Deny", "Principal": "*", "Action": "s3:*", "Resource": [{"Fn::GetAtt": ["AuditBucket", "Arn"]}, {"Fn::Sub": "${AuditBucket.Arn}/*"}], "Condition": {"Bool": {"aws:SecureTransport": "false"}}}
+          ]
+        }
+      }
+    },
+    "Trail": {
+      "Type": "AWS::CloudTrail::Trail", "DependsOn": "AuditBucketPolicy",
+      "Properties": {
+        "TrailName": {"Fn::Sub": "${AWS::StackName}-trail"},
+        "S3BucketName": {"Ref": "AuditBucket"}, "IsLogging": true,
+        "IsMultiRegionTrail": false, "IncludeGlobalServiceEvents": true, "EnableLogFileValidation": true,
+        "EventSelectors": [{"IncludeManagementEvents": true, "ReadWriteType": "All", "ExcludeManagementEventSources": ["kms.amazonaws.com", "rdsdata.amazonaws.com"]}],
+        "Tags": [{"Key": "Project", "Value": "Argus"}]
+      }
+    },
+    "DeadLetterQueue": {
+      "Type": "AWS::SQS::Queue", "DeletionPolicy": "Retain", "UpdateReplacePolicy": "Retain",
+      "Properties": {"QueueName": {"Fn::Sub": "${AWS::StackName}-dlq"}, "MessageRetentionPeriod": 1209600, "SqsManagedSseEnabled": true, "Tags": [{"Key": "Project", "Value": "Argus"}]}
+    },
+    "EventQueue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "QueueName": {"Fn::Sub": "${AWS::StackName}-events"}, "MessageRetentionPeriod": 259200,
+        "VisibilityTimeout": 120, "ReceiveMessageWaitTimeSeconds": 20, "SqsManagedSseEnabled": true,
+        "RedrivePolicy": {"deadLetterTargetArn": {"Fn::GetAtt": ["DeadLetterQueue", "Arn"]}, "maxReceiveCount": 5},
+        "Tags": [{"Key": "Project", "Value": "Argus"}]
+      }
+    },
+    "EventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-management"},
+        "Description": "Account-scoped CloudTrail management events, including read-only activity and console sign-ins",
+        "State": "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS",
+        "EventPattern": {"account": [{"Ref": "AWS::AccountId"}], "detail-type": ["AWS API Call via CloudTrail", "AWS Console Sign In via CloudTrail"], "detail": {"eventSource": [{"anything-but": ["kms.amazonaws.com", "rdsdata.amazonaws.com"]}]}},
+        "Targets": [{"Id": "ArgusQueue", "Arn": {"Fn::GetAtt": ["EventQueue", "Arn"]}, "DeadLetterConfig": {"Arn": {"Fn::GetAtt": ["DeadLetterQueue", "Arn"]}}, "RetryPolicy": {"MaximumEventAgeInSeconds": 3600, "MaximumRetryAttempts": 10}}]
+      }
+    },
+    "QueuePolicy": {
+      "Type": "AWS::SQS::QueuePolicy",
+      "Properties": {
+        "Queues": [{"Ref": "EventQueue"}, {"Ref": "DeadLetterQueue"}],
+        "PolicyDocument": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "events.amazonaws.com"}, "Action": "sqs:SendMessage", "Resource": [{"Fn::GetAtt": ["EventQueue", "Arn"]}, {"Fn::GetAtt": ["DeadLetterQueue", "Arn"]}], "Condition": {"ArnEquals": {"aws:SourceArn": {"Fn::GetAtt": ["EventRule", "Arn"]}}, "StringEquals": {"aws:SourceAccount": {"Ref": "AWS::AccountId"}}}}]}
+      }
+    },
+    "CollectorQueuePolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": {"Fn::Sub": "${AWS::StackName}-queue-consumer"}, "Users": [{"Ref": "CollectorUser"}],
+        "PolicyDocument": {"Version": "2012-10-17", "Statement": [
+          {"Effect": "Allow", "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"], "Resource": {"Fn::GetAtt": ["EventQueue", "Arn"]}},
+          {"Effect": "Allow", "Action": "sqs:GetQueueAttributes", "Resource": {"Fn::GetAtt": ["DeadLetterQueue", "Arn"]}}
+        ]}
+      }
+    }
+  },
+  "Outputs": {
+    "QueueUrl": {"Value": {"Ref": "EventQueue"}},
+    "QueueArn": {"Value": {"Fn::GetAtt": ["EventQueue", "Arn"]}},
+    "DeadLetterQueueUrl": {"Value": {"Ref": "DeadLetterQueue"}},
+    "RuleName": {"Value": {"Ref": "EventRule"}},
+    "TrailName": {"Value": {"Ref": "Trail"}},
+    "AuditBucket": {"Value": {"Ref": "AuditBucket"}}
+  }
+}

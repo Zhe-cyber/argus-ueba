@@ -1,5 +1,10 @@
 # Real-account preflight
 
+Update: CLI deployment and non-root collector access now work. See
+[AWS_CLI_SETUP.md](AWS_CLI_SETUP.md) for verified resources, credential handling,
+coverage and remaining release gates. The initial preflight findings below are
+historical, not the current CLI status.
+
 Status checked 27 October 2026: a local AWS CLI default profile exists, but STS
 rejected its credentials with InvalidClientTokenId. This does not establish whether
 CloudTrail is enabled. No resources or AWS settings were changed. The user currently
