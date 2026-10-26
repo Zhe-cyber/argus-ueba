@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 import os
-from backend.config import DEMO_MODE
+from backend.config import ARGUS_MODE, LIVE_MODE, DEMO_MODE
 from backend.loader import store
 from backend import investigations as inv_store
 from backend import ai_suggest
@@ -71,8 +71,10 @@ LIVE_HIGH_THRESHOLD   = 0.7
 LIVE_MEDIUM_THRESHOLD = 0.4
 
 
-def _live_risk_tier(ae_live: float) -> str:
+def _live_risk_tier(ae_live: float | None) -> str:
     """Map a live AE score in [0, 1] to a High / Medium / Low risk tier."""
+    if ae_live is None:
+        return 'Unknown'
     if ae_live >= LIVE_HIGH_THRESHOLD:
         return "High"
     if ae_live >= LIVE_MEDIUM_THRESHOLD:
@@ -139,6 +141,24 @@ def _guard_loaded() -> None:
             status_code=503,
             detail="Data not loaded. The service is still starting up — retry in a moment.",
         )
+
+
+def _cloud_source_map() -> dict[str, str]:
+    """Accounts with actual cloud events; offline seeds have no provenance."""
+    result = {}
+    for row in evstore.list_event_store_users():
+        sources = set(str(row.get('sources') or '').split(',')) & CLOUD_SOURCES
+        if sources:
+            result[str(row['user'])] = sorted(sources)[0]
+    return result
+
+
+def _mode_live_scores() -> list[dict[str, Any]]:
+    rows = evstore.get_all_live_scores()
+    if LIVE_MODE:
+        accounts = _cloud_source_map()
+        rows = [row for row in rows if str(row['user_id']) in accounts]
+    return rows
 
 
 def _row_to_summary(row: dict[str, Any]) -> UserSummary:
@@ -288,7 +308,8 @@ async def root() -> dict[str, Any]:
     return {
         "version": API_VERSION,
         "mode":    db_mode,
-        "users":   len(store.scores_df),
+        "application_mode": ARGUS_MODE,
+        "users":   len(_mode_live_scores()) if LIVE_MODE else len(store.scores_df),
     }
 
 
@@ -315,10 +336,13 @@ async def list_users(
     """
     _guard_loaded()
 
-    if risk is not None and risk not in {"High", "Medium", "Low"}:
+    allowed_risks = {'High', 'Medium', 'Low'}
+    if LIVE_MODE:
+        allowed_risks.add('Unknown')
+    if risk is not None and risk not in allowed_risks:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid risk level {risk!r}. Must be 'High', 'Medium', or 'Low'.",
+            detail=f"Invalid risk level {risk!r}. Expected one of {sorted(allowed_risks)}.",
         )
     if source not in {"all", "cert", "cloud"}:
         raise HTTPException(
@@ -329,7 +353,7 @@ async def list_users(
     combined: list[UserSummary] = []
 
     # --- CERT (parquet) users: full risk-sorted set, merged/paginated below ---
-    if source in ("all", "cert"):
+    if not LIVE_MODE and source in ("all", "cert"):
         try:
             result = store.get_users(risk=risk, limit=10_000, offset=0)
         except RuntimeError as exc:
@@ -345,25 +369,22 @@ async def list_users(
     if source in ("all", "cloud"):
         # Map each event-store user -> their first/primary source (aws_cloudtrail,
         # azure_ad, github_events, …) so the dashboard can show WHICH source.
-        src_map: dict[str, str] = {}
-        for eu in evstore.list_event_store_users():
-            srcs = str(eu.get("sources", "") or "")
-            if srcs:
-                src_map[str(eu["user"])] = srcs.split(",")[0]
-        for row in evstore.get_all_live_scores():
+        src_map = _cloud_source_map()
+        for row in _mode_live_scores():
             uid = str(row["user_id"])
             if uid in parquet_ids:
                 continue  # already represented in CERT parquet
-            ae_live = float(row.get("ae_live", 0.0) or 0.0)
+            value = row.get('ae_live')
+            ae_live = float(value) if value is not None else (None if LIVE_MODE else 0.0)
             rl = _live_risk_tier(ae_live)
             if risk is not None and rl != risk:
                 continue
             combined.append(UserSummary(
                 user=uid,
-                ae_score=round(ae_live, 6),
+                ae_score=round(ae_live, 6) if ae_live is not None else None,
                 risk_level=rl,
-                is_insider=0,
-                scenario=0,
+                is_insider=None if LIVE_MODE else 0,
+                scenario=None if LIVE_MODE else 0,
                 data_source="cloud",
                 source=src_map.get(uid),
             ))
@@ -378,8 +399,8 @@ async def list_users(
     # cloud High >= 0.7), so a raw-score sort interleaves the two incompatible
     # scales. Sorting by tier surfaces all High entities together — which is
     # what an analyst wants — and keeps the badges monotonic down the list.
-    _RISK_RANK = {"High": 0, "Medium": 1, "Low": 2}
-    combined.sort(key=lambda u: (_RISK_RANK.get(u.risk_level, 3), -u.ae_score))
+    _RISK_RANK = {"High": 0, "Medium": 1, "Unknown": 2, "Low": 3}
+    combined.sort(key=lambda u: (_RISK_RANK.get(u.risk_level, 4), -(u.ae_score or 0)))
     total = len(combined)
     page  = combined[offset: offset + limit]
 
@@ -398,6 +419,8 @@ def admin_seed_live_scores(
     offline (e.g. from the flaws.cloud training parquet) without routing
     every individual event through /ingest.  Requires ADMIN_TOKEN header.
     """
+    if LIVE_MODE:
+        raise HTTPException(status_code=409, detail="Offline score seeding is disabled in live mode")
     expected = os.getenv("ADMIN_TOKEN", "")
     if not expected or x_admin_token != expected:
         raise HTTPException(status_code=404, detail="Not found")
@@ -450,6 +473,8 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
 
     Returns None only if the user has neither events nor a live_scores row.
     """
+    if LIVE_MODE and user_id not in _cloud_source_map():
+        return None
     total = evstore.get_total_event_count(user_id)
     live_row = evstore.get_live_score(user_id)
 
@@ -459,26 +484,31 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
 
     # Prefer the persisted live score (works for bulk-seeded users too)
     if live_row is not None:
-        ae_live = float(live_row.get("ae_live", 0.0) or 0.0)
+        value = live_row.get('ae_live')
+        ae_live = float(value) if value is not None else (None if LIVE_MODE else 0.0)
     else:
         # Compute live AE score from events (no peer means for cloud-only users)
-        ae_live = ae_scorer.score_user(user_id, peer_means=None) or 0.0
+        ae_live = (cloud_ae_scorer.score_user(user_id) if LIVE_MODE
+                   else ae_scorer.score_user(user_id, peer_means=None))
+        if not LIVE_MODE:
+            ae_live = ae_live or 0.0
 
     # Determine risk tier from AE score
     risk_level = _live_risk_tier(ae_live)
 
     return UserDetail(
         user=user_id,
-        ae_score=round(ae_live, 6),
+        application_mode=ARGUS_MODE,
+        ae_score=round(ae_live, 6) if ae_live is not None else None,
         risk_level=risk_level,
-        is_insider=0,
-        scenario=0,
+        is_insider=None if LIVE_MODE else 0,
+        scenario=None if LIVE_MODE else 0,
         data_source="cloud",
         if_score=0.0,
         rule_score=0.0,
         wa_score=0.0,
         lgbm_score=0.0,
-        ensemble_score=round(ae_live, 6),
+        ensemble_score=round(ae_live, 6) if ae_live is not None else None,
         top_features=[],
         peer_group=None,
         peer_size=None,
@@ -536,6 +566,8 @@ async def get_user_shap(user_id: str) -> UserShap:
     _guard_loaded()
 
     # Confirm user exists in scores table first
+    if LIVE_MODE:
+        raise HTTPException(status_code=404, detail="Live AE explanations are not available yet")
     row = store.get_user(user_id)
     if row is None:
         # Cloud user fallback: serve the stored cloud-AE attribution if present
@@ -580,6 +612,17 @@ async def get_stats() -> Stats:
     """
     _guard_loaded()
 
+    if LIVE_MODE:
+        scores = _mode_live_scores()
+        tiers = [_live_risk_tier(row.get('ae_live')) for row in scores]
+        return Stats(
+            total_users=len(scores), high_risk=tiers.count('High'),
+            medium_risk=tiers.count('Medium'), low_risk=tiers.count('Low'),
+            insiders=None, high_threshold=LIVE_HIGH_THRESHOLD,
+            medium_threshold=LIVE_MEDIUM_THRESHOLD, application_mode=ARGUS_MODE,
+            unscored_users=tiers.count('Unknown'),
+        )
+
     try:
         raw = store.get_stats()
     except RuntimeError as exc:
@@ -616,6 +659,7 @@ async def get_stats() -> Stats:
         insiders=insiders,
         high_threshold=raw["high_threshold"],
         medium_threshold=raw["medium_threshold"],
+        application_mode=ARGUS_MODE,
     )
 
 
@@ -632,7 +676,13 @@ async def bulk_import_high_risk() -> dict:
     """
     _guard_loaded()
 
-    result  = store.get_users(risk="High", limit=10_000)
+    if LIVE_MODE:
+        rows = [row for row in _mode_live_scores()
+                if _live_risk_tier(row.get('ae_live')) == 'High']
+        result = {'users': [{'user_id': row['user_id'], 'ae_score': row['ae_live']}
+                            for row in rows], 'total': len(rows)}
+    else:
+        result = store.get_users(risk="High", limit=10_000)
     created, skipped = [], []
 
     for row in result["users"]:
@@ -759,6 +809,9 @@ async def suggest_investigation(user_id: str) -> dict:
     """
     _guard_loaded()
 
+    if LIVE_MODE:
+        raise HTTPException(status_code=503, detail="Live investigation guidance awaits verified AE explanations")
+
     row = store.get_user(user_id)
     if row is not None:
         risk_level = str(row.get("risk", "Low"))
@@ -832,6 +885,9 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     computes a rule-based risk score using the same feature weights as the
     training pipeline's rule_score component.
     """
+    if LIVE_MODE and body.source not in CLOUD_SOURCES:
+        raise HTTPException(status_code=422, detail="Live mode accepts cloud sources only")
+
     # ── Stage 1: Normalize ───────────────────────────────────────────────
     try:
         normalised = normalize(body.event, body.source)
@@ -882,7 +938,7 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
     # ── Stage 7: Persist live scores ─────────────────────────────────────
     evstore.upsert_live_score(
         user_id     = user_id,
-        ae_live     = ae_live if ae_live is not None else 0.0,
+        ae_live     = ae_live if LIVE_MODE else (ae_live if ae_live is not None else 0.0),
         rule_live   = score,
         rarity      = r_score,
         event_count = total_events,
@@ -957,7 +1013,11 @@ async def get_user_events(
     Events are populated by POST /ingest calls — they represent logs that
     have been normalised and stored through the ingestion pipeline.
     """
+    if LIVE_MODE and user_id not in _cloud_source_map():
+        return []
     rows = evstore.get_user_events(user_id, limit=limit)
+    if LIVE_MODE:
+        rows = [row for row in rows if row.get('source') in CLOUD_SOURCES]
     return [LiveEvent(**r) for r in rows]
 
 
@@ -982,7 +1042,8 @@ async def get_live_score(user_id: str) -> LiveScore:
     event_count : all-time event count for this user
     updated_at  : ISO timestamp of last ingest for this user
     """
-    row = evstore.get_live_score(user_id)
+    row = (None if LIVE_MODE and user_id not in _cloud_source_map()
+           else evstore.get_live_score(user_id))
     if row is None:
         return LiveScore(
             user_id     = user_id,

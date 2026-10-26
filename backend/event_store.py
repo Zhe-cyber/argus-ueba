@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Generator
 
-from backend.config import BASE_DIR
+from backend.config import BASE_DIR, LIVE_MODE, LIVE_STATE_DIR
 
 # ---------------------------------------------------------------------------
 # Backend detection
@@ -32,7 +32,7 @@ _PG: bool    = _DB_URL.startswith(("postgresql://", "postgres://"))
 _PH: str     = "%s" if _PG else "?"   # SQL placeholder character
 
 # SQLite path (used only when _PG is False)
-DB_PATH = BASE_DIR / "data" / "events.db"
+DB_PATH = (LIVE_STATE_DIR if LIVE_MODE else BASE_DIR / 'data') / 'events.db'
 
 # DDL differs only in the primary-key column type
 _DDL_EVENTS = """
@@ -309,7 +309,7 @@ def list_event_store_users() -> list[dict[str, Any]]:
 
 def upsert_live_score(
     user_id: str,
-    ae_live: float,
+    ae_live: float | None,
     rule_live: float,
     rarity: float,
     event_count: int,
@@ -334,7 +334,7 @@ def upsert_live_score(
                 event_count = EXCLUDED.event_count,
                 updated_at  = EXCLUDED.updated_at
             """,
-            (str(user_id), float(ae_live), float(rule_live),
+            (str(user_id), float(ae_live) if ae_live is not None else None, float(rule_live),
              float(rarity), int(event_count), now),
         )
 

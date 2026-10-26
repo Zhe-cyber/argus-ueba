@@ -70,17 +70,17 @@ class UserSummary(BaseModel):
     """
 
     user: str
-    ae_score: float
-    risk_level: str = Field(..., description="'High', 'Medium', or 'Low'")
-    is_insider: int = Field(..., ge=0, le=1, description="Ground-truth label: 0 or 1")
-    scenario: int   = Field(..., ge=0, le=3, description="CERT scenario: 0–3")
+    ae_score: Optional[float]
+    risk_level: str = Field(..., description="High, Medium, Low, or Unknown when scoring is unavailable")
+    is_insider: Optional[int] = Field(..., ge=0, le=1, description="Benchmark ground truth; null for live accounts")
+    scenario: Optional[int] = Field(..., ge=0, le=3, description="CERT scenario; null for live accounts")
     data_source: str = Field("cert", description="'cert' or 'cloud'")
     source: Optional[str] = Field(None, description="Specific cloud source, e.g. aws_cloudtrail, azure_ad, github_events, cloudflare_access")
 
     @field_validator("risk_level")
     @classmethod
     def risk_level_must_be_valid(cls, v: str) -> str:
-        allowed = {"High", "Medium", "Low"}
+        allowed = {"High", "Medium", "Low", "Unknown"}
         if v not in allowed:
             raise ValueError(f"risk_level must be one of {allowed}, got {v!r}")
         return v
@@ -134,11 +134,12 @@ class UserDetail(UserSummary):
     peer_deviations: top behavioural deviations vs peer group mean
     """
 
+    application_mode: str = 'benchmark'
     if_score:        float
     rule_score:      float
     wa_score:        float
     lgbm_score:      float = Field(0.0, description="Deprecated; equals ae_score (LightGBM Stage 2 not adopted)")
-    ensemble_score:  float = Field(0.0, description="Alias of ae_score; retained for back-compat (no score fusion)")
+    ensemble_score:  Optional[float] = Field(0.0, description="Alias of ae_score; retained for back-compat (no score fusion)")
     top_features:    List[ShapFeature] = Field(
         default_factory=list,
         description="Top 5 attribution features sorted by absolute value descending",
@@ -185,9 +186,11 @@ class Stats(BaseModel):
     high_risk:        int   = Field(..., ge=0, description="Users at High risk level")
     medium_risk:      int   = Field(..., ge=0, description="Users at Medium risk level")
     low_risk:         int   = Field(..., ge=0, description="Users at Low risk level")
-    insiders:         int   = Field(..., ge=0, description="Ground-truth insider count (is_insider == 1)")
-    high_threshold:   float = Field(..., description="AE score cutoff for High risk (F1-optimal from PR curve)")
-    medium_threshold: float = Field(..., description="AE score cutoff for Medium risk (99th pct of normal users)")
+    insiders:         Optional[int] = Field(..., ge=0, description="Benchmark ground-truth count; null in live mode")
+    high_threshold:   float = Field(..., description="AE cutoff for High risk in the active mode")
+    medium_threshold: float = Field(..., description="AE cutoff for Medium risk in the active mode")
+    application_mode: str = Field('benchmark', description="live, benchmark or demo")
+    unscored_users: int = Field(0, ge=0, description="Accounts without an available AE score")
 
 
 # ---------------------------------------------------------------------------
