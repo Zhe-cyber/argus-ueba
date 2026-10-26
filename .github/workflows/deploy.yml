@@ -2,7 +2,6 @@ name: Deploy
 
 on:
   pull_request:
-    branches: [master]
   push:
     branches: [master]
   workflow_dispatch:   # allow manual trigger from GitHub UI
