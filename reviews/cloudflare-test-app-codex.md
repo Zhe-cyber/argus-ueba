@@ -23,9 +23,11 @@ workers.dev subdomain. Registered the demo subdomain and deployed the Worker and
 exact-email Access app. The provider rejected a future compatibility date; pinned
 2025-01-01 and reran the five provisioning/four Node checks successfully. API
 read-back confirms route enabled, previews disabled, single exact-email policy.
-Public TLS negotiation initially failed in both HTTP clients without weakening
-certificate validation. No login records yet.
+Public TLS negotiation initially failed, then succeeded without weakening
+certificate validation. Cloudflare filtered the default Python client headers
+(edge 1010); ordinary browser request headers returned HTTP 302 to the expected
+Access team. A forged authenticated-email header also returned that login redirect.
+No approved user login records verified yet.
 
-Remaining evidence: unauthenticated HTTP denial/redirect, approved user login and
-corresponding real Access log. These are not yet verified, and no anomaly detection
-or baseline claim is made.
+Remaining evidence: approved user login and corresponding real Access log. These
+are not yet verified, and no anomaly detection or baseline claim is made.

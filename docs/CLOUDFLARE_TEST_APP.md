@@ -43,10 +43,13 @@ https://argus-access-demo.argus-lab-e98718.workers.dev
 
 The provider rejected the current client date as a future compatibility date, so
 the Worker now pins the established `2025-01-01` runtime baseline. Setup succeeded
-after that correction. The public hostname initially failed TLS negotiation from
-both Python and the system HTTP client. Do not bypass TLS validation. Public
-redirect/denial checks and the approved user's login remain pending until HTTPS
-is reachable. The API confirms route enabled, previews disabled and exact policy.
+after that correction. The public hostname initially failed TLS negotiation, then
+became reachable without weakening certificate validation. Default Python client
+headers received Cloudflare edge error 1010; ordinary browser request headers
+received the expected HTTP 302 to the configured Cloudflare Access team. Requests
+with a forged authenticated-email header also received that same login redirect.
+The API confirms route enabled, previews disabled and exact policy. The approved
+user's actual login and resulting authentication record are still pending.
 
 Validation:
 

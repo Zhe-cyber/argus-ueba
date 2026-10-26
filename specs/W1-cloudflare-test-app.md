@@ -34,5 +34,6 @@ credential is required in CI and no deployment trigger is added.
 
 Initial blocker: GET workers/subdomain returned HTTP 403/code 10000; the user's
 token edit later became effective. Deployment and policy verification succeeded.
-Public HTTPS negotiation and the approved user's actual login are still pending.
+Public HTTPS and Access login redirects are verified, including a request with
+a forged identity header. The approved user's actual login is still pending.
 No paid subscription or new DNS zone. Human merges; no production app deployment.
