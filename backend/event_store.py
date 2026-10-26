@@ -14,12 +14,15 @@ Provides:
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import sqlite3
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Generator
+from uuid import uuid4
 
 from backend.config import BASE_DIR, LIVE_MODE, LIVE_STATE_DIR
 
@@ -33,6 +36,11 @@ _PH: str     = "%s" if _PG else "?"   # SQL placeholder character
 
 # SQLite path (used only when _PG is False)
 DB_PATH = (LIVE_STATE_DIR if LIVE_MODE else BASE_DIR / 'data') / 'events.db'
+_ACTIVE_CONNECTION: ContextVar[Any] = ContextVar('event_store_connection', default=None)
+
+
+class EventConflict(ValueError):
+    """A native event key was reused with different content."""
 
 # DDL differs only in the primary-key column type
 _DDL_EVENTS = """
@@ -85,6 +93,10 @@ def _db() -> Generator:
     Context manager that yields an open connection.
     Commits on clean exit, rolls back on exception, always closes.
     """
+    active = _ACTIVE_CONNECTION.get()
+    if active is not None:
+        yield active
+        return
     if _PG:
         import psycopg2
         import psycopg2.extras
@@ -124,6 +136,49 @@ def _rows(cur) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+@contextmanager
+def transaction():
+    """Share one connection/commit across event, scores, alerts and receipt."""
+    if _ACTIVE_CONNECTION.get() is not None:
+        yield
+        return
+    with _db() as con:
+        if not _PG:
+            con.execute('BEGIN IMMEDIATE')
+        token = _ACTIVE_CONNECTION.set(con)
+        try:
+            yield
+        finally:
+            _ACTIVE_CONNECTION.reset(token)
+
+
+def lock_user(user_id: str) -> None:
+    """Serialize same-user scoring across Postgres workers within a transaction."""
+    if _PG:
+        if _ACTIVE_CONNECTION.get() is None:
+            raise RuntimeError('User locks require an ingestion transaction')
+        key = int.from_bytes(hashlib.sha256(user_id.encode()).digest()[:8], 'big', signed=True)
+        with _db() as con:
+            _cursor(con).execute('SELECT pg_advisory_xact_lock(%s)', (key,))
+
+
+@contextmanager
+def savepoint():
+    """Allow a best-effort operation to fail without aborting its transaction."""
+    name = 'argus_' + uuid4().hex
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SAVEPOINT {name}')
+        try:
+            yield
+        except Exception:
+            cur.execute(f'ROLLBACK TO SAVEPOINT {name}')
+            cur.execute(f'RELEASE SAVEPOINT {name}')
+            raise
+        else:
+            cur.execute(f'RELEASE SAVEPOINT {name}')
+
+
 # ---------------------------------------------------------------------------
 # Schema init (called once at startup)
 # ---------------------------------------------------------------------------
@@ -133,6 +188,23 @@ def init_db() -> None:
     with _db() as con:
         cur = _cursor(con)
         cur.execute(_DDL_EVENTS)
+        columns = {
+            'event_id': 'TEXT',
+            'source_account_id': "TEXT NOT NULL DEFAULT ''",
+            'payload_digest': 'TEXT',
+            'pipeline_result': 'TEXT',
+        }
+        if _PG:
+            for name, definition in columns.items():
+                cur.execute(f'ALTER TABLE events ADD COLUMN IF NOT EXISTS {name} {definition}')
+        else:
+            cur.execute('PRAGMA table_info(events)')
+            existing = {row['name'] for row in _rows(cur)}
+            for name, definition in columns.items():
+                if name not in existing:
+                    cur.execute(f'ALTER TABLE events ADD COLUMN {name} {definition}')
+        cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_ev_native_key '
+                    'ON events(source, source_account_id, event_id)')
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_user ON events(\"user\")")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_ts   ON events(ingested_at)")
         cur.execute(_DDL_LIVE_SCORES)
@@ -143,15 +215,24 @@ def init_db() -> None:
 # Write
 # ---------------------------------------------------------------------------
 
-def insert_event(event: dict[str, Any]) -> None:
-    """Persist one normalized event."""
+def _native_key(event: dict) -> tuple:
+    return (event['source'], event.get('source_account_id', ''), event.get('event_id'))
+
+
+def insert_event(event: dict[str, Any]) -> bool:
+    """Insert once per native key; ID-less replay rows are always independent."""
+    event_id = event.get('event_id')
+    digest = hashlib.sha256(json.dumps(event.get('raw', event), sort_keys=True,
+                                      separators=(',', ':')).encode()).hexdigest() if event_id else None
     with _db() as con:
         cur = _cursor(con)
         cur.execute(
             f"""
             INSERT INTO events
-                ("user", timestamp, source, action, resource, ip_address, metadata, ingested_at)
-            VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH})
+                ("user", timestamp, source, action, resource, ip_address, metadata, ingested_at,
+                 event_id, source_account_id, payload_digest)
+            VALUES ({', '.join([_PH] * 11)})
+            ON CONFLICT (source, source_account_id, event_id) DO NOTHING
             """,
             (
                 str(event.get("user", "")),
@@ -162,8 +243,41 @@ def insert_event(event: dict[str, Any]) -> None:
                 str(event.get("ip_address", "")),
                 json.dumps(event.get("metadata", {})),
                 datetime.now(timezone.utc).isoformat(),
+                event_id,
+                event.get('source_account_id', ''),
+                digest,
             ),
         )
+        inserted = cur.rowcount == 1
+        if not inserted:
+            cur.execute(f'SELECT payload_digest FROM events WHERE source={_PH} '
+                        f'AND source_account_id={_PH} AND event_id={_PH}', _native_key(event))
+            if dict(cur.fetchone())['payload_digest'] != digest:
+                raise EventConflict('Native event key already exists with different content')
+        return inserted
+
+
+def get_ingest_result(event: dict) -> dict | None:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SELECT pipeline_result FROM events WHERE source={_PH} '
+                    f'AND source_account_id={_PH} AND event_id={_PH}', _native_key(event))
+        row = cur.fetchone()
+    value = dict(row)['pipeline_result'] if row else None
+    return json.loads(value) if value else None
+
+
+def save_ingest_result(event: dict, result: dict) -> None:
+    """Persist only derived pipeline output, not raw provider payloads."""
+    if event.get('event_id') is None:
+        return
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'UPDATE events SET pipeline_result={_PH} WHERE source={_PH} '
+                    f'AND source_account_id={_PH} AND event_id={_PH}',
+                    (json.dumps(result), *_native_key(event)))
+        if cur.rowcount != 1:
+            raise RuntimeError('Ingestion receipt did not match exactly one event')
 
 
 # ---------------------------------------------------------------------------

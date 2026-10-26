@@ -612,4 +612,19 @@ def normalize(event: dict, source: str) -> dict:
             f"Unknown source {source!r}. "
             f"Valid sources: {sorted(_PARSERS)}"
         )
-    return _PARSERS[source](event)
+    result = _PARSERS[source](event)
+    # Only actual record IDs can identify a retry. Correlation IDs may span
+    # multiple legitimate events; CERT IDs/repeated rows retain replay semantics.
+    native_id = None
+    if source == SOURCE_AWS:
+        native_id = event.get('eventID')
+    elif source == SOURCE_AZURE:
+        native_id = result['metadata'].get('id') or result['metadata'].get('Id')
+    elif source == SOURCE_CF:
+        native_id = event.get('ray_id')
+    elif source == SOURCE_GITHUB:
+        native_id = event.get('id')
+    result['event_id'] = (str(native_id).strip() or None) if (
+        isinstance(native_id, (str, int)) and not isinstance(native_id, bool)
+    ) else None
+    return result
