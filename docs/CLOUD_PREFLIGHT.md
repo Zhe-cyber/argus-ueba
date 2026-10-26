@@ -5,6 +5,11 @@ Update: CLI deployment and non-root collector access now work. See
 coverage and remaining release gates. The initial preflight findings below are
 historical, not the current CLI status.
 
+Cloudflare update: a protected test Worker, approved user sign-in, matching real
+Access authentication log and in-memory shared-schema normalization are verified.
+See [CLOUDFLARE_TEST_APP.md](CLOUDFLARE_TEST_APP.md). This does not establish
+continuous ingestion, baseline sufficiency or anomaly detection.
+
 Status checked 27 October 2026: a local AWS CLI default profile exists, but STS
 rejected its credentials with InvalidClientTokenId. This does not establish whether
 CloudTrail is enabled. No resources or AWS settings were changed. The user currently
