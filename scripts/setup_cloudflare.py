@@ -158,7 +158,8 @@ def provision(api: Cloudflare, email: str, deploy=False, new_subdomain=None):
         subdomain = api.call("PUT", "workers/subdomain", {"subdomain": new_subdomain})["subdomain"]
     host = f"{NAME}.{subdomain}.workers.dev"
     metadata = {
-        "main_module": "worker.mjs", "compatibility_date": "2026-10-27",
+        # Pin an established runtime baseline; the provider rejects future dates.
+        "main_module": "worker.mjs", "compatibility_date": "2025-01-01",
         "bindings": [{"name": "ALLOWED_EMAIL", "type": "plain_text", "text": email}],
     }
     body, content_type = multipart(metadata, (ROOT / "infra/cloudflare-access-demo.mjs").read_text())

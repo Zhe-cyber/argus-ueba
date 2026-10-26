@@ -32,6 +32,7 @@ CI: add the isolated Worker authentication checks to the existing Node job;
 Python provisioning checks run in the existing scripts/tests suite. No cloud
 credential is required in CI and no deployment trigger is added.
 
-Current blocker: GET workers/subdomain returns HTTP 403/code 10000 although Worker
-listing succeeds. Diagnose without broadening permissions automatically. No
-paid subscription or new DNS zone. Human merges; no production app deployment.
+Initial blocker: GET workers/subdomain returned HTTP 403/code 10000; the user's
+token edit later became effective. Deployment and policy verification succeeded.
+Public HTTPS negotiation and the approved user's actual login are still pending.
+No paid subscription or new DNS zone. Human merges; no production app deployment.

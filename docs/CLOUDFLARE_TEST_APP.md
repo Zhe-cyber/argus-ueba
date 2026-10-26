@@ -34,9 +34,19 @@ Then query Access logs through the existing inspection helper. A successful logi
 proves a real authentication record can be collected; it does not prove anomaly
 detection, sufficient baseline history, identity linkage, or in-session telemetry.
 
-Initial preflight on 27 October 2026: Worker listing succeeded with zero Workers,
-but workers/subdomain returned HTTP 403 / code 10000. No cloud resources were
-created by that run. Awaiting token permission recheck or updated local credential.
+Live setup on 27 October 2026: initial token-edit propagation returned HTTP 403;
+a later preflight succeeded and reported no registered subdomain (404/code 10007).
+Registered `argus-lab-e98718.workers.dev`, uploaded `argus-access-demo`, created the
+Access application, verified the single exact-email allow policy and enabled the
+route with preview URLs disabled. URL:
+https://argus-access-demo.argus-lab-e98718.workers.dev
+
+The provider rejected the current client date as a future compatibility date, so
+the Worker now pins the established `2025-01-01` runtime baseline. Setup succeeded
+after that correction. The public hostname initially failed TLS negotiation from
+both Python and the system HTTP client. Do not bypass TLS validation. Public
+redirect/denial checks and the approved user's login remain pending until HTTPS
+is reachable. The API confirms route enabled, previews disabled and exact policy.
 
 Validation:
 

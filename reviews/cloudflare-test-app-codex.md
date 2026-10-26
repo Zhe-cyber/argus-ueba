@@ -18,6 +18,14 @@ the static success page. The native credential loader read the real local token
 without displaying it, and the live preflight stopped at HTTP 403/code 10000 on
 workers/subdomain. No remote resources were created by the preflight.
 
-Remaining evidence: successful setup with corrected authorization, unauthenticated
-HTTP denial/redirect, approved user login and corresponding real Access log. These
-are not yet verified, and no anomaly detection or baseline claim is made.
+Subsequent live setup: permission update became effective; account had no existing
+workers.dev subdomain. Registered the demo subdomain and deployed the Worker and
+exact-email Access app. The provider rejected a future compatibility date; pinned
+2025-01-01 and reran the five provisioning/four Node checks successfully. API
+read-back confirms route enabled, previews disabled, single exact-email policy.
+Public TLS negotiation initially failed in both HTTP clients without weakening
+certificate validation. No login records yet.
+
+Remaining evidence: unauthenticated HTTP denial/redirect, approved user login and
+corresponding real Access log. These are not yet verified, and no anomaly detection
+or baseline claim is made.
