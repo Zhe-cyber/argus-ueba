@@ -1,9 +1,11 @@
 # Cloudflare Access: local CLI authentication
 
 Zero Trust Free enrollment is complete. Read-only live inspection on 27 October
-2026 succeeded: the applications endpoint returned zero records, one identity
+2026 initially succeeded: the applications endpoint returned zero records, one identity
 provider was configured (type `cloudflare`), and the authentication-log endpoint
-returned zero records. There is no protected application or login evidence yet.
+returned zero records. Subsequent setup created a protected application and verified
+a real successful login record and normalization. See
+[CLOUDFLARE_TEST_APP.md](CLOUDFLARE_TEST_APP.md) for current evidence and limits.
 The inspection token is valid and the three required endpoints are accessible.
 Wrangler's available OAuth scopes do not include
 Access audit logs, so use a separate API token for these API calls.
@@ -34,7 +36,7 @@ one-record authentication-log sample. It prints counts only. A zero sample means
 the API returned no records, not that the detector is working. A failure means
 coverage is unverified; a saved valid token may still lack an endpoint permission.
 
-This token cannot provision applications. If an application is absent, use a
+The initial inspection-only permissions cannot provision applications. If an application is absent, use a
 separate temporary setup credential to configure an Access-protected test app and
 an explicit allow policy. The long-running collector should use only **Access:
 Audit Logs Read**. Neither the app nor its policy has been created by this helper.

@@ -35,5 +35,7 @@ credential is required in CI and no deployment trigger is added.
 Initial blocker: GET workers/subdomain returned HTTP 403/code 10000; the user's
 token edit later became effective. Deployment and policy verification succeeded.
 Public HTTPS and Access login redirects are verified, including a request with
-a forged identity header. The approved user's actual login is still pending.
+a forged identity header. Approved user login and the matching successful Access
+log are now verified, including in-memory normalization of the real event without
+storage writes. Continuous collection and detection are separate follow-up work.
 No paid subscription or new DNS zone. Human merges; no production app deployment.

@@ -48,8 +48,24 @@ became reachable without weakening certificate validation. Default Python client
 headers received Cloudflare edge error 1010; ordinary browser request headers
 received the expected HTTP 302 to the configured Cloudflare Access team. Requests
 with a forged authenticated-email header also received that same login redirect.
-The API confirms route enabled, previews disabled and exact policy. The approved
-user's actual login and resulting authentication record are still pending.
+The API confirms route enabled, previews disabled and exact policy.
+
+The user subsequently reached the authenticated success page. The Access API
+returned a matching allowed `login` event with `connection=cloudflare`, timestamp
+`2026-10-26T18:58:36Z` (27 October, 02:58:36 Malaysia time), application/identity
+IDs, country, IP and request ID. The first immediate query returned no record; a
+later query returned it. No latency guarantee is inferred from this observation.
+
+The actual record was normalized in memory through `backend.normalizer.normalize`
+using `cloudflare_access`. All eight shared-schema fields were present; identity,
+action, application, timestamp and IP were preserved, alongside country, request
+ID, provider identity ID and the original raw record. No raw record or personal
+identity/IP value was committed. No database writes or anomaly scores were made.
+
+Verified scope: real protected app -> successful login -> provider authentication
+log -> shared-schema normalization. Continuous ingestion, duplicate-safe storage,
+dashboard detection, baseline sufficiency and cross-provider linking remain
+separate work. The draft PR's backend and frontend CI checks also passed.
 
 Validation:
 

@@ -27,7 +27,15 @@ Public TLS negotiation initially failed, then succeeded without weakening
 certificate validation. Cloudflare filtered the default Python client headers
 (edge 1010); ordinary browser request headers returned HTTP 302 to the expected
 Access team. A forged authenticated-email header also returned that login redirect.
-No approved user login records verified yet.
+The user reported reaching the success page. The API then returned the matching
+allowed login, connection cloudflare, at 2026-10-26T18:58:36Z. The first immediate
+query was empty; the later query returned one matching record. No latency claim.
 
-Remaining evidence: approved user login and corresponding real Access log. These
-are not yet verified, and no anomaly detection or baseline claim is made.
+The real record passed 11 in-memory normalization checks: shared schema, source,
+identity, login action, application, timestamp, IP, request ID, provider user ID,
+country and raw-record preservation. No database writes, raw record persistence
+or anomaly scoring occurred. GitHub backend/frontend CI checks passed.
+
+Remaining product work: continuous collection, idempotent storage, baseline data,
+cross-provider identities and dashboard detection. No anomaly detection or
+baseline claim is made from this authentication test.
