@@ -17,6 +17,9 @@ if ARGUS_MODE not in {'live', 'benchmark', 'demo'}:
     raise ValueError('ARGUS_MODE must be live, benchmark, or demo')
 LIVE_MODE = ARGUS_MODE == 'live'
 DEMO_MODE = ARGUS_MODE == 'demo'
+CLOUD_MODEL_PROFILE = os.getenv('CLOUD_MODEL_PROFILE', 'unverified').strip()
+if CLOUD_MODEL_PROFILE not in {'unverified', 'flaws-cloud-prototype'}:
+    raise ValueError('Unsupported CLOUD_MODEL_PROFILE')
 LIVE_STATE_DIR = Path(os.getenv('LIVE_STATE_DIR', str(BASE_DIR / 'data' / 'live')))
 DATA_DIR   = Path(os.getenv('DATA_DIR', str(BASE_DIR / 'data' / 'processed')))
 DEMO_DIR   = Path(os.getenv('DEMO_DIR', str(BASE_DIR / 'demo')))

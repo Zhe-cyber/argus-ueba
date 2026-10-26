@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
+import ScoringStatusNotice from '@/components/ScoringStatusNotice'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine, ResponsiveContainer,
 } from 'recharts'
@@ -863,6 +864,7 @@ export default function UserDetail() {
           {/* ── Main content ── */}
           {!loading && user && (
             <>
+              {user.application_mode === 'live' && <ScoringStatusNotice status={user.scoring_status} />}
               {/* ── User header card ── */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

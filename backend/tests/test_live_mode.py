@@ -85,6 +85,9 @@ def test_unavailable_model_is_unknown_not_low(live_client, monkeypatch):
     assert detail['ae_score'] is None and detail['risk_level'] == 'Unknown'
     stats = live_client.get('/stats').json()
     assert stats['unscored_users'] == stats['total_users'] == 1
+    assert stats['scoring_status']['status'] == 'missing_artifacts'
+    assert stats['scoring_status']['model_ready'] is False
+    assert detail['scoring_status'] == stats['scoring_status']
     assert stats['low_risk'] == 0
     assert live_client.get('/users/cloud-alice/live-score').json()['ae_live'] is None
 

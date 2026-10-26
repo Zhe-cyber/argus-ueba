@@ -501,6 +501,7 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
     return UserDetail(
         user=user_id,
         application_mode=ARGUS_MODE,
+        scoring_status=cloud_ae_scorer.readiness() if LIVE_MODE else None,
         ae_score=round(ae_live, 6) if ae_live is not None else None,
         risk_level=risk_level,
         is_insider=None if LIVE_MODE else 0,
@@ -623,6 +624,7 @@ async def get_stats() -> Stats:
             insiders=None, high_threshold=LIVE_HIGH_THRESHOLD,
             medium_threshold=LIVE_MEDIUM_THRESHOLD, application_mode=ARGUS_MODE,
             unscored_users=tiers.count('Unknown'),
+            scoring_status=cloud_ae_scorer.readiness(),
         )
 
     try:

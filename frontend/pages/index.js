@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { fetchUsers, fetchStats } from '@/lib/api'
+import ScoringStatusNotice from '@/components/ScoringStatusNotice'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -19,6 +20,7 @@ const RISK_STYLE = {
 }
 
 const STAT_STYLE = {
+  Unknown: { bg: 'bg-slate-50', border: 'border-slate-200', label: 'text-slate-500', value: 'text-slate-700', pct: 'text-slate-400' },
   total:  { bg: 'bg-slate-50',  border: 'border-slate-200', label: 'text-slate-500', value: 'text-slate-800', pct: 'text-slate-400' },
   High:   { bg: 'bg-red-50',    border: 'border-red-200',   label: 'text-red-500',   value: 'text-red-700',   pct: 'text-red-400'   },
   Medium: { bg: 'bg-amber-50',  border: 'border-amber-200', label: 'text-amber-500', value: 'text-amber-700', pct: 'text-amber-400' },
@@ -220,14 +222,17 @@ export default function Dashboard() {
             </div>
           )}
 
+          {stats?.application_mode === 'live' && <ScoringStatusNotice status={stats.scoring_status} />}
+
           {/* ── Stats bar ── */}
           {stats && (
             <section aria-label="Risk summary">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatCard label="Total Users" count={stats.total_users} styleKey="total" />
+              <div className={`grid grid-cols-2 ${stats.application_mode === 'live' ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-4`}>
+                <StatCard label={stats.application_mode === 'live' ? 'Observed Accounts' : 'Total Users'} count={stats.total_users} styleKey="total" />
                 <StatCard label="High Risk"   count={stats.high_risk}   pct={pct(stats.high_risk)}   styleKey="High" />
                 <StatCard label="Medium Risk" count={stats.medium_risk} pct={pct(stats.medium_risk)} styleKey="Medium" />
                 <StatCard label="Low Risk"    count={stats.low_risk}    pct={pct(stats.low_risk)}    styleKey="Low" />
+                {stats.application_mode === 'live' && <StatCard label="Unscored" count={stats.unscored_users} pct={pct(stats.unscored_users)} styleKey="Unknown" />}
               </div>
             </section>
           )}
@@ -240,7 +245,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-700">
-                    {filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`}
+                    {stats?.application_mode === 'live' ? 'Account Risk Overview' : (filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`)}
                   </h2>
                   {!loading && !error && (
                     <p className="text-xs text-slate-400 mt-0.5">
