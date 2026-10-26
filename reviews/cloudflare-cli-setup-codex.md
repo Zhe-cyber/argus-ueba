@@ -13,5 +13,8 @@ Verified with isolated temporary LOCALAPPDATA and mocked Invoke-RestMethod:
 
 The checks caught a trailing newline in encrypted credential reload; trimming the
 encrypted string fixed the round-trip. No real token or remote settings used in
-these checks. Live verification remains pending user authentication. Credential
+these mocked checks. Subsequent live verification on 27 October 2026 succeeded
+using the user's locally saved token: zero application and authentication-log
+samples, one identity provider (type cloudflare). No raw identity/log record or
+token was printed. Live cloud inspection was read-only. Credential
 decryption is accessible to processes running under the same Windows user.

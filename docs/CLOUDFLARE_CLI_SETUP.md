@@ -1,7 +1,11 @@
 # Cloudflare Access: local CLI authentication
 
-Zero Trust Free enrollment is complete. Access applications and usable login logs
-have not yet been verified. Wrangler's available OAuth scopes do not include
+Zero Trust Free enrollment is complete. Read-only live inspection on 27 October
+2026 succeeded: the applications endpoint returned zero records, one identity
+provider was configured (type `cloudflare`), and the authentication-log endpoint
+returned zero records. There is no protected application or login evidence yet.
+The inspection token is valid and the three required endpoints are accessible.
+Wrangler's available OAuth scopes do not include
 Access audit logs, so use a separate API token for these API calls.
 
 1. Open https://dash.cloudflare.com/profile/api-tokens and create a custom **user
