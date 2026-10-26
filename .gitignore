@@ -18,6 +18,7 @@ ml/models/
 # SQLite (local dev only — production uses PostgreSQL)
 data/events.db
 data/events/
+data/live/
 
 # Local build / intermediate artifacts (poster, diagram, doc unpacking)
 _logos/

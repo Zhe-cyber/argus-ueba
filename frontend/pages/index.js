@@ -15,6 +15,7 @@ const RISK_STYLE = {
   High:   { badge: 'bg-red-100 text-red-700 ring-1 ring-red-300',   dot: 'bg-red-500'   },
   Medium: { badge: 'bg-amber-100 text-amber-700 ring-1 ring-amber-300', dot: 'bg-amber-500' },
   Low:    { badge: 'bg-green-100 text-green-700 ring-1 ring-green-300', dot: 'bg-green-500' },
+  Unknown: { badge: 'bg-slate-100 text-slate-700 ring-1 ring-slate-300', dot: 'bg-slate-400' },
 }
 
 const STAT_STYLE = {
@@ -203,6 +204,22 @@ export default function Dashboard() {
 
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
+          {stats?.application_mode && (
+            <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+              <strong>{stats.application_mode === 'live' ? 'Live cloud monitoring' : 'Benchmark exploration'}</strong>
+              <p className="mt-1 text-xs">
+                {stats.application_mode === 'live'
+                  ? 'Accounts observed in cloud events. No benchmark users or ground-truth attack labels are loaded.'
+                  : 'Includes evaluation data. Benchmark labels and results do not establish live cloud detection accuracy.'}
+              </p>
+              {stats.unscored_users > 0 && (
+                <p className="mt-1 text-xs font-semibold" role="status">
+                  {stats.unscored_users} account(s) have no AE score available. Unknown risk requires review.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* ── Stats bar ── */}
           {stats && (
             <section aria-label="Risk summary">
@@ -263,7 +280,7 @@ export default function Dashboard() {
 
                   {/* Source filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Source filter">
-                    {SOURCE_FILTERS.map((s) => (
+                    {SOURCE_FILTERS.filter((s) => stats?.application_mode !== 'live' || s !== 'CERT').map((s) => (
                       <button
                         key={s}
                         onClick={() => setSourceFilter(s)}
@@ -282,7 +299,7 @@ export default function Dashboard() {
                   </div>
                   {/* Risk filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Risk filter">
-                    {RISK_FILTERS.map((f) => (
+                    {(stats?.application_mode === 'live' ? [...RISK_FILTERS, 'Unknown'] : RISK_FILTERS).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFilter(f)}
@@ -318,11 +335,11 @@ export default function Dashboard() {
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 w-12">#</th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User ID</th>
                           <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
-                              title="Raw autoencoder reconstruction error. Scale differs by detector (CERT vs Cloud), so compare by Risk Level, not raw score.">
+                              title="AE anomaly score. Scores from different models or sources are not directly comparable.">
                             Risk Score
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
-                              title="Calibrated per detector — CERT High threshold ≈ 0.066, Cloud High ≈ 0.70. This is the comparable signal across sources.">
+                              title="Operational risk tier, not a probability of compromise. Live thresholds remain provisional.">
                             Risk Level
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Source</th>
@@ -397,6 +414,9 @@ export default function Dashboard() {
 // ---------------------------------------------------------------------------
 
 function ScoreBar({ score, risk }) {
+  if (score == null) {
+    return <span className="text-xs text-slate-500">Unavailable</span>
+  }
   const pct = Math.round(score * 100)
 
   const trackColor =

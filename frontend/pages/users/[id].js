@@ -15,6 +15,7 @@ const RISK_STYLE = {
   High:   { badge: 'bg-red-100 text-red-700 ring-1 ring-red-300',   dot: 'bg-red-500',    score: 'text-red-600'   },
   Medium: { badge: 'bg-amber-100 text-amber-700 ring-1 ring-amber-300', dot: 'bg-amber-500',  score: 'text-amber-600' },
   Low:    { badge: 'bg-green-100 text-green-700 ring-1 ring-green-300', dot: 'bg-green-500',  score: 'text-green-600' },
+  Unknown: { badge: 'bg-slate-100 text-slate-700 ring-1 ring-slate-300', dot: 'bg-slate-400', score: 'text-slate-600' },
 }
 
 const SCORE_CARDS = [
@@ -448,7 +449,7 @@ function NotFound({ id, onBack }) {
 // Investigation panel
 // ---------------------------------------------------------------------------
 
-function InvestigationPanel({ userId, initial }) {
+function InvestigationPanel({ userId, initial, guidanceAvailable = true }) {
   const [inv,        setInv]        = useState(initial)
   const [status,     setStatus]     = useState(initial?.status        ?? 'Pending')
   const [analyst,    setAnalyst]    = useState(initial?.analyst       ?? '')
@@ -618,7 +619,7 @@ function InvestigationPanel({ userId, initial }) {
             </div>
             <button
               onClick={handleSuggest}
-              disabled={suggesting}
+              disabled={suggesting || !guidanceAvailable}
               className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5
                          text-xs font-semibold text-white hover:bg-indigo-700
                          disabled:opacity-50 transition-colors"
@@ -706,8 +707,9 @@ function InvestigationPanel({ userId, initial }) {
           ) : (
             <div className="rounded-lg border border-dashed border-slate-200 px-4 py-5
                             text-center text-xs text-slate-400">
-              Click &quot;Get AI Suggestion&quot; to query multiple AI models in parallel
-              and synthesise a unified investigation guide.
+              {guidanceAvailable
+                ? 'Request AI-assisted investigation guidance for human review.'
+                : 'AI guidance is unavailable for live accounts. Review the recorded activity and investigate manually.'}
             </div>
           )}
         </div>
@@ -909,7 +911,7 @@ export default function UserDetail() {
                         </span>
                         <div className="text-[10px] text-slate-400 text-right space-y-0.5">
                           {/* Arrow showing direction vs static */}
-                          {liveScore.ae_live != null && (
+                          {liveScore.ae_live != null && user.data_source !== 'cloud' && (
                             <span className={`font-semibold ${
                               liveScore.ae_live > user.ae_score
                                 ? 'text-red-500'
@@ -933,7 +935,7 @@ export default function UserDetail() {
                         AE Score
                       </span>
                       <span className={`text-5xl font-bold tabular-nums leading-none ${riskStyle.score}`}>
-                        {user.ae_score.toFixed(3)}
+                        {user.ae_score != null ? user.ae_score.toFixed(3) : 'Unavailable'}
                       </span>
                       {/* Thin full-width score bar */}
                       <div className="w-40 h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -958,7 +960,7 @@ export default function UserDetail() {
               {/* ── Score breakdown row ── */}
               <section aria-label="Score breakdown">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {SCORE_CARDS.map(({ key, label, title, primary }) => (
+                  {SCORE_CARDS.filter((card) => user.data_source !== 'cloud' || card.primary).map(({ key, label, title, primary }) => (
                     <ScoreCard
                       key={key}
                       label={label}
@@ -970,7 +972,7 @@ export default function UserDetail() {
                 </div>
                 <p className="mt-2 text-xs text-slate-400">
                   ★ AE Score = Autoencoder reconstruction error, the final detector.
-                  Weighted-Avg, IF and Rule scores are shown for research comparison only.
+                  {user.data_source !== 'cloud' && ' Weighted-Avg, IF and Rule scores are shown for research comparison only.'}
                 </p>
               </section>
 
@@ -1064,7 +1066,7 @@ export default function UserDetail() {
               <LiveActivityFeed events={events} loading={eventsLoading} />
 
               {/* ── Investigation panel ── */}
-              <InvestigationPanel userId={id} initial={invRec} />
+              <InvestigationPanel userId={id} initial={invRec} guidanceAvailable={user.application_mode !== 'live'} />
 
             </>
           )}
