@@ -49,6 +49,20 @@ def test_empty_live_startup_without_benchmark_files(live_client):
     assert live_client.get('/users').json()['users'] == []
 
 
+def test_reading_clue_replay_does_not_seed_or_score_live_accounts(live_client, monkeypatch, tmp_path):
+    from backend.tests.test_clue_replay import write_bundle
+    root = tmp_path / 'replay'
+    write_bundle(root)
+    monkeypatch.setenv('CLUE_REPLAY_DIR', str(root))
+    before = live_client.get('/stats').json()
+    assert live_client.get('/replay/clue/rows').json()['total'] == 3
+    assert live_client.get('/replay/clue/metadata').json()['available'] is True
+    assert live_client.get('/stats').json() == before
+    assert live_client.get('/users').json()['total'] == 0
+    assert event_store.list_event_store_users() == []
+    assert event_store.get_all_live_scores() == []
+
+
 def test_cloud_ingest_to_list_detail_stats_and_investigation(live_client):
     response = live_client.post('/ingest', json=cloud_event())
     assert response.status_code == 200

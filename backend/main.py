@@ -54,6 +54,7 @@ from backend.models import (
     UserSummary,
 )
 from backend.normalizer import normalize
+from backend.clue_replay import router as clue_replay_router
 from backend.rarity_scorer import compute_rarity_flags, rarity_score as calc_rarity_score
 
 # ---------------------------------------------------------------------------
@@ -110,6 +111,7 @@ app = FastAPI(
     ),
     version=API_VERSION,
 )
+app.include_router(clue_replay_router)
 
 # ---------------------------------------------------------------------------
 # CORS — controlled via ALLOWED_ORIGINS env var.

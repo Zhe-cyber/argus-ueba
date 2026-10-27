@@ -75,6 +75,17 @@ const NAV = [
 export default function AppLayout({ children }) {
   const router = useRouter()
   const [openAlerts, setOpenAlerts] = useState(0)
+  const [applicationMode, setApplicationMode] = useState(null)
+  const isReplay = router.pathname === '/clue'
+
+  useEffect(() => {
+    let active = true
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    fetch(`${API}/stats`).then(r => r.ok ? r.json() : null).then(data => {
+      if (active && data) setApplicationMode(data.application_mode)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   const pollAlerts = useCallback(async () => {
     try {
@@ -118,7 +129,7 @@ export default function AppLayout({ children }) {
 
           {/* Nav links */}
           <nav className="flex items-center gap-0.5">
-            {NAV.map(({ href, label, exact, badge, icon }) => {
+            {NAV.filter(item => isReplay ? item.href === '/' : item.href !== '/demo' || applicationMode !== 'live').map(({ href, label, exact, badge, icon }) => {
               const active = exact
                 ? router.pathname === href
                 : router.pathname.startsWith(href)
@@ -149,11 +160,10 @@ export default function AppLayout({ children }) {
 
           {/* Live indicator */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className={`h-2 w-2 rounded-full ${isReplay ? 'bg-indigo-400' : 'bg-slate-400'}`} />
+            <span className="text-xs text-slate-300 font-medium hidden sm:inline">
+              {isReplay ? 'Offline benchmark' : applicationMode === 'live' ? 'Connected sources' : applicationMode ? 'Benchmark / demo' : 'Checking mode'}
             </span>
-            <span className="text-xs text-emerald-500 font-medium hidden sm:inline">Live</span>
           </div>
 
         </div>
