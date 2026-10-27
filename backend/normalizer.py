@@ -123,7 +123,8 @@ def parse_aws_cloudtrail(event: dict) -> dict:
     )
 
     metadata: dict = {}
-    for key in ("eventID", "eventSource", "awsRegion", "userAgent", "errorCode", "errorMessage"):
+    for key in ("eventID", "eventSource", "awsRegion", "userAgent", "errorCode", "errorMessage",
+                "requestID", "eventCategory", "readOnly"):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
