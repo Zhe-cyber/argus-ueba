@@ -7,6 +7,12 @@ are separate from the existing 12-feature cloud checkpoint. Existing artifact
 metadata are not a complete record of the exact code/data used for training.
 Both existing checkpoints remain untouched and the live instance stays unscored.
 
+Public-data follow-up: see PUBLIC_CLOUD_DATA_AUDIT.md. The Ariel release's benign
+base has short per-principal history and unresolved reuse terms; it has not been
+admitted to this training path. CLUE-LDS is a preliminary behavioural benchmark
+candidate requiring a source-specific adapter/feature review, not fabricated AWS
+lab provenance. Neither dataset changes the audited-lab input gate below.
+
 ## Legacy findings
 
 * build_cloud_dataset.py labels Level5/Level6 attacker and all remaining identities
