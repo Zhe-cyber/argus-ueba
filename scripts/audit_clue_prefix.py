@@ -9,7 +9,7 @@ import struct
 import zlib
 
 
-def inspect(path):
+def prefix_lines(path):
     path = Path(path)
     if not 30 <= path.stat().st_size <= 8 * 1024 * 1024:
         raise ValueError('Expected a ZIP prefix of at most 8 MiB')
@@ -25,10 +25,15 @@ def inspect(path):
     lines = data.splitlines()
     if not data.endswith(b'\n'):
         lines = lines[:-1]  # Ignore the final incomplete JSON line.
+    return payload, data, lines[:100_000]
+
+
+def inspect(path):
+    payload, data, lines = prefix_lines(path)
     dates, actions, kinds, named_days = Counter(), Counter(), Counter(), Counter()
     ids, named_users, fields = set(), set(), Counter()
     first, last, count = None, None, 0
-    for line in lines[:100_000]:
+    for line in lines:
         if len(line) > 256 * 1024:
             raise ValueError('Oversized JSON line')
         event = json.loads(line)
