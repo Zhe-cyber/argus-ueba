@@ -1,8 +1,11 @@
 # Controlled users and a compromised-account scenario
 
-Proposed evaluation, not an implemented or completed experiment. The current
-real integration uses the owner's cloud accounts. It does not yet create five
-distinct people, run an AI agent swarm, or provide cross-provider person scores.
+Partially implemented evaluation. The bounded AWS actor harness now provisions
+six restricted machine principals and seven private synthetic fixture buckets;
+see ACTOR_LAB.md for execution and native-audit verification. This is not a
+completed detection experiment: training, calibration and held-out evaluation
+remain pending. It does not create six distinct people, run an AI agent swarm,
+or provide cross-provider person scores.
 
 The user's idea fits Argus: create several regular routines, then change one
 existing account's behaviour while its credentials remain valid. A newly created
@@ -62,6 +65,14 @@ the mapping and aggregation path is implemented and tested.
    when making a performance claim. Existing CERT results do not establish accuracy
    on the new real-cloud stream.
 
+The connected database also contains root/setup, CloudFormation and collector
+activity. It is an evidence store, not an automatically approved training set.
+Build a separate training export using verified actor identities, provider time
+windows and audited successful normal runs. Preserve partial/failed-run records
+for traceability, but exclude them from accepted-run datasets unless separately
+reviewed. Record inclusion/exclusion counts and data hashes. Do not train on the
+entire setup backlog or evaluate on the same events used for fitting/calibration.
+
 Provider audit timestamps must stay genuine. Fast generation is still a short
 real collection period; it does not create weeks of baseline history. Any
 time-shifted replay must run separately, be labelled replay, and never be mixed
@@ -75,8 +86,9 @@ repeat results across seeds/routines rather than tuning one dramatic example.
 
 ## Execution limits
 
-Before running, finish duplicate-safe collectors, source coverage indicators and
-identity mappings. Use explicit action/target allow-lists, maximum calls per run,
+For the AWS-only harness, require duplicate-safe collection and verified scoped
+audit coverage. Cross-provider person-level experiments additionally require
+identity mappings and source coverage indicators. Use explicit action/target allow-lists, maximum calls per run,
 bounded concurrency and a stop condition. No root runtime credentials, production
 data, destructive cloud actions or unrestricted autonomous tool use. Begin with
 one-shot scripts; a future scheduled experiment needs explicit scheduling consent.

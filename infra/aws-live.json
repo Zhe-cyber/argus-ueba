@@ -2,8 +2,11 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Argus management-event collection: CloudTrail, EventBridge and SQS. No application compute.",
   "Parameters": {
-    "CollectorUser": {"Type": "String", "AllowedPattern": "[A-Za-z0-9+=,.@_-]+", "Description": "Existing IAM collector user"}
+    "CollectorUser": {"Type": "String", "AllowedPattern": "[A-Za-z0-9+=,.@_-]+", "Description": "Existing IAM collector user"},
+    "EnableSimulationData": {"Type": "String", "Default": "false", "AllowedValues": ["false", "true"]},
+    "SimulationStack": {"Type": "String", "Default": "argus-ueba-actors", "AllowedPattern": "argus-[a-z0-9-]{1,17}"}
   },
+  "Conditions": {"SimulationDataEnabled": {"Fn::Equals": [{"Ref": "EnableSimulationData"}, "true"]}},
   "Resources": {
     "AuditBucket": {
       "Type": "AWS::S3::Bucket", "DeletionPolicy": "Retain", "UpdateReplacePolicy": "Retain",
@@ -36,7 +39,21 @@
         "TrailName": {"Fn::Sub": "${AWS::StackName}-trail"},
         "S3BucketName": {"Ref": "AuditBucket"}, "IsLogging": true,
         "IsMultiRegionTrail": false, "IncludeGlobalServiceEvents": true, "EnableLogFileValidation": true,
-        "EventSelectors": [{"IncludeManagementEvents": true, "ReadWriteType": "All", "ExcludeManagementEventSources": ["kms.amazonaws.com", "rdsdata.amazonaws.com"]}],
+        "EventSelectors": [
+          {"IncludeManagementEvents": true, "ReadWriteType": "All", "ExcludeManagementEventSources": ["kms.amazonaws.com", "rdsdata.amazonaws.com"]},
+          {"Fn::If": ["SimulationDataEnabled", {
+            "IncludeManagementEvents": false, "ReadWriteType": "ReadOnly",
+            "DataResources": [{"Type": "AWS::S3::Object", "Values": [
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p01/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p02/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p03/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p04/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p05/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-p06/"},
+              {"Fn::Sub": "arn:${AWS::Partition}:s3:::${SimulationStack}-${AWS::AccountId}-confidential/"}
+            ]}]
+          }, {"Ref": "AWS::NoValue"}]}
+        ],
         "Tags": [{"Key": "Project", "Value": "Argus"}]
       }
     },
