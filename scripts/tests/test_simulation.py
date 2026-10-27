@@ -9,10 +9,60 @@ from types import SimpleNamespace
 import pytest
 
 from scripts import audit_simulation as audit, run_simulation as runner, setup_simulation as setup
+from scripts import recover_simulation as recovery
 from scripts.simulation_lab import FIXTURE, PERSONAS, buckets, build_template
 
 ACCOUNT, STACK = '123456789012', 'argus-ueba-actors'
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_import_template_has_static_names_and_preserves_scope():
+    template = build_template(ACCOUNT, STACK)['Resources']
+    assert template['RunnerUser']['Properties']['UserName'] == STACK + '-runner'
+    for i, bucket in enumerate(buckets(ACCOUNT, STACK), 1):
+        assert template[f'Bucket{i:02d}']['Properties']['BucketName'] == bucket
+        assert template[f'Bucket{i:02d}']['DeletionPolicy'] == 'Retain'
+    for i, persona in enumerate(PERSONAS, 1):
+        assert template[f'Persona{i:02d}']['Properties']['RoleName'] == STACK + '-' + persona
+
+
+@pytest.mark.parametrize('fault', [None, 'active_stack', 'foreign_stack', 'unknown_resource',
+                                   'non_retained', 'foreign_bucket', 'keyed_user', 'existing_role'])
+def test_recovery_inspects_only_owned_retained_unkeyed_resources(monkeypatch, fault):
+    import boto3
+    tags = [{'Key': 'Project', 'Value': 'Argus'}, {'Key': 'Purpose', 'Value': 'SyntheticLab'}]
+    calls = []
+    class CFN:
+        def describe_stacks(self, **kwargs):
+            return {'Stacks': [{'StackId': 'failed-stack', 'StackStatus': 'CREATE_COMPLETE' if fault == 'active_stack' else 'ROLLBACK_COMPLETE',
+                                'Tags': [] if fault == 'foreign_stack' else tags}]}
+        def list_stack_resources(self, **kwargs):
+            return {'StackResourceSummaries': [{'LogicalResourceId': 'Unknown' if fault == 'unknown_resource' else 'Bucket01',
+                     'PhysicalResourceId': buckets(ACCOUNT, STACK)[0],
+                     'ResourceStatus': 'CREATE_COMPLETE' if fault == 'non_retained' else 'DELETE_SKIPPED'},
+                     {'LogicalResourceId': 'RunnerUser', 'PhysicalResourceId': STACK + '-runner', 'ResourceStatus': 'DELETE_SKIPPED'}]}
+        def delete_stack(self, **kwargs):
+            calls.append('delete')
+            pytest.fail('Inspection must never delete a stack')
+    class S3:
+        def list_buckets(self): return {'Buckets': [{'Name': buckets(ACCOUNT, STACK)[0]}]}
+        def get_bucket_tagging(self, **kwargs): return {'TagSet': [] if fault == 'foreign_bucket' else tags}
+        def head_bucket(self, **kwargs):
+            error = RuntimeError()
+            error.response = {'ResponseMetadata': {'HTTPStatusCode': 404}}
+            raise error
+    class IAM:
+        def get_user(self, **kwargs): return {'User': {'Arn': f'arn:aws:iam::{ACCOUNT}:user/argus-lab/{STACK}-runner', 'Tags': tags}}
+        def list_access_keys(self, **kwargs): return {'AccessKeyMetadata': [{}] if fault == 'keyed_user' else []}
+        def list_roles(self, **kwargs): return {'Roles': [{'RoleName': STACK + '-' + PERSONAS[0]}] if fault == 'existing_role' else []}
+    monkeypatch.setattr(recovery, 'aws', lambda profile, region, *args: {'Account': ACCOUNT} if args[0] == 'sts' else
+                        {'AccessKeyId': 'dummy', 'SecretAccessKey': 'dummy'})
+    monkeypatch.setattr(boto3, 'Session', lambda **kwargs: SimpleNamespace(client=lambda name: {'cloudformation': CFN, 's3': S3, 'iam': IAM}[name]()))
+    if fault:
+        with pytest.raises(ValueError): recovery.recover(ACCOUNT, STACK, apply=True)
+    else:
+        assert recovery.recover(ACCOUNT, STACK) == {'retained_buckets': 1, 'unkeyed_runner': True, 'resource_deletions': 0, 'applied': False}
+    assert not calls
 
 
 @pytest.fixture
@@ -152,6 +202,18 @@ def test_failure_preserves_private_checkpoint_without_secret_output(monkeypatch,
     saved = json.loads(paths[0].read_text())
     assert saved['status'] == 'failed' and saved['results'][0]['status'] == 'ok'
     assert 'DUMMYSECRET' not in capsys.readouterr().err + paths[0].read_text()
+
+
+def test_windows_delete_share_lock_does_not_require_replacing_manifest(monkeypatch, cloud, tmp_path):
+    monkeypatch.setattr(runner, 'ROOT', tmp_path)
+    monkeypatch.setattr('sys.argv', ['run_simulation', '--account-id', ACCOUNT, '--execute'])
+    monkeypatch.setattr(Path, 'replace', lambda *args: (_ for _ in ()).throw(PermissionError('simulated indexer lock')))
+    assert runner.main() == 0
+    path = next((tmp_path / 'data/live/experiments').glob('*/manifest.json'))
+    assert json.loads(path.read_text())['status'] == 'completed'
+    snapshots = list(path.parent.glob('checkpoint-*.json'))
+    assert len(snapshots) > 19
+    assert json.loads(max(snapshots).read_text())['status'] == 'completed'
 
 
 def test_audit_requires_matching_native_evidence_not_merely_api_success(monkeypatch, cloud, tmp_path):

@@ -13,6 +13,7 @@ from pathlib import Path
 import random
 import re
 import sys
+import time
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -120,7 +121,7 @@ def execute(plan, profile, trail_name, baseline=None, baseline_audit=None, froze
         if not frozen_model:
             raise ValueError('Freeze a trained/calibrated cloud model before held-out execution')
         check_frozen_model(frozen_model)
-    config = Config(retries={'total_max_attempts': 1, 'mode': 'standard'}, connect_timeout=5, read_timeout=10)
+    config = Config(retries={'total_max_attempts': 1, 'mode': 'standard'}, connect_timeout=5, read_timeout=30)
     session = boto3.Session(profile_name=profile, region_name=REGION)
     sts = session.client('sts', config=config)
     caller = sts.get_caller_identity()
@@ -210,11 +211,24 @@ def main():
         directory = ROOT / 'data/live/experiments' / run_id
         directory.mkdir(parents=True, exist_ok=False)
         path = directory / 'manifest.json'
+        checkpoint_number = 0
         def save(value):
+            nonlocal checkpoint_number
             value['run_id'] = run_id
-            temporary = directory / 'manifest.tmp'
-            temporary.write_text(json.dumps(value, indent=2), encoding='utf-8')
-            temporary.replace(path)
+            serialized = json.dumps(value, indent=2)
+            checkpoint_number += 1
+            # Windows indexers can deny delete-sharing, making os.replace fail.
+            # Retain immutable snapshots before updating the convenience manifest.
+            with (directory / f'checkpoint-{checkpoint_number:04d}.json').open('x', encoding='utf-8') as handle:
+                handle.write(serialized)
+            for attempt in range(4):
+                try:
+                    path.write_text(serialized, encoding='utf-8')
+                    break
+                except PermissionError:
+                    if attempt == 3:
+                        raise
+                    time.sleep(0.05)
         save({**plan, 'mode': 'execution_requested', 'status': 'preflight', 'results': []})
         result = execute(plan, args.profile, args.trail, args.baseline_manifest,
                          args.baseline_audit, args.frozen_model_manifest, progress=save)
@@ -222,12 +236,18 @@ def main():
                           'actions': len(result['results']), 'manifest': str(path),
                           'audit_logs': 'pending provider delivery; collect and verify separately'}))
         return 0
-    except Exception:
+    except Exception as error:
         if path is not None and path.is_file():
-            saved = json.loads(path.read_text())
-            saved['status'] = 'failed'
-            saved['stopped_at'] = datetime.now(timezone.utc).isoformat()
-            path.write_text(json.dumps(saved, indent=2), encoding='utf-8')
+            try:
+                saved = json.loads(path.read_text())
+                saved['status'] = 'failed'
+                saved['failure_type'] = type(error).__name__
+                saved['stopped_at'] = datetime.now(timezone.utc).isoformat()
+                path.write_text(json.dumps(saved, indent=2), encoding='utf-8')
+            except (OSError, ValueError):
+                # Immutable snapshots remain available even if the convenience
+                # manifest is locked or incomplete. Never mask the safe failure.
+                pass
         print('Simulation stopped. Check dry-run plan, lab identity, audit coverage and prerequisite manifests. No credentials or provider response bodies displayed.', file=sys.stderr)
         return 1
 

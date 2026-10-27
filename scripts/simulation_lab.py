@@ -26,7 +26,9 @@ def role_arn(account, stack, persona):
     return f'arn:aws:iam::{account}:role/argus-lab/{stack}-{persona}'
 
 
-def build_template():
+def build_template(account=None, stack=None):
+    if account is not None:
+        validate_scope(account, stack)
     resources = {}
     bucket_refs, object_refs = [], []
     for index in range(1, 8):
@@ -87,7 +89,7 @@ def build_template():
                 'Tags': [{'Key': 'Project', 'Value': 'Argus'}, {'Key': 'Purpose', 'Value': 'SyntheticLab'}],
             },
         }
-    return {
+    template = {
         'AWSTemplateFormatVersion': '2010-09-09',
         'Description': 'Argus synthetic-only activity lab: 6 machine roles, 7 private fixture buckets. No app/model deployment.',
         'Parameters': {'TrailName': {'Type': 'String', 'Default': 'argus-ueba-live-trail',
@@ -100,3 +102,10 @@ def build_template():
             **{f'Bucket{i:02d}Name': {'Value': {'Ref': f'Bucket{i:02d}'}} for i in range(1, 8)},
         },
     }
+    if account is not None:
+        for i, bucket in enumerate(buckets(account, stack), 1):
+            template['Resources'][f'Bucket{i:02d}']['Properties']['BucketName'] = bucket
+        template['Resources']['RunnerUser']['Properties']['UserName'] = stack + '-runner'
+        for i, persona in enumerate(PERSONAS, 1):
+            template['Resources'][f'Persona{i:02d}']['Properties']['RoleName'] = stack + '-' + persona
+    return template

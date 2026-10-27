@@ -1,8 +1,11 @@
 # Controlled users and a compromised-account scenario
 
-Proposed evaluation, not an implemented or completed experiment. The current
-real integration uses the owner's cloud accounts. It does not yet create five
-distinct people, run an AI agent swarm, or provide cross-provider person scores.
+Partially implemented evaluation. The bounded AWS actor harness now provisions
+six restricted machine principals and seven private synthetic fixture buckets;
+see ACTOR_LAB.md for execution and native-audit verification. This is not a
+completed detection experiment: training, calibration and held-out evaluation
+remain pending. It does not create six distinct people, run an AI agent swarm,
+or provide cross-provider person scores.
 
 The user's idea fits Argus: create several regular routines, then change one
 existing account's behaviour while its credentials remain valid. A newly created

@@ -47,3 +47,11 @@ baseline-manifest validation. Run all tests with sqlite-local; validate the
 CloudFormation template and execute only after setup authentication is available.
 Do not claim multiple real cloud humans, weeks of data, AE accuracy, production
 readiness, full multi-cloud identity linking or an implemented LLM agent swarm.
+
+Recovery follow-up: support only exact retained task-owned resources from a
+ROLLBACK_COMPLETE create failure, with unkeyed runner/no existing actor roles.
+Default to inspection; explicit recovery deletes only the failed stack record
+and auto-imports retained resources via static names. Converge imported storage
+safeguards and the bootstrap policy. Preserve failed experiment manifests and
+immutable progress snapshots to tolerate Windows file replacement locks.
+Test recovery refusal conditions and run the full isolated regression suite.

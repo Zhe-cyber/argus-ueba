@@ -60,6 +60,11 @@ checks fixture metadata/size/content, and stops on failure. Private progress is
 checkpointed under gitignored data/live/experiments/RUN/manifest.json, including
 request IDs and stable lab principals, never credentials or downloaded contents.
 An interrupted/failed manifest is not accepted as a completed normal baseline.
+Each progress update first saves an exclusive, numbered checkpoint file, then
+updates manifest.json with bounded retries. This avoids Windows delete-sharing
+locks on file replacement and retains prior snapshots if the latest write fails.
+The convenience manifest is not an atomic-write guarantee; a partial/corrupt
+manifest must not be accepted by the audit gate.
 
 Normal actor 03 reads the synthetic confidential archive legitimately; actor 05
 is a benign volume control. Persona 06 starts with its own normal routine. Later
@@ -96,3 +101,24 @@ CONTROLLED_EVALUATION.md.
 
 Run `python -m pytest scripts/tests/test_simulation.py -q` for isolated safety and
 evidence-correlation tests. No fake/native provider events are sent by those tests.
+
+## Recovery and current deployment
+
+On 27 October 2026, the lab and scoped data-event logging were provisioned in the
+owned AWS account. The separate simulator profile was verified; the temporary
+setup login was logged out. One normal run completed all 19 reads across six
+principals after two interrupted runs. Failed manifests remain private and are
+excluded from completed-baseline evidence. Native audit delivery is checked
+separately; API success alone is not proof of complete telemetry or enough model
+history. No holdout/transition run, model training or activation has occurred.
+
+The initial CloudFormation create failed and retained six buckets and an unkeyed
+runner user. `scripts/recover_simulation.py` defaults to inspection. Its explicit
+`--apply` path accepts only the owned ROLLBACK_COMPLETE lab with exact recorded,
+DELETE_SKIPPED resources, matching ownership tags, an unkeyed user and no actor
+roles. It removes the failed stack record while retaining resources, then uses
+a static-name CloudFormation auto-import change set limited to Add/Import.
+It does not repair arbitrary failed stacks or delete bucket contents/users.
+Setup subsequently converges imported bucket safeguards and the runner policy;
+the lifecycle request includes an explicit empty-prefix filter. Do not rerun
+recovery against the now healthy stack.

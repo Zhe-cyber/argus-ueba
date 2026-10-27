@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from scripts.setup_aws import aws
-from scripts.simulation_lab import FIXTURE, FIXTURE_KEY, PERSONAS, REGION, buckets, role_arn, validate_scope
+from scripts.simulation_lab import FIXTURE, FIXTURE_KEY, PERSONAS, REGION, buckets, build_template, role_arn, validate_scope
 
 TEMPLATE = ROOT / 'infra/aws-simulation.json'
 LIVE_TEMPLATE = ROOT / 'infra/aws-live.json'
@@ -140,15 +140,42 @@ def setup(args):
         raise ValueError('Refusing to replace existing unrelated data-event coverage')
     for template in (TEMPLATE, LIVE_TEMPLATE):
         aws(args.profile, REGION, 'cloudformation', 'validate-template', '--template-body', 'file://' + str(template))
-    deploy(args.profile, TEMPLATE, args.stack, ['TrailName=' + args.live_stack + '-trail'])
+    descriptor, rendered_path = tempfile.mkstemp(prefix='argus-lab-template-', suffix='.json')
+    try:
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as handle:
+            json.dump(build_template(args.account_id, args.stack), handle)
+        deploy(args.profile, Path(rendered_path), args.stack, ['TrailName=' + args.live_stack + '-trail'])
+    finally:
+        os.unlink(rendered_path)
     assert_owned_stack(args.profile, args.stack, expected, json.loads(TEMPLATE.read_text())['Resources'])
     # Use a short-lived CLI-exported setup session in memory, never an argument/file.
     session_data = aws(args.profile, REGION, 'configure', 'export-credentials', '--format', 'process')
     import boto3
+    iam = boto3.client('iam', region_name=REGION, aws_access_key_id=session_data['AccessKeyId'],
+                       aws_secret_access_key=session_data['SecretAccessKey'], aws_session_token=session_data.get('SessionToken'))
+    try:
+        # Import does not reconcile properties; converge only this lab user's exact policy.
+        iam.put_user_policy(UserName=args.stack + '-runner', PolicyName='AssumeOnlyLabRolesAndCheckAudit',
+                            PolicyDocument=json.dumps({'Version': '2012-10-17', 'Statement': [
+                                {'Effect': 'Allow', 'Action': ['sts:AssumeRole'], 'Resource': report['machine_roles']},
+                                {'Effect': 'Allow', 'Action': ['cloudtrail:GetEventSelectors', 'cloudtrail:GetTrailStatus'],
+                                 'Resource': f'arn:aws:cloudtrail:{REGION}:{args.account_id}:trail/{args.live_stack}-trail'},
+                            ]}))
+    finally:
+        iam.close()
     s3 = boto3.client('s3', region_name=REGION, aws_access_key_id=session_data['AccessKeyId'],
                       aws_secret_access_key=session_data['SecretAccessKey'], aws_session_token=session_data.get('SessionToken'))
     try:
         for bucket in report['synthetic_buckets']:
+            # Also converge retained/imported lab buckets to the declared safeguards.
+            s3.put_public_access_block(Bucket=bucket, PublicAccessBlockConfiguration=dict.fromkeys(
+                ['BlockPublicAcls', 'BlockPublicPolicy', 'IgnorePublicAcls', 'RestrictPublicBuckets'], True))
+            s3.put_bucket_ownership_controls(Bucket=bucket, OwnershipControls={'Rules': [{'ObjectOwnership': 'BucketOwnerEnforced'}]})
+            s3.put_bucket_encryption(Bucket=bucket, ServerSideEncryptionConfiguration={
+                'Rules': [{'ApplyServerSideEncryptionByDefault': {'SSEAlgorithm': 'AES256'}}]})
+            s3.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration={
+                'Rules': [{'ID': 'ExpireSyntheticFixture', 'Status': 'Enabled',
+                           'Filter': {'Prefix': ''}, 'Expiration': {'Days': 30}}]})
             try:
                 existing = s3.head_object(Bucket=bucket, Key=FIXTURE_KEY)
             except s3.exceptions.ClientError as error:
