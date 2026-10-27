@@ -53,7 +53,26 @@ def plan_today(account, stack):
         actions.append({**row, 'action_id': hashlib.sha256(identity.encode()).hexdigest(),
                         'bucket': targets[row['symbolic_bucket']]})
     return {**plan, 'profile_sha256': digest, 'account_id': account, 'stack': stack,
-            'actions': actions, 'created_at_utc': now.isoformat()}
+            'actions': actions, 'created_at_utc': now.isoformat(), 'purpose': 'controlled_lab_history'}
+
+
+def commissioning_plan(account, stack, created_at=None):
+    """One fixed probe, explicitly excluded from baseline; at most once per ledger."""
+    plan = plan_today(account, stack)
+    instant = created_at if created_at is not None else utc_now()
+    now = utc_now()
+    if instant.tzinfo is None or not timedelta(0) <= now - instant <= GRACE:
+        raise ValueError('Commissioning request is stale or in the future')
+    if instant.astimezone(MALAYSIA).date().isoformat() != plan['date_local']:
+        raise ValueError('Commission only on the current local date')
+    identity = f"{plan['profile_sha256']}|commissioning-v1|{account}|{stack}"
+    action = {'persona': PERSONAS[0], 'ordinal': 0, 'planned_local': instant.astimezone(MALAYSIA).isoformat(),
+              'planned_utc': instant.astimezone(timezone.utc).isoformat(), 'operation': 'GetObject',
+              'symbolic_bucket': 'p01', 'bucket': buckets(account, stack)[0], 'key': FIXTURE_KEY,
+              'status': 'planned_not_executed', 'purpose': 'commissioning_exclude_from_baseline',
+              'action_id': hashlib.sha256(identity.encode()).hexdigest()}
+    return {**plan, 'purpose': 'commissioning_exclude_from_baseline', 'created_at_utc': instant.isoformat(),
+            'actions': [action], 'planned_actions': 1, 'planned_idle': []}
 
 
 @contextmanager
@@ -114,9 +133,10 @@ def status(db, day):
             'reserved_sdk_calls_today': db.execute('SELECT coalesce(sum(reserved_calls),0) FROM runs WHERE day=?', (day,)).fetchone()[0]}
 
 
-def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-live-trail'):
+def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-live-trail', commissioning=False):
     # Regenerate from shipped profile, never execute caller-supplied targets/actions.
-    expected = plan_today(plan['account_id'], plan['stack'])
+    expected = (commissioning_plan(plan['account_id'], plan['stack'], datetime.fromisoformat(plan['created_at_utc']))
+                if commissioning else plan_today(plan['account_id'], plan['stack']))
     if any(plan.get(k) != v for k, v in expected.items() if k != 'created_at_utc'):
         raise ValueError('Plan changed; no calls performed')
     if trail_name != 'argus-ueba-live-trail':
@@ -124,7 +144,7 @@ def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-l
     with ledger(Path(state_dir) / 'ledger.db') as db:
         due, reserved = claim(db, expected)
         if not due:
-            return {'status': 'no_due_actions', 'new_actions': 0, **status(db, plan['date_local'])}
+            return {'status': 'no_due_actions', 'new_actions': 0, 'purpose': expected['purpose'], **status(db, plan['date_local'])}
         import boto3
         from botocore.config import Config
         config = Config(retries={'total_max_attempts': 1, 'mode': 'standard'},
@@ -207,7 +227,8 @@ def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-l
                             body.close()
             finally:
                 s3.close()
-        return {'status': 'api_calls_completed_audit_pending', 'new_actions': len(due), **status(db, plan['date_local'])}
+        return {'status': 'api_calls_completed_audit_pending', 'new_actions': len(due),
+                'purpose': expected['purpose'], **status(db, plan['date_local'])}
 
 
 def audit(state_dir, event_database):
@@ -249,21 +270,22 @@ def main():
     parser.add_argument('--profile', default='argus-simulator')
     parser.add_argument('--state-dir', type=Path, default=ROOT / 'data/live/persona-history-v1')
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--commissioning-probe', action='store_true', help='One fixed fixture read, excluded from baseline, claimed once per ledger')
     parser.add_argument('--audit-events', type=Path, help='Audit existing receipts against a local native events.db; no cloud calls')
     args = parser.parse_args()
     try:
         if args.audit_events:
-            if args.execute:
+            if args.execute or args.commissioning_probe:
                 raise ValueError('Audit and execution are separate operations')
             print(json.dumps(audit(args.state_dir, args.audit_events)))
             return 0
-        plan = plan_today(args.account_id, args.stack)
+        plan = commissioning_plan(args.account_id, args.stack) if args.commissioning_probe else plan_today(args.account_id, args.stack)
         if not args.execute:
             print(json.dumps({'mode': 'offline_plan', 'date_local': plan['date_local'],
                               'planned_actions': len(plan['actions']), 'profile_sha256': plan['profile_sha256'],
                               'executed': False}))
         else:
-            print(json.dumps(execute(plan, args.state_dir, args.profile)))
+            print(json.dumps(execute(plan, args.state_dir, args.profile, commissioning=args.commissioning_probe)))
         return 0
     except Exception:
         print('History runner stopped. Check ledger, scoped lab identity, audit coverage and budget. Unknown attempts require review; no provider details displayed.', file=sys.stderr)

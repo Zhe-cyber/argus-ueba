@@ -15,6 +15,18 @@ python scripts/run_persona_history.py --account-id YOUR_ACCOUNT
 python scripts/run_persona_history.py --account-id YOUR_ACCOUNT --state-dir YOUR_CANONICAL_PRIVATE_HISTORY_DIR --execute
 ```
 
+For the initial source-to-ingestion check before a normal action is due, use
+`--commissioning-probe --execute` with the same canonical state directory. This
+performs one fixed persona-01 `GetObject` on its own synthetic fixture, claimed
+at most once across the ledger lifetime. It uses all the normal scope/audit/
+budget guards and reserves five calls (three preflight, one role assumption,
+one read). The ledger purpose is `commissioning_exclude_from_baseline`: this
+must be excluded when constructing normal fit/calibration/evaluation datasets
+by matching the recorded native request IDs. This is an integration probe, not
+a normal day, an attack scenario or detection evidence. The default command
+never switches to commissioning mode automatically. Do not reset the ledger
+to repeat it. Failed/uncertain probes retain the same no-auto-retry policy.
+
 The first command only describes today's offline plan. It does not create state
 or call a provider. The second executes only actions planned within the previous
 15 minutes on the current **Malaysia calendar date**. There is no date override,
@@ -80,7 +92,7 @@ planned idle day, plan count or scenario flag is training evidence.
 
 ## Validation on 28 October 2026
 
-Local backend/script regression suite: 239 passed, one optional PostgreSQL test
+Local backend/script regression suite: 241 passed, one optional PostgreSQL test
 skipped. Runner tests use fake providers and temporary ledgers, including
 concurrent claims, stale days, changed targets, duplicate invocations, budgets,
 failure uncertainty and native-evidence matching. Existing fixed simulation

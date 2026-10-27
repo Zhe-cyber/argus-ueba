@@ -116,6 +116,34 @@ def test_missed_actions_are_not_backfilled(clock, provider, tmp_path):
     assert provider.calls == []
 
 
+def test_commissioning_is_fixed_one_read_excluded_and_claimed_once(clock, provider, tmp_path):
+    plan = history.commissioning_plan(ACCOUNT, STACK)
+    with pytest.raises(ValueError, match='Plan changed'):
+        history.execute(plan, tmp_path)
+    assert provider.calls == []
+    result = history.execute(plan, tmp_path, commissioning=True)
+    assert result['new_actions'] == 1
+    assert result['purpose'] == 'commissioning_exclude_from_baseline'
+    assert len(provider.calls) == 5
+    assert provider.calls[-1][0] == 'get_object'
+    assert provider.calls[-1][1]['Bucket'] == buckets(ACCOUNT, STACK)[0]
+    clock.now += timedelta(days=1)
+    assert history.execute(history.commissioning_plan(ACCOUNT, STACK), tmp_path, commissioning=True)['status'] == 'no_due_actions'
+    assert len(provider.calls) == 5
+
+
+def test_commissioning_tamper_and_stale_request_fail_before_cloud(clock, provider, tmp_path):
+    plan = history.commissioning_plan(ACCOUNT, STACK)
+    plan['actions'][0]['bucket'] = 'production'
+    with pytest.raises(ValueError, match='Plan changed'):
+        history.execute(plan, tmp_path, commissioning=True)
+    plan = history.commissioning_plan(ACCOUNT, STACK)
+    clock.now += timedelta(minutes=16)
+    with pytest.raises(ValueError, match='stale'):
+        history.execute(plan, tmp_path, commissioning=True)
+    assert provider.calls == []
+
+
 @pytest.mark.parametrize('fault', ['root', 'logging', 'covered', 'fail', 'retry'])
 def test_uncertain_failure_is_durable_and_never_retried(clock, provider, tmp_path, fault):
     setattr(provider, fault, fault not in ('logging', 'covered'))
