@@ -160,7 +160,7 @@ def test_uncertain_failure_is_durable_and_never_retried(clock, provider, tmp_pat
 def test_budget_rollback_and_scope_pinning(clock, tmp_path):
     plan = due_plan(clock)
     with history.ledger(tmp_path / 'ledger.db') as db:
-        db.execute('INSERT INTO runs VALUES(?,?,?)', ('earlier', plan['date_local'], 64))
+        db.execute('INSERT INTO runs VALUES(?,?,?)', ('earlier', plan['date_local'], history.MAX_DAY_CALLS))
         db.commit()
         with pytest.raises(ValueError, match='budget'):
             history.claim(db, plan)
@@ -196,6 +196,17 @@ def test_old_day_is_rejected_without_ledger_claims(clock, tmp_path):
         with pytest.raises(ValueError, match='another local date'):
             history.claim(db, plan)
         assert db.execute('SELECT count(*) FROM actions').fetchone()[0] == 0
+
+
+def test_pilot_plans_fit_reservations_even_when_every_action_is_separate():
+    from datetime import date
+    from scripts.persona_history_plan import make_plan
+    profiles = json.loads(history.PROFILE.read_text())
+    counts = [len(make_plan(profiles, date(2026, 10, 28) + timedelta(days=i))['actions']) for i in range(28)]
+    # Each separate invocation: identity + two audit reads + assume + S3.
+    # Include the one-time five-call commissioning probe conservatively.
+    assert max(counts) * 5 + 5 <= history.MAX_DAY_CALLS
+    assert sum(counts) * 5 + 5 <= history.MAX_PILOT_CALLS
 
 
 def test_audit_requires_native_identity_request_action_resource_and_no_error(clock, provider, tmp_path):

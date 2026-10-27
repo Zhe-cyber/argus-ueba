@@ -23,7 +23,7 @@ from scripts.run_simulation import audit_coverage, METHODS
 from scripts.simulation_lab import FIXTURE, FIXTURE_KEY, PERSONAS, REGION, buckets, role_arn, validate_scope
 
 PROFILE = Path(__file__).with_name('persona_profiles_v1.json')
-MAX_RUN_CALLS, MAX_DAY_CALLS, MAX_PILOT_CALLS = 48, 64, 1792
+MAX_RUN_CALLS, MAX_DAY_CALLS, MAX_PILOT_CALLS = 48, 128, 1792
 GRACE = timedelta(minutes=15)
 
 

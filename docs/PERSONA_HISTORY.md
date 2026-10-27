@@ -51,7 +51,7 @@ requires explicit review and a versioned experiment protocol.
 - Each role uses a neutral session name. Scenario/provenance labels stay in the
   private ledger, outside provider records and detector inputs.
 - At most five planned actions per role/day; reserve at most 48 SDK calls/run,
-  64/day and 1,792 across the ledger's pilot. Reservations include STS/preflight
+  128/day and 1,792 across the ledger's pilot. Reservations include STS/preflight
   and role assumptions and remain consumed after failures. Client retries are
   limited; a `before-send` guard also bounds HTTP attempts, including redirects.
 - SQLite serialises claims and budget reservations before I/O. A crash can leave
@@ -61,6 +61,14 @@ requires explicit review and a versioned experiment protocol.
 - Fixture metadata/content and maximum size are checked on object reads; errors
   stop the invocation. Credentials/provider error bodies are never printed or
   persisted. The state directory still contains private account/resource IDs.
+
+The daily reservation ceiling was raised from 64 to 128 before regular pilot
+execution: repeated identity/audit/role calls count toward it even when the S3
+action count is small. Offline plans for 28 October–24 November contain at most
+21 actions/day and 326 actions total. Even with each action in a separate
+five-call invocation plus the five-call commissioning probe, reservations are
+at most 110/day and 1,635 for that window. The 48/run and 1,792/pilot limits,
+profile hash, per-role action cap, permissions and toy resources are unchanged.
 
 ## Receipt audit and history provenance
 
