@@ -2,8 +2,13 @@
 train_cloud_ae.py — Train a cloud-native Autoencoder on AWS/Azure/GitHub logs.
 
 Reads the cloud_features.parquet produced by build_cloud_dataset.py,
-trains a PyTorch autoencoder on NORMAL user behavior, and saves the model to
+trains a PyTorch autoencoder on legacy assumed-normal rows, and saves the model to
 ml/models/cloud_ae_v1.pt + ml/models/cloud_scaler_v1.pkl.
+
+LEGACY EXPERIMENT: identity-derived normal labels are unverified, and validation
+is reused for calibration. Do not use this path as validated live-cloud training.
+The audited replacement workflow is scripts/train_verified_cloud.py. The model
+builder below is shared to preserve the frozen serving architecture.
 
 The AE learns what "normal" cloud API behavior looks like. At inference
 time, unusual behavior (privilege escalation, data exfiltration, off-hours
