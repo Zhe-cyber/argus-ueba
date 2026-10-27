@@ -108,9 +108,11 @@ On 27 October 2026, the lab and scoped data-event logging were provisioned in th
 owned AWS account. The separate simulator profile was verified; the temporary
 setup login was logged out. One normal run completed all 19 reads across six
 principals after two interrupted runs. Failed manifests remain private and are
-excluded from completed-baseline evidence. Native audit delivery is checked
-separately; API success alone is not proof of complete telemetry or enough model
-history. No holdout/transition run, model training or activation has occurred.
+excluded from completed-baseline evidence. After collecting the setup backlog,
+all 19 successful requests matched native CloudTrail records by request ID,
+principal, operation and bucket; the private audit reports complete. This proves
+delivery for this run, not enough model history or detection accuracy. No
+holdout/transition run, model training or activation has occurred.
 
 The initial CloudFormation create failed and retained six buckets and an unkeyed
 runner user. `scripts/recover_simulation.py` defaults to inspection. Its explicit

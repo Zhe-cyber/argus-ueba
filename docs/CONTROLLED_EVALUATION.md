@@ -65,6 +65,14 @@ the mapping and aggregation path is implemented and tested.
    when making a performance claim. Existing CERT results do not establish accuracy
    on the new real-cloud stream.
 
+The connected database also contains root/setup, CloudFormation and collector
+activity. It is an evidence store, not an automatically approved training set.
+Build a separate training export using verified actor identities, provider time
+windows and audited successful normal runs. Preserve partial/failed-run records
+for traceability, but exclude them from accepted-run datasets unless separately
+reviewed. Record inclusion/exclusion counts and data hashes. Do not train on the
+entire setup backlog or evaluate on the same events used for fitting/calibration.
+
 Provider audit timestamps must stay genuine. Fast generation is still a short
 real collection period; it does not create weeks of baseline history. Any
 time-shifted replay must run separately, be labelled replay, and never be mixed
@@ -78,8 +86,9 @@ repeat results across seeds/routines rather than tuning one dramatic example.
 
 ## Execution limits
 
-Before running, finish duplicate-safe collectors, source coverage indicators and
-identity mappings. Use explicit action/target allow-lists, maximum calls per run,
+For the AWS-only harness, require duplicate-safe collection and verified scoped
+audit coverage. Cross-provider person-level experiments additionally require
+identity mappings and source coverage indicators. Use explicit action/target allow-lists, maximum calls per run,
 bounded concurrency and a stop condition. No root runtime credentials, production
 data, destructive cloud actions or unrestricted autonomous tool use. Begin with
 one-shot scripts; a future scheduled experiment needs explicit scheduling consent.
