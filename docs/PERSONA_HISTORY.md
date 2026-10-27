@@ -101,8 +101,22 @@ tests remain unchanged.
 A separate real readiness check made three read-only AWS calls and confirmed the
 exact non-root runner, logging enabled and selectors for exactly seven toy
 buckets. At 06:52 Malaysia time the due-only runner correctly returned no due
-actions, with zero actor calls. A real due-action/receipt round trip is **not yet
-validated**. No scheduler, compatible live model or model activation was added.
+actions, with zero actor calls.
+
+Later on 28 October, the explicit commissioning path made one real `GetObject`
+read under persona-01, reserving five SDK calls in the same canonical ledger.
+After bounded collection caught up the queue, receipt audit verified exactly
+one native CloudTrail data event against the stored request ID, principal,
+operation, source account and toy bucket. A read-only check of the original
+private CloudTrail/S3 log independently located the event. That source-log check
+did not inject records; the matched record arrived through the existing queue
+collector and ingestion receipts. The probe is commissioning activity, excluded
+from normal baselines; it establishes plumbing, not detector performance.
+
+The initial queue backlog and intermittent bounded collection mean this is not
+a controlled delivery-latency measurement. Normal scheduled history execution
+and complete-day coverage remain unvalidated. No scheduler, compatible live
+model or model activation was added.
 
 Next evaluation gates: reviewed normal-history provenance and coverage; sufficient
 chronological development/calibration observations; a compatible feature contract;
