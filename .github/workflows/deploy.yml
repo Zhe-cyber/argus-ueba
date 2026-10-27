@@ -50,6 +50,23 @@ jobs:
           DATABASE_URL: "sqlite-local"
           ARGUS_TEST_PG_URL: "postgresql://postgres:argus-test-only@127.0.0.1:55432/argus_ingest_test"
 
+  cloud-training:
+    name: Verify offline cloud training
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned CPU training environment
+        run: |
+          pip install --quiet -r scripts/requirements-cloud-training.txt pytest boto3
+          pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch==2.12.0
+      - name: Verify audited export and training isolation
+        run: python -m pytest scripts/tests/test_verified_cloud_training.py -v --tb=short
+        env:
+          DATABASE_URL: "sqlite-local"
+
   frontend:
     name: Build frontend
     runs-on: ubuntu-latest
