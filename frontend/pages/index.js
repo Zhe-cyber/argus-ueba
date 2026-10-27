@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import DashboardViews from '@/components/DashboardViews'
 import { fetchUsers, fetchStats } from '@/lib/api'
 import ScoringStatusNotice from '@/components/ScoringStatusNotice'
 
@@ -205,6 +206,7 @@ export default function Dashboard() {
       </Head>
 
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <DashboardViews />
 
           {stats?.application_mode && (
             <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
