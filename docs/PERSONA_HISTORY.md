@@ -1,5 +1,7 @@
 # Controlled persona history pilot
 
+> Current automatic pilot uses the separately versioned daily machine-workload profile V2 and [LIVE_EVALUATION_PROTOCOL_V2.md](LIVE_EVALUATION_PROTOCOL_V2.md). V1 remains frozen as a historical sparse generator. Do not reset the shared ledger or call budgets when changing its profile binding.
+
 This adds a separate due-only runner for the six existing toy-S3 machine roles.
 It does not change the fixed simulation runner, cloud permissions, ingestion,
 normalisation, model contracts or live scores. Profile parameters are illustrative,

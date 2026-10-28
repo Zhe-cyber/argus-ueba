@@ -202,7 +202,7 @@ def test_pilot_plans_fit_reservations_even_when_every_action_is_separate():
     from datetime import date
     from scripts.persona_history_plan import make_plan
     profiles = json.loads(history.PROFILE.read_text())
-    counts = [len(make_plan(profiles, date(2026, 10, 28) + timedelta(days=i))['actions']) for i in range(28)]
+    counts = [len(make_plan(profiles, date(2026, 10, 29) + timedelta(days=i))['actions']) for i in range(16)]
     # Each separate invocation: identity + two audit reads + assume + S3.
     # Include the one-time five-call commissioning probe conservatively.
     assert max(counts) * 5 + 5 <= history.MAX_DAY_CALLS

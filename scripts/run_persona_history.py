@@ -22,7 +22,7 @@ from scripts.persona_history_plan import make_plan, MALAYSIA
 from scripts.run_simulation import audit_coverage, METHODS
 from scripts.simulation_lab import FIXTURE, FIXTURE_KEY, PERSONAS, REGION, buckets, role_arn, validate_scope
 
-PROFILE = Path(__file__).with_name('persona_profiles_v1.json')
+PROFILE = Path(__file__).with_name('persona_profiles_v2.json')
 MAX_RUN_CALLS, MAX_DAY_CALLS, MAX_PILOT_CALLS = 48, 128, 1792
 GRACE = timedelta(minutes=15)
 
@@ -35,7 +35,7 @@ def plan_today(account, stack):
     validate_scope(account, stack)
     raw = PROFILE.read_bytes()
     profiles = json.loads(raw)
-    if (profiles.get('schema') != 'argus_offline_persona_draft_v1'
+    if (profiles.get('schema') != 'argus_controlled_workload_v2'
             or tuple(p['id'] for p in profiles['personas']) != PERSONAS
             or profiles['max_sdk_calls_per_run'] != MAX_RUN_CALLS
             or profiles['reserved_preflight_and_role_calls'] != 9

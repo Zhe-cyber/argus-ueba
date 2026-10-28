@@ -21,7 +21,8 @@ MY = timezone(timedelta(hours=8))
 API = 'http://127.0.0.1:8013'
 BACKEND_TASK = 'Argus-Pilot-Backend'
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-PROFILE_SHA = '98bf9d641823d7764e510f3ff944c365f109ca9941349bf3f51788f92a74566b'
+LEGACY_PROFILE_SHA = '98bf9d641823d7764e510f3ff944c365f109ca9941349bf3f51788f92a74566b'
+PROFILE_SHA = '150529b73fa71ac75eab06b162ad4bc913d7d0a19e3ff52c009d60ef3ba3899c'
 RUNTIME_SCRIPTS = ('local_pilot.py', 'run_persona_history.py', 'persona_history_plan.py',
                    'run_simulation.py', 'simulation_lab.py', 'collect_live.py', 'setup_cloudflare.py')
 if str(ROOT) not in sys.path:
@@ -50,7 +51,7 @@ def atomic_json(path, value):
 def pinned_sources():
     files = [p for p in (ROOT / 'backend').rglob('*.py') if 'tests' not in p.parts]
     files += [ROOT / 'scripts' / name for name in RUNTIME_SCRIPTS]
-    files += [ROOT / 'scripts/persona_profiles_v1.json', ROOT / 'infra/aws-live.json', ROOT / 'infra/aws-simulation.json']
+    files += [ROOT / 'scripts/persona_profiles_v1.json', ROOT / 'scripts/persona_profiles_v2.json', ROOT / 'infra/aws-live.json', ROOT / 'infra/aws-simulation.json']
     init = ROOT / 'scripts/__init__.py'
     if init.exists():
         files.append(init)
@@ -67,9 +68,9 @@ def read_scope(ledger_dir):
 
 
 def validate(cfg):
-    if (cfg.get('schema') != 'argus_local_pilot_v1' or Path(cfg['source_root']).resolve() != ROOT
+    if (cfg.get('schema') != 'argus_local_pilot_v2' or Path(cfg['source_root']).resolve() != ROOT
             or cfg.get('api') != API or cfg.get('actor_start') != '2026-10-29'
-            or cfg.get('end_local') != '2026-11-24' or cfg.get('repo') != 'Zhe-cyber/argus-ueba'
+            or cfg.get('end_local') != '2026-11-14' or cfg.get('actor_end') != '2026-11-13' or cfg.get('repo') != 'Zhe-cyber/argus-ueba'
             or cfg.get('stack') != 'argus-ueba-actors' or re.fullmatch('[0-9a-f]{32}', cfg.get('runtime_id', '')) is None
             or re.fullmatch('[0-9]{12}', cfg.get('account_id', '')) is None):
         raise ValueError('Unsupported pilot scope')
@@ -99,7 +100,8 @@ def validate(cfg):
     if cf is not None and (not isinstance(cf, dict) or re.fullmatch('[0-9a-f]{32}', cf.get('account', '')) is None
                            or re.fullmatch('[0-9a-f-]{36}', cf.get('app_id', '')) is None):
         raise ValueError('Invalid Cloudflare app scope')
-    if cfg.get('source_hashes') != pinned_sources() or sha(ROOT / 'scripts/persona_profiles_v1.json') != PROFILE_SHA:
+    if (cfg.get('source_hashes') != pinned_sources() or sha(ROOT / 'scripts/persona_profiles_v2.json') != PROFILE_SHA
+            or sha(ROOT / 'scripts/persona_profiles_v1.json') != LEGACY_PROFILE_SHA):
         raise ValueError('Pinned runtime source changed')
     return cfg
 
@@ -186,7 +188,7 @@ def tick(cfg, now=None):
                                                     '--queue-url', cfg['queue_url'], '--profile', 'argus-collector', '--batches', '5'])
     unknown = unknown_claims(cfg)
     actor_day = (now if fixed_clock else now_utc()).astimezone(MY).date().isoformat()
-    if actor_day > cfg['end_local']:
+    if actor_day > cfg['actor_end']:
         phases['actors'] = {'ok': True, 'status': 'pilot_expired'}
     elif actor_day < cfg['actor_start']:
         phases['actors'] = {'ok': True, 'status': 'starts_2026_10_29'}
@@ -306,12 +308,12 @@ def initialize(live_dir, config_path):
                 cf_status = 'configured_existing_app'
     except Exception:
         cf_status = 'existing_scope_or_credential_unavailable'
-    cfg = {'schema': 'argus_local_pilot_v1', 'source_root': str(ROOT), 'python': str(Path(sys.executable).with_name('python.exe')),
+    cfg = {'schema': 'argus_local_pilot_v2', 'source_root': str(ROOT), 'python': str(Path(sys.executable).with_name('python.exe')),
            'pythonw': str(Path(sys.executable).with_name('pythonw.exe')), 'gh': shutil.which('gh'),
            'state_dir': str(state), 'connected_dir': str(live / 'connected'), 'ledger_dir': str(live / 'persona-history-v1'),
            'account_id': account, 'stack': stack, 'queue_url': queue, 'api': API,
            'repo': 'Zhe-cyber/argus-ueba', 'cloudflare': cf, 'cloudflare_setup_status': cf_status,
-           'actor_start': '2026-10-29', 'end_local': '2026-11-24', 'runtime_id': uuid4().hex,
+           'actor_start': '2026-10-29', 'actor_end': '2026-11-13', 'end_local': '2026-11-14', 'runtime_id': uuid4().hex,
            'source_hashes': pinned_sources()}
     validate(cfg)
     state.mkdir(parents=True, exist_ok=False)

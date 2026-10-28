@@ -49,7 +49,7 @@ def make_plan(profiles, day):
     reserved = profiles['reserved_preflight_and_role_calls']
     if len(rows) + reserved > min(profiles['max_sdk_calls_per_run'], 64):
         raise ValueError('Total request budget exceeded')
-    return {'schema': 'argus_offline_plan_draft_v1', 'date_local': day.isoformat(),
+    return {'schema': ('argus_controlled_workload_plan_v2' if profiles.get('schema') == 'argus_controlled_workload_v2' else 'argus_offline_plan_draft_v1'), 'date_local': day.isoformat(),
             'parameter_provenance': profiles['parameter_provenance'], 'executed': False,
             'provider_events_created': 0, 'planned_actions': len(rows),
             'reserved_sdk_calls': reserved, 'actions': rows, 'planned_idle': idle,
@@ -59,8 +59,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--date', required=True, type=date.fromisoformat)
     parser.add_argument('--out', required=True, type=Path)
+    parser.add_argument('--profile-version', choices=['1', '2'], default='1')
     args = parser.parse_args()
-    raw = (HERE / 'persona_profiles_v1.json').read_bytes()
+    raw = (HERE / f'persona_profiles_v{args.profile_version}.json').read_bytes()
     profiles = json.loads(raw)
     plan = make_plan(profiles, args.date)
     assert plan == make_plan(profiles, args.date), 'Sampler must reproduce exactly'
