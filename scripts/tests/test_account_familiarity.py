@@ -82,6 +82,17 @@ def test_partial_known_fraction_excludes_unseen_but_reports_it(reference):
     assert result['dimensions']['resources']['globally_unseen_fraction'] == .5
 
 
+def test_same_foreign_resource_has_history_dependent_ceiling():
+    fitting = [row(u, d) for u, count in [('a', 5), ('b', 14), ('c', 14)] for d in range(1, count + 1)]
+    reference = model.fit(fitting, '2020-01-01', '2020-01-14')
+    # Identical observed resources/counts, different fitting-history lengths.
+    short = model.score(reference, row('a', 16, [token('resource', 'c')]))['scores']['resource']
+    long = model.score(reference, row('b', 16, [token('resource', 'c')]))['scores']['resource']
+    assert short == pytest.approx(math.log(2))
+    assert long == pytest.approx(math.log(3.8))
+    assert short < 1.22 < long
+
+
 def test_unknown_account_and_sparse_history(fitting, reference):
     assert model.score(reference, row('new', 8))['statuses']['resource'] == 'unknown_account'
     fitting = [r for r in fitting if not (r['user'] == 'a' and r['date'] == '2020-01-05')]
