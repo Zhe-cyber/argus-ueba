@@ -17,7 +17,7 @@ def cfg(tmp_path):
             'ledger_dir': str(tmp_path / 'persona-history-v1'), 'account_id': '123456789012',
             'stack': 'argus-ueba-actors', 'queue_url': 'https://sqs.us-east-1.amazonaws.com/123456789012/argus-ueba-live-events',
             'repo': 'Zhe-cyber/argus-ueba', 'cloudflare': {'account': 'a' * 32, 'app_id': 'b' * 36},
-            'actor_start': '2026-10-29', 'end_local': '2026-11-24', 'runtime_id': 'a' * 32,
+            'actor_start': '2026-10-29', 'actor_end': '2026-11-13', 'end_local': '2026-11-14', 'runtime_id': 'a' * 32,
             'source_hashes': {}, 'python': 'python.exe', 'gh': 'gh.exe'}
 
 
@@ -141,13 +141,13 @@ def valid_config(tmp_path, monkeypatch):
     for name in ('python.exe', 'pythonw.exe', 'gh.exe'):
         (binaries / name).write_bytes(b'synthetic-never-executed')
     monkeypatch.setattr(pilot, 'pinned_sources', lambda: {'runtime.py': 'expected'})
-    return {'schema': 'argus_local_pilot_v1', 'source_root': str(pilot.ROOT), 'api': pilot.API,
+    return {'schema': 'argus_local_pilot_v2', 'source_root': str(pilot.ROOT), 'api': pilot.API,
             'python': str(binaries / 'python.exe'), 'pythonw': str(binaries / 'pythonw.exe'), 'gh': str(binaries / 'gh.exe'),
             'state_dir': str(live / 'pilot-local-v1'), 'connected_dir': str(live / 'connected'),
             'ledger_dir': str(live / 'persona-history-v1'), 'account_id': scope[0], 'stack': scope[1],
             'queue_url': 'https://sqs.us-east-1.amazonaws.com/123456789012/argus-ueba-live-events',
             'repo': 'Zhe-cyber/argus-ueba', 'cloudflare': None, 'runtime_id': 'a' * 32,
-            'actor_start': '2026-10-29', 'end_local': '2026-11-24', 'source_hashes': {'runtime.py': 'expected'}}
+            'actor_start': '2026-10-29', 'actor_end': '2026-11-13', 'end_local': '2026-11-14', 'source_hashes': {'runtime.py': 'expected'}}
 
 
 def test_source_drift_and_wrong_native_store_fail_closed(tmp_path, monkeypatch):
@@ -192,3 +192,17 @@ def test_hidden_python_logging_can_construct_server_config(tmp_path, monkeypatch
                     if getattr(handler, 'stream', None) is stream:
                         logger.removeHandler(handler)
             stream.close()
+
+
+def test_reconciliation_day_collects_but_never_executes_actors(cfg, monkeypatch):
+    calls = mocked(cfg, monkeypatch)
+    result = pilot.tick(cfg, datetime(2026, 11, 14, 4, tzinfo=timezone.utc))
+    assert any('aws' in args for _, args in calls)
+    assert not any('--execute' in args for _, args in calls)
+    assert result['phases']['actors']['status'] == 'pilot_expired'
+
+
+def test_finalisation_midnight_has_no_provider_io(cfg, monkeypatch):
+    monkeypatch.setattr(pilot, 'ensure_backend', lambda _: pytest.fail('Backend started after finalisation'))
+    monkeypatch.setattr(pilot, 'command', lambda *a, **k: pytest.fail('Provider I/O after finalisation'))
+    assert pilot.tick(cfg, datetime(2026, 11, 14, 16, tzinfo=timezone.utc))['status'] == 'pilot_expired'

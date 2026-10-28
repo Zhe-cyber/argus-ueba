@@ -14,7 +14,7 @@ foreach ($name in $taskNames) {
 }
 $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $start = [DateTimeOffset]::UtcNow.AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ss'Z'")
-$end = '2026-11-24T16:00:00Z'
+$end = '2026-11-14T16:00:00Z'
 if ([DateTimeOffset]::UtcNow -ge [DateTimeOffset]::Parse($end)) { throw 'Pilot period has expired.' }
 function XmlEscape([string]$value) { return [Security.SecurityElement]::Escape($value) }
 foreach ($mode in @('serve', 'tick')) {

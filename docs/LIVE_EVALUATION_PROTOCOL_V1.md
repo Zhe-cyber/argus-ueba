@@ -1,5 +1,7 @@
 # Live pilot evaluation protocol v1.1
 
+> Historical V1 protocol. Dates and sparse workload cadence are superseded by [LIVE_EVALUATION_PROTOCOL_V2.md](LIVE_EVALUATION_PROTOCOL_V2.md), approved before ordinary collection on 28 October 2026. Keep V1 as provenance.
+
 Registered study design: 28 October 2026, before the reserved evaluation period.
 Timezone: Asia/Kuala_Lumpur (UTC+8). This document fixes collection scope,
 chronological splits, exclusions, scenarios, coverage gates and reporting.

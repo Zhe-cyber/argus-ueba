@@ -1,5 +1,7 @@
 # Laptop pilot collection
 
+> Current deployment uses daily workload profile V2: actors 29 October-13 November, reconciliation collection through 14 November, final sign-off 15 November. See [LIVE_EVALUATION_PROTOCOL_V2.md](LIVE_EVALUATION_PROTOCOL_V2.md). Historical V1 setup details below remain for provenance; do not use its old end date or profile hash to reconfigure the current pilot.
+
 28 October 2026. The user selected this laptop. Two dedicated current-user
 Windows tasks are installed locally: `Argus-Pilot-Backend` and
 `Argus-Pilot-Collect`. This is controlled lab/genuine account telemetry
