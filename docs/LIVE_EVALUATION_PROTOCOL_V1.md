@@ -1,4 +1,4 @@
-# Live pilot evaluation protocol v1
+# Live pilot evaluation protocol v1.1
 
 Registered study design: 28 October 2026, before the reserved evaluation period.
 Timezone: Asia/Kuala_Lumpur (UTC+8). This document fixes collection scope,
@@ -7,6 +7,11 @@ chronological splits, exclusions, scenarios, coverage gates and reporting.
 annex described below must be committed before validation; without it, scoring
 and effectiveness claims are a no-go. This is a controlled case study, not an
 enterprise effectiveness trial or a preregistered successful result.
+
+Prospective revision on 28 October: v1.1 adds operational checkpoints, explicit
+late-start/idle-coverage rules and calibration-review restrictions following an
+offline review. The initial v1 remains in commit `353082c`. No data window,
+generator, scenario, detector choice or eligibility threshold changed in v1.1.
 
 ## 1. Questions and limits
 
@@ -240,3 +245,44 @@ check: five roles have at least five planned fitting dates, two validation
 dates and two calibration dates. Persona-03 has sparse validation/calibration
 and may remain ineligible; do not force extra actions or lower its thresholds.
 Planned availability is not execution, native coverage or statistical power.
+
+## 9. Operational checkpoints and slip rules
+
+- Before ordinary collection starts: Codex must verify the hosted invoker's
+  temporary role identity, durable canonical claims/budget store, neutral
+  session names and preserved receipt attribution. The current IAM-user/local
+  SQLite implementation is not a drop-in keyless hosted runner. No new secrets
+  or permissions are authorised merely by this protocol. The owning user
+  reviews any concrete deployment/approval items under the existing workflow.
+- By 1 November, 12:00: check collection health and missed intended fitting
+  dates. Do not move, compress or backfill windows automatically. Calculate
+  whether each role can still reach the registered minimum using remaining
+  planned active dates; report ineligibility if it cannot. Continue safe
+  collection for engineering evidence, but a changed study requires a
+  prospectively versioned protocol and still-uninspected future test data.
+- By 3 November, 18:00: Codex records the candidate feature contract, planned
+  comparator, implementation status and outstanding method decisions. By
+  6 November, 18:00: complete an offline development smoke test on the available
+  CLUE development data (or explicitly report the incompatible/missing inputs).
+  These checkpoints do not promise a positive result. The actual implemented,
+  hashed method annex is still due 8 November, 23:59; lateness is a v1.1 no-go.
+- The 15 November review observes eligibility, delivery and implementation
+  readiness only. It cannot revise the frozen method, score definitions,
+  thresholds rule or selection criteria. A defect requiring method changes
+  invalidates v1.1 scoring; register a new prospective method/calibration/test
+  design or use the pipeline/offline-evidence fallback. Do not reuse inspected
+  calibration results as proof of a newly selected method.
+- The invoker must record coverage heartbeats on planned-idle days too. Missing
+  heartbeats or unresolved attempts leave coverage unknown; a planned idle flag
+  alone never confirms inactivity. Normal/model jobs remain inactive if their
+  data gates fail, even when the invoker itself is running successfully.
+- All buckets contain an object named `fixture.txt`; identical filenames in
+  different buckets are different objects. Attribution uses native account/
+  principal identity, never a filename or resource as the identity key. The
+  target p06 fixture is also ordinarily accessible to persona-06; contextual
+  account familiarity, not a globally malicious filename, is the probe.
+
+One commissioned event and the offline reservation bound do not demonstrate
+sustained throughput at the daily ceiling, complete feeds or future coverage.
+Those remain operational observations to report as the pilot runs. No
+scheduled reminders or cloud resources are created by these written checkpoints.
