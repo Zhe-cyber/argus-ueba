@@ -1,0 +1,22 @@
+{
+  "schema": "argus_offline_persona_draft_v1",
+  "status": "illustrative_controlled_lab_profile_v1",
+  "parameter_provenance": "illustrative; no CLUE or volunteer measurements performed",
+  "timezone": "Asia/Kuala_Lumpur",
+  "global_seed": 1847302,
+  "max_sdk_calls_per_run": 48,
+  "reserved_preflight_and_role_calls": 9,
+  "max_actions_per_persona_day": 5,
+  "native_timestamp_policy": "provider_generated_at_actual_execution_only",
+  "cross_provider_mapping_status": "pending_analyst_approval",
+  "automated_cloudflare": false,
+  "automated_github": false,
+  "personas": [
+    {"id":"persona-01","label":"Morning auditor","weekday_active_probability":0.85,"weekend_active_probability":0.15,"local_session_windows":[[8,12]],"action_count_range":[1,4],"operation_weights":{"HeadObject":0.5,"GetObject":0.4,"GetBucketLocation":0.1},"resource_weights":{"p01":0.7,"p02":0.2,"p04":0.1}},
+    {"id":"persona-02","label":"Batch reporter","weekday_active_probability":0.85,"weekend_active_probability":0.15,"local_session_windows":[[9,12],[14,18]],"action_count_range":[2,5],"operation_weights":{"HeadObject":0.3,"GetObject":0.6,"GetBucketLocation":0.1},"resource_weights":{"p02":0.65,"p01":0.2,"p03":0.15}},
+    {"id":"persona-03","label":"Archive spot checker","weekday_active_probability":0.65,"weekend_active_probability":0.2,"local_session_windows":[[9,18]],"action_count_range":[1,4],"operation_weights":{"HeadObject":0.3,"GetObject":0.6,"GetBucketLocation":0.1},"resource_weights":{"p03":0.55,"confidential":0.3,"p02":0.15}},
+    {"id":"persona-04","label":"Dashboard operator","weekday_active_probability":0.9,"weekend_active_probability":0.2,"local_session_windows":[[8,18]],"action_count_range":[2,5],"operation_weights":{"HeadObject":0.6,"GetObject":0.3,"GetBucketLocation":0.1},"resource_weights":{"p04":0.65,"p01":0.2,"p06":0.15}},
+    {"id":"persona-05","label":"Benign frequent reader","weekday_active_probability":0.9,"weekend_active_probability":0.3,"local_session_windows":[[9,18]],"action_count_range":[3,5],"operation_weights":{"HeadObject":0.2,"GetObject":0.7,"GetBucketLocation":0.1},"resource_weights":{"p05":0.65,"p04":0.2,"p06":0.15}},
+    {"id":"persona-06","label":"Mixed operator","weekday_active_probability":0.8,"weekend_active_probability":0.2,"local_session_windows":[[10,19]],"action_count_range":[1,4],"operation_weights":{"HeadObject":0.4,"GetObject":0.5,"GetBucketLocation":0.1},"resource_weights":{"p06":0.55,"p02":0.25,"p05":0.2}}
+  ]
+}
