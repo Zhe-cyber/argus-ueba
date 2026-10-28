@@ -27,6 +27,9 @@ three other eligible accounts. Report own-closer / tied / other-closer counts
 with1e-12 comparison tolerance (diagnostic only); own uniquely nearest counts
 and nearest-reference ties separately. Include own divergence1/no-overlap counts
 and globally unseen category probability mass. Report all three views, all
+The global-category flag uses the full fitting vocabulary across all 55
+accounts, including categories only seen under an ineligible reference account;
+it does not drop query categories or alter distances. Report all three views, all
 original188 rows, per-view coverage and both pooled-day and equal-account
 descriptive fractions. No accuracy claim, peer-group detector, attack recall,
 p-value or independent validation is implied by this closed-set comparison.
