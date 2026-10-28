@@ -7,45 +7,45 @@ not a switch test, fresh evaluation, AE retraining or live activation.
 ## Fixed method
 
 Load the unchanged W8 fitting reference: equal-day mean category distributions
-from13-26July, at least five usable dates per account/view. Per-view score is
+from 13-26 July, at least five usable dates per account/view. Per-view score is
 base2 Jensen-Shannon divergence from the account's own reference, including
 unseen categories. No-resource, unknown-history and unresolved-coverage states
 remain unscored, never zero/Low. No reference updates after fitting.
 
 The primary candidate is **max(action mix, parent depth1)**, requiring both.
-Depth1 was chosen before calibration because deeper context already had normal
+Depth 1 was chosen before calibration because deeper context already had normal
 maxima in the exploratory validation. All three individual views are retained
 as controls; a passing control never silently replaces a failed primary.
 The max is a fixed heuristic over JS units, not a compromise probability.
 
-Calibrate on1-4August normal data at linear q99 with strict `score > threshold`.
-Minimum six scorable days across three accounts. Thresholds at or within1e-12
-of the upper bound1 fail the near-ceiling operational gate. This gate does not
+Calibrate on 1-4 August normal data at linear q99 with strict `score > threshold`.
+Minimum six scorable days across three accounts. Thresholds at or within 1e-12
+of the upper bound 1 fail the near-ceiling operational gate. This gate does not
 alter the strict decision rule or lower a threshold. Any other passing result
 only permits a subsequent development comparison, never live activation.
 
 ## Actual normal-calibration result
 
-| Candidate | Scored /169 original days | Threshold | Strict alerts | Maximum-distance days | Gate |
+| Candidate | Scored / 169 original days | Threshold | Strict alerts | Maximum-distance days | Gate |
 |---|---:|---:|---:|---:|---|
 | Action mix control | 169 | 0.8723298382 | 2 | 1 | Development comparison permitted |
 | Parent depth1 control | 154 | 1.0 | 0 | 4 | No-go |
 | Parent depth2 control | 154 | 1.0 | 0 | 10 | No-go |
 | **Joint primary** | **154** | **1.0** | **0** | **4** | **No-go** |
 
-Action scores cover49 active accounts; context/primary scores cover45. The15
-unavailable primary days comprise10 no-resource and5 insufficient-history days
+Action scores cover 49 active accounts; context/primary scores cover 45. The 15
+unavailable primary days comprise 10 no-resource and 5 insufficient-history days
 in the component views. They are not normal predictions. The frozen fitting
-population remains55; eligible fitting references are55 action and49 context.
+population remains 55; eligible fitting references are 55 action and 49 context.
 
-The action control's2/169 alerts are1.18% of scorable calibration days, not a
+The action control's 2/169 alerts are 1.18% of scorable calibration days, not a
 future false-positive guarantee. All three failed candidates have exact ties
 at their ceiling: four for depth1/primary, ten for depth2. Their zero strict
-alerts do not establish useful detection: a bounded score cannot exceed1.
-Any threshold below1 would flag at least4/154 (2.6%) for depth1/primary and
-10/154 (6.5%) for depth2 on this calibration data. No threshold was changed.
+alerts do not establish useful detection: a bounded score cannot exceed 1.
+Any threshold below 1 would flag at least 4/154 (2.6%) for depth 1/primary and
+10/154 (6.5%) for depth 2 on this calibration data. No threshold was changed.
 
-**Primary rejected. Switch evaluation NOT RUN.** Do not report measured0/25,
+**Primary rejected. Switch evaluation NOT RUN.** Do not report measured 0/25,
 attack recall, held-out normal effectiveness or a newly validated detector.
 The action control passes the mathematical calibration gate only; it has not
 been substituted as primary, evaluated on attacks or activated live.
@@ -66,7 +66,7 @@ semantics/history and evidence. A CLUE path-parent convention is not directly
 an AWS bucket/object, GitHub repository or Cloudflare application model.
 
 The laptop collection job is now independently accumulating raw source records
-and begins controlled ordinary activity29October. It remains unverified for
+and begins controlled ordinary activity 29 October. It remains unverified for
 live model scoring. Those records need coverage/receipt reconciliation and
 the prospective fitting/validation/calibration/evaluation gates; a normal-only
 offline calibration cannot replace that process.
@@ -76,7 +76,7 @@ offline calibration cannot replace that process.
 Verified original W8 report/reference/source, native prefix, manifest and frozen
 feature-export hashes. A separate period projector preserves the frozen W8
 exporter; synthetic parity tests and actual calibration counts, distinct paths,
-actions and coverage match all169 frozen rows. Immutable JSON reference reload
+actions and coverage match all 169 frozen rows. Immutable JSON reference reload
 is exact; reference and original input hashes remain unchanged. All checks passed.
 
 ```powershell
