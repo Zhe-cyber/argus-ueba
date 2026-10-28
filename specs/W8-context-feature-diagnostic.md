@@ -26,7 +26,7 @@ reference with median distance to all other eligible account references. Need
 three other eligible accounts. Report own-closer / tied / other-closer counts
 with1e-12 comparison tolerance (diagnostic only); own uniquely nearest counts
 and nearest-reference ties separately. Include own divergence1/no-overlap counts
-and globally unseen category probability mass. Report all three views, all
+and globally unseen category probability mass.
 The global-category flag uses the full fitting vocabulary across all 55
 accounts, including categories only seen under an ineligible reference account;
 it does not drop query categories or alter distances. Report all three views, all
