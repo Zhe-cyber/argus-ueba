@@ -22,7 +22,12 @@ The account estimate is
 `(account_dates_containing_token + 5 * pooled_estimate) / (account_usable_dates + 5)`.
 The token contrast is `max(0, log(pooled_estimate / account_estimate))`.
 Average contrasts over the day's distinct fitting-known tokens in each dimension.
-This favours tokens more familiar to the population than to the current account.
+For a token the account never used, population popularity cancels exactly:
+the contrast equals `log((account_usable_dates + 5) / 5)` regardless of whether
+one or many other accounts used it. Popularity can affect previously seen
+tokens, which contribute positively only when their account incidence is below
+the pooled incidence. The score is therefore often close to the fraction of
+fitting-known tokens new to the account times that history-dependent ceiling.
 It is a heuristic contrast, not an attack probability or ownership assertion.
 
 Two fixed candidates: **R**, resource contrast; **J**, maximum of resource and
@@ -30,7 +35,7 @@ action contrast, requiring both dimensions available. Neither was selected or
 tuned from the new switch results. Each required dimension needs at least five
 usable fitting dates and at least one fitting-known token on the scoring day.
 Globally unseen tokens are counted separately and excluded from the contrast;
-entirely unfamiliar namespaces therefore produce unavailable scores, never
+a day containing only globally unseen resources therefore produces unavailable scores, never
 an automatic zero/Low. Invalid supplied paths, required-path gaps or unknown
 native actions also make a day unavailable. A login with no applicable path
 does not itself imply lost logs.
@@ -87,6 +92,11 @@ AE or competition performance claim is authorized merely by this comparison.
 ## Actual development result
 
 Both R and J calibrated to **1.2237754316221157** in their own contrast units.
+This is exactly `log((12 + 5) / 5)`: the ceiling for 12 fitting dates. A
+report-only replay of calibration inference confirms **three exact ties** at
+this threshold, all on 12-date resource histories. The global calibration
+range is not constant, so the existing `degenerate_calibration=false` flag
+does not imply an absence of ties or score saturation.
 They produced identical classifications in this experiment; adding the action
 dimension did not add detections. AE retains raw MSE **0.7648530006408691**;
 the numbers have different units and are not comparable risk percentages.
@@ -102,7 +112,11 @@ On the common 126-day subset the AE has two alerts (1.59%); R and J have none.
 The new rule is not demonstrated to have a lower false-alert rate: it excludes
 65 original days and this is a small, correlated development window. Of those
 65 unavailable days, 12 lack five usable fitting dates and 53 have no
-fitting-known resources. Common rows span 37 accounts; the original normal
+fitting-known resources under the original status ordering. Within the latter
+53, **12 have no resource activity and 41 have only globally unseen tokens**.
+Within the 12 insufficient-history days, five have no resources, six have only
+globally unseen tokens and one has fitting-known tokens. These are distinct
+coverage situations, not all new-resource days. Common rows span 37 accounts; the original normal
 window has 49 active identities from the frozen 55-account population.
 
 | Switched development data: 25 original account-days | Scored | Unavailable | Alerts |
@@ -113,8 +127,9 @@ window has 49 active identities from the frozen 55-account population.
 | AE OR J | 20 | 5 | 6 |
 
 This is six flagged days across **two of three cases**, not general attack
-recall. Five of 25 days are unavailable because none of their paths are in the
-fitting vocabulary. Among the 20 commonly scorable days AE flags zero and R/J
+recall. Five of 25 days are unavailable: **two have no resource activity and
+three have only globally unseen resource tokens**. They must not all be described
+as new-resource or new-namespace days. Among the 20 commonly scorable days AE flags zero and R/J
 flag six; reporting 6/20 alone would hide the five unavailable days.
 
 | Case | Original days | Common scored | R/J alerts |
@@ -131,6 +146,17 @@ the strict resource rule, even when all observed fitting-known resources were
 never seen under that account. A synthetic regression test exposes this
 history-length dependence. This is a substantial design limitation, not a
 reason to lower the threshold after seeing the cases.
+
+All six positives are saturated ceiling days: all their fitting-known resources
+were absent from the recipient's fitting history. Five have 14 usable fitting
+dates, one has 13. Only 18 of 49 eligible fitting accounts can exceed the
+threshold in exact arithmetic. If previously seen tokens contribute zero, an
+account with 14 fitting dates needs more than about 91.7% of its fitting-known
+resources to be new to that account; with 13 dates it needs more than about
+95.5%. These fractions are conditional illustrations, not necessary conditions
+for every possible day, since previously seen tokens can also contribute.
+The observed six hits are effectively long-history accounts touching wholly
+foreign sets of fitting-known resources, not graded evidence of compromise.
 
 Normal calibration has 121/169 days scorable by R/J (38 accounts) and zero R/J
 alerts. AE flags two of the original 169, one on the common 121. The tri-state
@@ -178,5 +204,81 @@ are not the empirical development result.
 
 After adding the history-ceiling regression test: **329 passed, one optional
 PostgreSQL skip**. No scoring/reference code changed after the real run.
-Independent Claude review has not run: the user will send the six-file review
-request manually. No source was transferred by Codex for that review.
+The user supplied Claude's manual six-file review on 28 October. It found no
+correctness/leakage blocker and identified the cancellation, ceiling/tie,
+coverage-interpretation and namespace-dependence issues discussed here. Codex
+did not transfer source for that review. The report-only follow-up is defined
+in `specs/W6-review-diagnostics.md`; original scores, thresholds and artifacts
+remain frozen.
+
+## Report-only follow-up to the manual review
+
+The supplemental tool checks hashes against the original result before reading
+the already inspected prefix. It replays calibration inference from the saved
+reference because per-day calibration scores were not stored; the original
+calibration-row digest, q99 and alert counts reproduce exactly. It does not fit,
+recalibrate, modify decisions or overwrite original artifacts. Normal and
+switched score diagnostics use the saved values.
+
+| Threshold diagnostic, identical for R and J | Calibration | Normal development | Switched development |
+|---|---:|---:|---:|
+| Scored days | 121 | 126 | 20 |
+| Exact ties | 3 | 0 | 0 |
+| Within absolute 1e-12 of threshold | 3 | 0 | 0 |
+| Strict alerts, unchanged | 0 | 0 | 6 |
+
+The reporting tolerance never changes `>`. The six positives are not last-bit
+artifacts, and no saved normal/switched development non-alert is within this
+tolerance either. The exact calibration ties still warrant numerical caution
+for any future implementation; the strict rule has not been made tolerant or
+changed to >=.
+
+To check dependence on donor-specific resources, inspect native hit-day paths
+privately and emit only counts. Across the first five hit days, all 85-88
+fitting-known resources per day are absent from the recipient's fitting history,
+but **none is exclusive to the donor** among the 55 fitting accounts. On the
+sixth day, just one of six distinct resources is fitting-known; that token is
+donor-exclusive and entirely determines its resource contrast. The other five
+resources are globally unseen and excluded from the score. The six days contain
+143 distinct resource tokens in total; summing their daily token counts would
+repeat many resources.
+
+For the coarse first-nonempty-slash-component proxy, none of the fitting-known
+resources on the first five hit days has a component exclusive to the donor.
+The sixth day's one known resource does. Two of the first five days each also
+contain one globally unseen resource with a donor-exclusive fitting component;
+those unseen tokens do not contribute to the contrast. No raw paths, component
+strings, token hashes or native identities are published by the tool.
+
+Literal reuse under other accounts does not prove a shared physical resource,
+and an administrator could also touch a personal folder. The first-component
+proxy cannot rule out deeper user-specific namespaces. Therefore this check
+neither establishes ownership nor dismisses the reviewer's namespace-triviality
+concern. The single-known-token hit is especially weak evidence of robust daily
+behaviour detection.
+
+Supplement: private
+`data/processed/clue-account-affinity-development-v1/review_diagnostics_v1.json`,
+generated with `scripts/review_familiarity_diagnostics.py`. Frozen W6 source/input
+hashes and native positive-day resource counts matched. Regression including
+the reporting helpers: **337 passed, one optional PostgreSQL skip**. New tests
+also demonstrate that different pooled token popularities give the same
+contrast for never-used resources, and that counting near ties does not change
+strict classifications.
+
+## Next-experiment decision after review
+
+Equal five-date histories would remove this particular ceiling disparity, but
+the suggested raw unfamiliar-path fraction is bounded at one, and an earlier
+novel-path diagnostic already had normal q99=1. A five-date reference might
+increase novelty further; success must not be assumed. Implement/check any new
+version on inspected development data first and freeze its method and go/no-go
+rules before consuming a genuinely reserved later window. Do not inspect a
+fresh window to discover/tune away another saturation problem.
+
+No new v2 candidate was scored or fresh data downloaded for this review. A later
+native-data reservation must start after the already inspected partial 10 August
+capture and account for the frozen exporter's 32 MiB prefix cap. Any future
+source-aware live method requires its own data, eligibility, calibration and
+release gates; it cannot inherit a CLUE threshold or be declared validated from
+scripted resource substitution alone.
