@@ -5,7 +5,8 @@ one verified commissioning action, no Argus scheduled task or repository cron,
 offline loopback backend8012, and valid non-root simulator identity. Regular
 histories are not accumulating. Address this before the next offline model test.
 
-Implement one current-user Windows task, every five minutes while logged in,
+Implement one repeating current-user Windows task plus an owned loopback backend
+service task. Poll every five minutes while logged in,
 awake and online, ending after24November Malaysia time. Do not change power
 settings, wake the laptop, store a Windows password or create a hosted runner.
 Task actions run hidden and without elevation. Source-pinned wrapper fails closed
