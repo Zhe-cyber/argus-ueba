@@ -78,7 +78,7 @@ in this validation window, but that is not a future false-alert guarantee.
 
 An aggregate exact native-uid check finds matches in the first two literal
 parent components on 3 of 292,477 fitting account-day path observations, across
-three dates/accounts' days. Validation has zero matches among 111,518 such
+three account-days. Validation has zero matches among 111,518 such
 observations. The denominator sums distinct paths within account-days and can
 repeat a path across days; it is not a count of globally unique resources.
 
