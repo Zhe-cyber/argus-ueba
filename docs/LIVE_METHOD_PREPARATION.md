@@ -53,9 +53,10 @@ an adapter that makes incompatible trainers valid.
 
 ## Next implementation slices, starting before the data is ready
 
-1. Build a versioned daily-ledger exporter reusing the same receipt selection
-   and eligibility checks. Freeze exact feature semantics/timezone/history and
-   output hashes; synthetic parity tests can be written now.
+1. Implemented: export_live_daily.py reuses audited native evidence and eligibility
+   to export the separate aws_lab_daily_v1 eight-count profile plus categorical
+   action/resource/hour context. See AWS_LAB_DAILY_FEATURE_CONTRACT.md. Actual
+   fitting still requires closed, eligible data; no legacy weights are compatible.
 2. Complete the detector annex before5 November23:59: account-conditioned method,
    population AE and volume comparators; sampling requirements; fixed fitting
    procedure, seeds and hyperparameters; normal-only calibration rule including

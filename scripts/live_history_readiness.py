@@ -106,7 +106,7 @@ def history_gates(days):
             'pooled_calibration_history_pass': pooled, 'history_gates_pass': pooled}
 
 
-def evaluate(ledger, database, account, stack, now=None):
+def evaluate(ledger, database, account, stack, now=None, *, with_evidence=False):
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     today = now.astimezone(MALAYSIA).date().isoformat()
     expected = expected_actions(account, stack)
@@ -116,6 +116,7 @@ def evaluate(ledger, database, account, stack, now=None):
         raise ValueError('Duplicate or unexpected study action')
     native_counts = Counter(row['native_event_id'] for row in rows if row['native_event_id'])
     by_day = {}
+    evidence = []
     fields = ('persona', 'ordinal', 'planned_utc', 'planned_local', 'operation', 'symbolic_bucket', 'bucket', 'key')
     with closing(sqlite3.connect(Path(database).resolve().as_uri() + '?mode=ro', uri=True)) as db:
         db.row_factory = sqlite3.Row
@@ -138,6 +139,12 @@ def evaluate(ledger, database, account, stack, now=None):
             elif (row['status'] == 'provider_verified' and native_counts[row['native_event_id']] == 1
                   and native_matches(db, row, planned, account, stack, now)):
                 day['verified'] += 1
+                if with_evidence:
+                    native = dict(db.execute('''SELECT timestamp,action,resource,ip_address,metadata,event_id
+                        FROM events WHERE source='aws_cloudtrail' AND source_account_id=? AND event_id=?''',
+                        (account, row['native_event_id'])).fetchone())
+                    evidence.append({**native, 'persona': key[1], 'day': key[0],
+                                     'partition': planned['partition'], 'action_id': action_id})
             else:
                 day['unresolved'] += 1
         db.rollback()
@@ -147,13 +154,17 @@ def evaluate(ledger, database, account, stack, now=None):
         row['status'] = ('future' if row['day'] > today else 'current_partial' if row['day'] == today
                          else 'usable' if row['verified'] * 10 >= row['planned'] * 9 and row['unresolved'] == 0 else 'incomplete')
     gates = history_gates(days)
-    return {'schema': 'argus_live_history_readiness_v1', 'computed_at_utc': now.isoformat(),
+    report = {'schema': 'argus_live_history_readiness_v1', 'computed_at_utc': now.isoformat(),
             'timezone': 'Asia/Kuala_Lumpur', 'profile_sha256': PROFILE_SHA, 'days': days, **gates,
             'status': 'history_minimums_met' if gates['history_gates_pass'] else 'history_pending',
             'model_activated': False, 'model_release_evaluated': False,
             'limitations': ['History gates only; stricter model requirements still apply.',
                             'Separate read-only ledger/native snapshots; newly arriving receipts may need recheck.',
                             'Warm-up, setup and reserved cases excluded; no scores or attack results inspected.']}
+    if with_evidence:
+        usable = {(r['day'], r['persona']) for r in days if r['status'] == 'usable'}
+        return report, [e for e in evidence if (e['day'], e['persona']) in usable]
+    return report
 
 
 def main():
