@@ -46,6 +46,8 @@ Raw collection records are not automatically verified-normal training data.
   further automatic actors for review. No actor subprocess is retried within
   a tick. Existing ledger claims, read-only fixture permissions, caps of 48/run,
   128/day and 1792/pilot, and the 15-minute grace remain unchanged.
+  Those SDK limits apply to the actor runner; bounded collector polls are
+  separate operations and are not described as part of that actor budget.
 - Actor activity starts 29 October. Missed slots are not backfilled, timestamps
   are not rewritten, and commissioning is not rerun. Source receipts still
   require matching native CloudTrail records via the existing audit path.
@@ -53,6 +55,8 @@ Raw collection records are not automatically verified-normal training data.
   attempts are persisted and remain visible between polls, not converted to
   empty normal observations. Credentials stay in existing AWS profiles,
   GitHub authentication and current-user Cloudflare DPAPI storage.
+  Between polls, counts are nested under `previous_outcome` with their original
+  attempt time; they must not be summed as new inserts on the current tick.
 - Task overlap policy is IgnoreNew; OS file locks also protect manual overlap.
   Subprocesses have bounded times. Timeout/termination may leave unknown
   attempts, which the existing ledger preserves without automatic retries.
@@ -119,9 +123,13 @@ that issue, and a synthetic regression reproduces construction under hidden
 streams. Only the newly owned tasks were stopped/restarted during repairs;
 private config snapshots preserve the engineering history.
 
-Full regression before the logging repair: 372 passed, one optional PostgreSQL
-skip, with DATABASE_URL=sqlite-local. After the repair, the 12 scheduler tests
-pass; final full regression is **373 passed, one optional PostgreSQL skip**.
+A later automatic cycle also completed successfully. Its status initially
+repeated the previous genuine-feed poll counts alongside a not-due marker.
+Those counts are now explicitly nested as the previous outcome, with a
+regression test; stored events were never duplicated by this display issue.
+
+Final full regression: **374 passed, one optional PostgreSQL skip**, with
+DATABASE_URL=sqlite-local, including all 13 scheduler tests.
 CI is recorded in the PR. PowerShell AST parsing
 reported zero errors; actual registration, startup fingerprint and scheduled
 bounded collection were also verified. No new IAM permissions, model, toy
