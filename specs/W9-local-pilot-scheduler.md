@@ -2,7 +2,7 @@
 
 28 October 2026. User chose this laptop for the pilot. Read-only checks found
 one verified commissioning action, no Argus scheduled task or repository cron,
-offline loopback backend8012, and valid non-root simulator identity. Regular
+an initial restricted-context reachability failure on port8012, and valid non-root simulator identity. Regular
 histories are not accumulating. Address this before the next offline model test.
 
 Implement one repeating current-user Windows task plus an owned loopback backend
@@ -14,7 +14,7 @@ if runtime source changes; keep this checkout available throughout the pilot.
 
 The wrapper must:
 - Force local SQLite, live mode, unverified/no activated cloud model and the
-  existing actual connected state directory. Bind backend only127.0.0.1:8012.
+  existing actual connected state directory. Bind backend only127.0.0.1:8013.
   Add an internal readiness route in the startup wrapper (not core backend),
   returning a hash of the actual storage path and source/runtime configuration.
   Never forward to a different demo/snapshot backend merely because it says live.
@@ -50,3 +50,11 @@ report starts29October rather than generating extra traffic now.
 This is a local controlled lab history service, not independent human users,
 complete cloud telemetry, a validated live detector or an active billing alarm.
 The prospective source/idle-day coverage and model-release gates still apply.
+
+Commissioning correction: a host-context check found an older listener on8012;
+the first new tick failed its identity check before provider calls. Stop only
+the two new tasks, keep the pre-existing listener untouched, and use verified-
+free port8013. Preserve the original config as a local repair record and update
+the source pin deliberately after testing. The data/ledger/profile/budgets and
+study windows do not change. Do not interpret sandbox reachability denial as
+proof that a host service is offline.

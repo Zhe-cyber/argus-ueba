@@ -18,7 +18,7 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 MY = timezone(timedelta(hours=8))
-API = 'http://127.0.0.1:8012'
+API = 'http://127.0.0.1:8013'
 BACKEND_TASK = 'Argus-Pilot-Backend'
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 PROFILE_SHA = '98bf9d641823d7764e510f3ff944c365f109ca9941349bf3f51788f92a74566b'
@@ -253,7 +253,7 @@ def serve(cfg):
     app.add_api_route('/pilot-health', readiness, include_in_schema=False)
     import threading
     import uvicorn
-    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=8012, log_level='warning', access_log=False))
+    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=8013, log_level='warning', access_log=False))
     end = datetime.fromisoformat(cfg['end_local']).replace(tzinfo=MY) + timedelta(days=1)
     timer = threading.Timer(max(0, (end - now_utc()).total_seconds()), lambda: setattr(server, 'should_exit', True))
     timer.daemon = True
