@@ -236,9 +236,21 @@ def lock(path):
             msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
 
 
+def hidden_streams(state_dir):
+    if sys.stdout is not None and sys.stderr is not None:
+        return None
+    stream = (Path(state_dir) / 'backend-service.log').open('a', encoding='utf-8', buffering=1)
+    if sys.stdout is None:
+        sys.stdout = stream
+    if sys.stderr is None:
+        sys.stderr = stream
+    return stream
+
+
 def serve(cfg):
     if now_utc().astimezone(MY).date().isoformat() > cfg['end_local']:
         return
+    hidden_streams(cfg['state_dir'])  # pythonw has no console; Uvicorn formatters need a real stream.
     env = {'DATABASE_URL': 'sqlite-local', 'ARGUS_MODE': 'live', 'DEMO_MODE': 'false',
            'CLOUD_MODEL_PROFILE': 'unverified', 'LIVE_STATE_DIR': cfg['connected_dir'], 'ADMIN_TOKEN': '',
            'ALLOWED_ORIGINS': 'http://localhost:3000,http://127.0.0.1:3000'}

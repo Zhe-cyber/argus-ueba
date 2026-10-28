@@ -158,3 +158,24 @@ def test_child_payload_redaction_and_single_timeout(cfg, monkeypatch):
     def timeout(*a, **k): raise pilot.subprocess.TimeoutExpired('synthetic', 1)
     monkeypatch.setattr(pilot.subprocess, 'run', timeout)
     assert pilot.command(cfg, 'run_persona_history.py', ['--execute'])['ok'] is False
+
+
+def test_hidden_python_logging_can_construct_server_config(tmp_path, monkeypatch):
+    import uvicorn
+    # Reproduces pythonw's streams without starting a server or importing the app.
+    with monkeypatch.context() as context:
+        context.setattr(pilot.sys, 'stdout', None)
+        context.setattr(pilot.sys, 'stderr', None)
+        stream = pilot.hidden_streams(tmp_path)
+        try:
+            config = uvicorn.Config('unused:app', host='127.0.0.1', port=8013, access_log=False)
+            assert config.port == 8013 and stream.isatty() is False
+        finally:
+            # Avoid leaving global Uvicorn handlers referencing a closed fixture file.
+            import logging
+            for name in ('uvicorn', 'uvicorn.error', 'uvicorn.access'):
+                logger = logging.getLogger(name)
+                for handler in list(logger.handlers):
+                    if getattr(handler, 'stream', None) is stream:
+                        logger.removeHandler(handler)
+            stream.close()
