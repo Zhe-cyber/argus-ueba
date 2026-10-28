@@ -88,6 +88,19 @@ def test_genuine_poll_failures_persist_and_are_rate_limited(cfg, monkeypatch):
     assert sum('github' in args for _, args in calls) == 2
 
 
+def test_cached_poll_counts_are_not_reported_as_new_tick_inserts(cfg, monkeypatch):
+    mocked(cfg, monkeypatch)
+    def command(c, script, args, timeout=150):
+        return {'ok': True, 'inserted': 13} if 'github' in args else {'ok': True}
+    monkeypatch.setattr(pilot, 'command', command)
+    start = datetime(2026, 10, 29, 4, tzinfo=timezone.utc)
+    pilot.tick(cfg, start)
+    cached = pilot.tick(cfg, start + timedelta(minutes=5))['phases']['github']
+    assert 'inserted' not in cached
+    assert cached['previous_outcome']['inserted'] == 13
+    assert cached['last_attempt'] == start.isoformat()
+
+
 def test_wrong_listener_is_rejected_without_actors(cfg, monkeypatch):
     import requests
     class Session:

@@ -208,7 +208,9 @@ def tick(cfg, now=None):
         previous = polls.get(source, {})
         last = datetime.fromisoformat(previous['last_attempt']) if previous else None
         if last is not None and now - last < timedelta(minutes=30):
-            phases[source] = {**previous['last_outcome'], 'status': 'not_due_previous_success' if previous['last_outcome']['ok'] else 'not_due_previous_failure'}
+            phases[source] = {'ok': previous['last_outcome']['ok'],
+                              'status': 'not_due_previous_success' if previous['last_outcome']['ok'] else 'not_due_previous_failure',
+                              'last_attempt': previous['last_attempt'], 'previous_outcome': previous['last_outcome']}
             continue
         polls[source] = {'last_attempt': now.isoformat(), 'last_outcome': {'ok': False, 'status': 'poll_claimed_outcome_unknown'}}
         atomic_json(poll_path, polls)
