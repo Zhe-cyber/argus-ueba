@@ -63,7 +63,7 @@ jobs:
           pip install --quiet -r scripts/requirements-cloud-training.txt pytest boto3 fastapi
           pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch==2.12.0
       - name: Verify audited export and training isolation
-        run: python -m pytest scripts/tests/test_verified_cloud_training.py scripts/tests/test_clue_training.py scripts/tests/test_clue_candidate_review.py scripts/tests/test_clue_replay_export.py scripts/tests/test_personal_baseline.py -v --tb=short
+        run: python -m pytest scripts/tests/test_verified_cloud_training.py scripts/tests/test_clue_training.py scripts/tests/test_clue_candidate_review.py scripts/tests/test_clue_replay_export.py scripts/tests/test_personal_baseline.py scripts/tests/test_account_familiarity.py -v --tb=short
         env:
           DATABASE_URL: "sqlite-local"
 
