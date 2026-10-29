@@ -544,8 +544,9 @@ def parse_github_events(event: dict) -> dict:
     elif ev_type == "IssuesEvent" and pr_action:
         action = f"Issue {pr_action}"
     elif ev_type == "PushEvent":
-        size = payload.get("size", 0)
-        action = f"Code push ({size} commit{'s' if size != 1 else ''})"
+        size = payload.get("size")
+        if type(size) is int and size >= 0:
+            action = f"Code push ({size} commit{'s' if size != 1 else ''})"
 
     repo_name = str(repo.get("name", ""))
 
@@ -554,7 +555,13 @@ def parse_github_events(event: dict) -> dict:
     metadata["public"]   = event.get("public", True)
     if payload.get("ref"):
         metadata["ref"] = payload["ref"]
-    if payload.get("size") is not None:
+    if ev_type == "PushEvent":
+        size = payload.get("size")
+        known_count = type(size) is int and size >= 0
+        metadata["commit_count_status"] = "known" if known_count else "unknown"
+        if known_count:
+            metadata["commits"] = size
+    elif payload.get("size") is not None:
         metadata["commits"] = payload["size"]
     if actor.get("id"):
         metadata["actor_id"] = actor["id"]
