@@ -57,14 +57,14 @@ an adapter that makes incompatible trainers valid.
    to export the separate aws_lab_daily_v1 eight-count profile plus categorical
    action/resource/hour context. See AWS_LAB_DAILY_FEATURE_CONTRACT.md. Actual
    fitting still requires closed, eligible data; no legacy weights are compatible.
-2. Complete the detector annex before5 November23:59: account-conditioned method,
-   population AE and volume comparators; sampling requirements; fixed fitting
-   procedure, seeds and hyperparameters; normal-only calibration rule including
-   ties; no automatic adaptation through held-out evaluation. Method choices
-   remain explicitly unresolved here; this preparation note is not preregistration.
-3. Implement local training/reload/calibration checks and test on synthetic data
-   only until the actual partitions close. Actual fitted artifact hashes can
-   only be recorded after fitting; the procedure is frozen beforehand.
+2. Implemented: LIVE_METHOD_ANNEX_V1.md prospectively specifies the personal
+   resource baseline, fixed AE/population/volume comparators, stricter history
+   gates, hyperparameters, thresholds/ties and OR-union reporting before validation.
+   This preparation note alone is not the annex; use the versioned method/code.
+3. Implemented: train_live_daily.py provides synthetic-tested fitting, JSON
+   scaling, calibration, hash/scope-bound reload and score-parity checks. Actual
+   pilot fitting still waits for eligible closed partitions. No real fitted
+   artifacts or held-out results are claimed; see LIVE_DAILY_TRAINING.md.
 4. Implement and test the separately registered scenario executor before11Nov
    freeze. Preserve actual timestamps, action counts and independent analyst
    context for the matched approved-change control.
