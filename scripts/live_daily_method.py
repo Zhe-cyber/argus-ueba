@@ -21,7 +21,7 @@ def distribution(counts, prior=0.5):
 
 
 def entropy(prob):
-    return -sum(p * math.log(p) for p in prob.values())
+    return -math.fsum(prob[c] * math.log(prob[c]) for c in DOMAIN)
 
 
 def excess(prob, counts):
@@ -30,7 +30,7 @@ def excess(prob, counts):
     if any(isinstance(v, bool) or not isinstance(v, int) or v <= 0 for v in counts.values()):
         raise ValueError('Resource counts must be positive integers')
     total = sum(counts.values())
-    return sum((n / total) * (-math.log(prob[c])) for c, n in counts.items()) - entropy(prob)
+    return math.fsum((counts.get(c, 0) / total) * (-math.log(prob[c])) for c in DOMAIN) - entropy(prob)
 
 
 def fit_references(rows):

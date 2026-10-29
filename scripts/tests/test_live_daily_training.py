@@ -42,6 +42,8 @@ def test_personal_peer_resource_context_distinguishes_accounts_not_intent():
     assert method.context_scores(ref, switched)['volume'] == method.context_scores(ref, normal)['volume']
     assert ref['personal']['persona-01']['p01'] > ref['personal']['persona-02']['p01']
     assert all(p > 0 for p in ref['personal']['persona-01'].values())
+    probability = ref['personal']['persona-01']
+    assert method.excess(probability, {'p01': 2, 'p02': 1}) == method.excess(dict(reversed(list(probability.items()))), {'p02': 1, 'p01': 2})
     with pytest.raises(ValueError): method.excess(ref['population'], {'outside-domain': 1})
 
 
@@ -103,6 +105,10 @@ def test_fit_only_scaler_refs_and_checkpoint_calibration_independence(dataset):
     model, scaler, val, epoch = trainer.fit_ae(parts)
     expected = np.log1p([[r['features'][f] for f in trainer.FEATURES] for r in parts['fit']])
     np.testing.assert_allclose(scaler['mean'], expected.mean(axis=0))
+    for i, name in enumerate(trainer.FEATURES):
+        if np.max(expected[:, i]) == np.min(expected[:, i]):
+            assert name in scaler['constant_features']
+            assert scaler['scale'][i] == 1 and scaler['mean'][i] == expected[0, i]
     modified = deepcopy(parts)
     for row in modified['normal_calibration']:
         row['features']['event_count'] += 10000

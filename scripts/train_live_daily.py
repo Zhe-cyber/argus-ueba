@@ -117,9 +117,13 @@ def fit_ae(parts):
     torch.use_deterministic_algorithms(True)
     arrays = {p: np.log1p(np.asarray([[r['features'][f] for f in FEATURES] for r in rows], dtype=np.float64)) for p, rows in parts.items()}
     mean, std = arrays['fit'].mean(axis=0), arrays['fit'].std(axis=0)
-    if sum(std > 0) < 2:
+    constant = arrays['fit'].max(axis=0) == arrays['fit'].min(axis=0)
+    # Summation rounding can give identical log-counts a tiny nonzero std.
+    # Exact repeated inputs must retain the contract's constant-feature scale1.
+    mean[constant] = arrays['fit'][0, constant]
+    if sum(~constant) < 2:
         raise Refusal('Insufficient varying fitting features')
-    scale = np.where(std > 0, std, 1.)
+    scale = np.where(constant, 1., std)
     tensors = {p: torch.tensor(((a - mean) / scale).astype(np.float32)) for p, a in arrays.items()}
     if any(not torch.isfinite(t).all() for t in tensors.values()):
         raise Refusal('Nonfinite standardized features')
@@ -143,7 +147,7 @@ def fit_ae(parts):
     model.load_state_dict(state, strict=True)
     model.eval()
     return model, {'mean': mean.tolist(), 'scale': scale.tolist(), 'transform': 'log1p_then_standardize',
-                   'constant_features': [FEATURES[i] for i in range(8) if std[i] == 0]}, best, selected
+                   'constant_features': [FEATURES[i] for i in range(8) if constant[i]]}, best, selected
 
 
 def score_rows(model, scaler, references, rows):
