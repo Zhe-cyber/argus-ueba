@@ -1,7 +1,9 @@
 from datetime import datetime
 from pathlib import Path
 import json
+import sys
 import pytest
+WINDOWS_ONLY = pytest.mark.skipif(sys.platform != "win32", reason="local_pilot.lock uses msvcrt (Windows-only pilot)")
 from scripts import cloudflare_machine_pilot as p
 
 
@@ -44,6 +46,7 @@ def fixture_config(tmp_path,monkeypatch):
     return cfg
 
 
+@WINDOWS_ONLY
 def test_claim_before_request_no_repeat_and_missed_windows(tmp_path,monkeypatch):
     fixture_config(tmp_path,monkeypatch)
     slots=p.plan('2026-10-30');slot=min(slots,key=lambda r:r['due']);now=datetime.fromisoformat(slot['due'])
@@ -64,6 +67,7 @@ def test_claim_before_request_no_repeat_and_missed_windows(tmp_path,monkeypatch)
     assert result['new_actions']==0 and result['action_states']['missed']==5
 
 
+@WINDOWS_ONLY
 def test_timeout_claim_never_retries_and_expired_does_no_provider_work(tmp_path,monkeypatch):
     fixture_config(tmp_path,monkeypatch)
     now=datetime.fromisoformat(min(p.plan('2026-10-30'),key=lambda r:r['due'])['due'])
@@ -82,6 +86,7 @@ def test_timeout_claim_never_retries_and_expired_does_no_provider_work(tmp_path,
     assert p.tick(datetime.fromisoformat('2026-11-15T00:00:00+08:00'))['status']=='expired'
 
 
+@WINDOWS_ONLY
 def test_old_unknown_is_preserved_while_later_requests_complete(tmp_path,monkeypatch):
     fixture_config(tmp_path,monkeypatch)
     first=min(p.plan('2026-10-30'),key=lambda r:r['due'])
