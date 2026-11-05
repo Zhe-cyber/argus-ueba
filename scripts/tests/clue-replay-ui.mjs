@@ -54,7 +54,7 @@ try {
   await page.getByText('They are calibration diagnostics, not independent test results.', { exact: false }).waitFor();
   await page.screenshot({ path: output + '/clue-calibration.png', fullPage: true });
   await page.goto(ui + '/', { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Account Risk Overview' }).waitFor();
+  await page.getByRole('heading', { name: 'Observed accounts' }).waitFor();
   await page.getByRole('cell', { name: 'Unknown', exact: true }).first().waitFor();
   await page.screenshot({ path: output + '/connected-sources.png', fullPage: true });
   const after = await json('/stats');
