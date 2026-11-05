@@ -1,0 +1,13 @@
+{
+  "checked_at_my": "2026-11-01T03:01:03.023675+08:00",
+  "live_backend_health": true,
+  "source_pins_valid": true,
+  "collector_tick_age_minutes": 5.0,
+  "collector_last_tick_ok": true,
+  "aws_study_sources_unchanged": true,
+  "w33_release_unchanged": true,
+  "readiness_receipts": 63,
+  "scored_receipts": 0,
+  "score_display_approved": false,
+  "refresh_manifest_sha256": "44891bebf6ec764e0070796fd7cd27e70d760e04b6186455d2ffa956756f2253"
+}
