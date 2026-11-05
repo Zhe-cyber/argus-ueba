@@ -135,3 +135,68 @@ def test_cloudflare_invalid_matching_record_is_retained_not_silently_skipped(mon
     counts = collect_cloudflare(SimpleNamespace(account_id='test-account', app_id='expected-app'), Backend(False))
     assert counts['received'] == 2
     assert counts['malformed'] == counts['retained'] == counts['skipped'] == 1
+
+
+def revision_backend(monkeypatch, status=409, detail='Native event key already exists with different content'):
+    backend = LocalBackend('http://127.0.0.1:8000')
+    response = SimpleNamespace(status_code=status, json=lambda: {'detail': detail})
+    monkeypatch.setattr(backend.session, 'post', lambda *args, **kwargs: response)
+    return backend
+
+
+def test_github_revision_archives_without_inserting_or_counting_duplicate(monkeypatch, tmp_path):
+    backend = revision_backend(monkeypatch)
+    record = {'id': '../native', 'created_at': '2026-10-30T00:00:00Z', 'payload': {'changed': True}}
+    first = forward(backend, 'github_events', 'owner', [record], 'id', tmp_path)
+    second = forward(backend, 'github_events', 'owner', [record], 'id', tmp_path)
+    assert first['provider_revisions'] == second['provider_revisions'] == 1
+    assert first['revision_snapshots_created'] == 1
+    assert second['revision_snapshots_created'] == 0
+    assert first['inserted'] == first['duplicates'] == first['retained'] == 0
+    files = list(tmp_path.glob('*.json'))
+    assert len(files) == 1
+    assert json.loads(files[0].read_bytes())['event'] == record
+    assert backend.post('github_events', 'owner', record, record['id']) is None
+
+
+@pytest.mark.parametrize('status,detail', [(409, 'Different conflict'), (500, 'Native event key already exists with different content')])
+def test_unrelated_failure_cannot_be_archived_as_revision(monkeypatch, tmp_path, status, detail):
+    backend = revision_backend(monkeypatch, status, detail)
+    counts = forward(backend, 'github_events', 'owner', [{'id': '1', 'created_at': '2026-10-30T00:00:00Z'}], 'id', tmp_path)
+    assert counts['retained'] == 1
+    assert not list(tmp_path.iterdir())
+
+
+def test_revision_archive_failure_and_corruption_remain_failures(monkeypatch, tmp_path):
+    backend = revision_backend(monkeypatch)
+    record = {'id': '1', 'created_at': '2026-10-30T00:00:00Z'}
+    blocked = tmp_path / 'not-directory'
+    blocked.write_text('blocked')
+    assert forward(backend, 'github_events', 'owner', [record], 'id', blocked)['retained'] == 1
+    forward(backend, 'github_events', 'owner', [record], 'id', tmp_path / 'archive')
+    next((tmp_path / 'archive').iterdir()).write_text('{}')
+    assert forward(backend, 'github_events', 'owner', [record], 'id', tmp_path / 'archive')['retained'] == 1
+
+
+def test_aws_conflicts_remain_unconfirmed_and_revision_archive_is_github_only(monkeypatch, tmp_path):
+    backend = revision_backend(monkeypatch)
+    assert backend.post('aws_cloudtrail', ACCOUNT, envelope()['detail'], 'native-one') is None
+    with pytest.raises(CollectionError):
+        forward(backend, 'cloudflare_access', 'account', [], 'ray_id', tmp_path)
+
+
+def test_oversized_revision_is_retained(monkeypatch, tmp_path):
+    record = {'id': '1', 'created_at': '2026-10-30T00:00:00Z', 'payload': 'x' * (512 * 1024)}
+    assert forward(revision_backend(monkeypatch), 'github_events', 'owner', [record], 'id', tmp_path)['retained'] == 1
+    assert not list(tmp_path.iterdir())
+
+
+def test_activity_receipt_must_match_format_repository_and_native_id(monkeypatch):
+    backend=LocalBackend('http://127.0.0.1:8000')
+    receipt={'source':'github_events','source_account_id':'github-owner:99',
+             'event_id':'repository-activity:5:123','duplicate':False,'total_events':1}
+    response=SimpleNamespace(status_code=200,json=lambda:receipt)
+    monkeypatch.setattr(backend.session,'post',lambda *args,**kwargs:response)
+    assert backend.post_github_activity('github-owner:99','owner/toy',5,{'id':123}) is False
+    receipt['event_id']='123'
+    assert backend.post_github_activity('github-owner:99','owner/toy',5,{'id':123}) is None

@@ -18,6 +18,7 @@ unified 8-field internal schema:
 
 from __future__ import annotations
 
+import re
 from typing import Callable
 
 # ---------------------------------------------------------------------------
@@ -335,10 +336,20 @@ def parse_cloudflare_access(event: dict) -> dict:
     action = action_type if allowed else f"{action_type} (denied)"
 
     metadata: dict = {}
-    for key in ("country", "app_uid", "ray_id", "user_id", "app_type"):
+    for key in ("country", "app_uid", "ray_id", "user_id", "app_type", "connection"):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
+
+    if type(event.get("allowed")) is bool:
+        metadata["allowed"] = event["allowed"]
+    # Access service logs put the native Client ID in user_email, without a
+    # human user_id. Preserve that explicit non-identity evidence as a machine
+    # principal; never infer it from a token-looking human email alone.
+    client_id = event.get("user_email")
+    if (event.get("connection") == "nonidentity" and isinstance(client_id, str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,128}\.access", client_id)):
+        metadata["service_client_id"] = client_id
 
     return _build(
         source=SOURCE_CF,

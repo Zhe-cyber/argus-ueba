@@ -363,13 +363,7 @@ function LiveActivityFeed({ events, loading }) {
           </div>
           <div>
             <p className="text-sm font-medium text-slate-500">No live events yet</p>
-            <p className="text-xs text-slate-400 mt-1">
-              Use the{' '}
-              <Link href="/demo" className="text-indigo-500 hover:underline font-medium">
-                Demo page
-              </Link>{' '}
-              to ingest events for this user via <code className="bg-slate-100 px-1 rounded font-mono">POST /ingest</code>
-            </p>
+            <p className="text-xs text-slate-400 mt-1">No stored events are available for this account in the current view.</p>
           </div>
         </div>
       ) : (
@@ -531,7 +525,7 @@ function InvestigationPanel({ userId, initial, guidanceAvailable = true }) {
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1
                             text-xs font-semibold ring-1 ${s.bg} ${s.text} ${s.ring}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-            {status}
+            {status === 'Confirmed Insider' ? 'Confirmed Insider (legacy)' : status}
           </span>
         )}
       </div>
@@ -544,7 +538,7 @@ function InvestigationPanel({ userId, initial, guidanceAvailable = true }) {
             Status
           </label>
           <div className="flex flex-wrap gap-2">
-            {INV_STATUSES.map(s => {
+            {INV_STATUSES.filter(s => guidanceAvailable || s !== 'Confirmed Insider' || status === s).map(s => {
               const st = INV_STYLE[s]
               const active = status === s
               return (
@@ -558,7 +552,7 @@ function InvestigationPanel({ userId, initial, guidanceAvailable = true }) {
                       : 'bg-white text-slate-400 ring-slate-200 hover:ring-slate-300 hover:text-slate-600',
                   ].join(' ')}
                 >
-                  {s}
+                  {s === 'Confirmed Insider' ? 'Confirmed Insider (legacy)' : s}
                 </button>
               )
             })}
@@ -753,7 +747,7 @@ function InvestigationPanel({ userId, initial, guidanceAvailable = true }) {
                     </p>
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs
                                       font-semibold ring-1 mt-0.5 ${hst.bg} ${hst.text} ${hst.ring}`}>
-                      {h.status}
+                      {h.status === 'Confirmed Insider' ? 'Confirmed Insider (legacy)' : h.status}
                     </span>
                     {h.note && (
                       <p className="mt-1 text-xs text-slate-500 whitespace-pre-wrap">{h.note}</p>
@@ -835,7 +829,7 @@ export default function UserDetail() {
 
   const goBack = () => router.push('/')
 
-  const riskStyle = RISK_STYLE[user?.risk_level] ?? RISK_STYLE.Low
+  const riskStyle = RISK_STYLE[user?.risk_level] ?? RISK_STYLE.Unknown
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -874,9 +868,11 @@ export default function UserDetail() {
                     <BackButton onClick={goBack} />
                     <div className="flex items-center gap-3 flex-wrap">
                       <h2 className="font-mono text-2xl font-bold text-slate-800">
-                        {user.user}
+                        {user.display_name || user.user}
                       </h2>
                       <RiskBadge level={user.risk_level} />
+                      {user.identity_basis && <details className="text-xs text-slate-500"><summary className="cursor-pointer">Identity</summary><dl className="mt-2 space-y-1 max-w-md break-all"><div>Source: {user.source}</div><div>Namespace: {user.source_account_id}</div><div>Basis: {user.identity_basis}</div><div>Key: {user.user}</div></dl></details>}
+                      {user.account_kind && <span className="text-xs text-slate-500">{user.account_kind}</span>}
                       {user.scenario > 0 && (
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium
                                          text-slate-600 ring-1 ring-slate-200">
@@ -892,75 +888,23 @@ export default function UserDetail() {
                     </div>
                   </div>
 
-                  {/* Right: static AE score + optional live score */}
-                  <div className="flex items-end gap-5">
-
-                    {/* Live Score card — only shown when events have been ingested */}
-                    {liveScore && (
-                      <div className="flex flex-col items-start sm:items-end gap-1">
-                        <div className="flex items-center gap-1.5">
-                          {/* Pulsing green dot */}
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                          </span>
-                          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                            Live AE
-                          </span>
-                        </div>
-                        <span className="text-4xl font-bold tabular-nums leading-none text-emerald-600">
-                          {liveScore.ae_live != null ? liveScore.ae_live.toFixed(3) : '—'}
-                        </span>
-                        <div className="text-[10px] text-slate-400 text-right space-y-0.5">
-                          {/* Arrow showing direction vs static */}
-                          {liveScore.ae_live != null && user.data_source !== 'cloud' && (
-                            <span className={`font-semibold ${
-                              liveScore.ae_live > user.ae_score
-                                ? 'text-red-500'
-                                : liveScore.ae_live < user.ae_score
-                                  ? 'text-green-500'
-                                  : 'text-slate-400'
-                            }`}>
-                              {liveScore.ae_live > user.ae_score ? '↑ higher live risk'
-                               : liveScore.ae_live < user.ae_score ? '↓ lower live risk'
-                               : '= unchanged'}
-                            </span>
-                          )}
-                          <p>{liveScore.event_count} events ingested</p>
-                        </div>
-                      </div>
+                  <div className="flex flex-col items-start sm:items-end gap-1">
+                    {user.application_mode === 'live' ? (
+                      <>
+                        {user.ae_score != null && <><span className="text-xs font-semibold text-slate-500">AE score</span><span className="text-3xl font-bold tabular-nums text-slate-800">{user.ae_score.toFixed(3)}</span></>}
+                        <span className="text-xs text-slate-500">{liveScore?.event_count ?? events.length} events {liveScore ? 'ingested' : 'shown'}</span>
+                      </>
+                    ) : (
+                      <><span className="text-xs font-semibold uppercase tracking-wider text-slate-400">AE score</span>
+                        <span className={`text-4xl font-bold tabular-nums ${riskStyle.score}`}>{user.ae_score != null ? user.ae_score.toFixed(3) : 'Unavailable'}</span></>
                     )}
-
-                    {/* Static AE score */}
-                    <div className="flex flex-col items-start sm:items-end gap-1">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        AE Score
-                      </span>
-                      <span className={`text-5xl font-bold tabular-nums leading-none ${riskStyle.score}`}>
-                        {user.ae_score != null ? user.ae_score.toFixed(3) : 'Unavailable'}
-                      </span>
-                      {/* Thin full-width score bar */}
-                      <div className="w-40 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all
-                            ${user.risk_level === 'High'
-                              ? 'bg-red-400'
-                              : user.risk_level === 'Medium'
-                                ? 'bg-amber-400'
-                                : 'bg-green-400'
-                            }`}
-                          style={{ width: `${Math.round(user.ae_score * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-
                   </div>
 
                 </div>
               </section>
 
               {/* ── Score breakdown row ── */}
-              <section aria-label="Score breakdown">
+              {user.application_mode !== 'live' && <section aria-label="Score breakdown">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                   {SCORE_CARDS.filter((card) => user.data_source !== 'cloud' || card.primary).map(({ key, label, title, primary }) => (
                     <ScoreCard
@@ -976,9 +920,9 @@ export default function UserDetail() {
                   ★ AE Score = Autoencoder reconstruction error, the final detector.
                   {user.data_source !== 'cloud' && ' Weighted-Avg, IF and Rule scores are shown for research comparison only.'}
                 </p>
-              </section>
+              </section>}
 
-              {/* ── SHAP panel ── */}
+              {/* ── SHAP panel — retained only when actual attributions exist ── */}
               {shap && (
                 <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
@@ -1049,14 +993,6 @@ export default function UserDetail() {
                 </section>
               )}
 
-              {/* No SHAP data fallback */}
-              {!shap && !loading && (
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-10
-                                text-center text-sm text-slate-400">
-                  SHAP values not available for this user.
-                </div>
-              )}
-
               {/* ── Peer group context (Gap 2) ── */}
               <PeerContextPanel
                 peerGroup={user.peer_group}
@@ -1068,7 +1004,7 @@ export default function UserDetail() {
               <LiveActivityFeed events={events} loading={eventsLoading} />
 
               {/* ── Investigation panel ── */}
-              <InvestigationPanel userId={id} initial={invRec} guidanceAvailable={user.application_mode !== 'live'} />
+              <InvestigationPanel userId={user.user} initial={invRec} guidanceAvailable={user.application_mode !== 'live'} />
 
             </>
           )}

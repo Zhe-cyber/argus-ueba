@@ -28,6 +28,8 @@ import os
 from backend.config import ARGUS_MODE, LIVE_MODE, DEMO_MODE
 from backend.loader import store
 from backend import investigations as inv_store
+from backend import account_identity as accounts
+from backend import identity_links
 from backend import ai_suggest
 from backend import event_store as evstore
 from backend import alert_store as astore
@@ -38,6 +40,7 @@ from backend.models import (
     AlertStats,
     AlertStatusUpdate,
     IngestRequest,
+    GitHubActivityIngestRequest,
     InvestigationRecord,
     InvestigationUpdate,
     LiveEvent,
@@ -94,6 +97,7 @@ async def lifespan(app: FastAPI):
     evstore.init_db()
     inv_store.init_investigations_db()
     astore.init_alerts_db()
+    identity_links.init_db()
     yield
 
 
@@ -112,6 +116,34 @@ app = FastAPI(
     version=API_VERSION,
 )
 app.include_router(clue_replay_router)
+app.include_router(identity_links.router)
+
+
+@app.get('/monitoring/overview', summary='Observed source activity and alert provenance')
+def monitoring_overview() -> dict:
+    """Read-only source evidence. Counts do not imply complete or healthy collection."""
+    from datetime import datetime, timezone
+    from backend.collector_status import summaries
+    receipts = getattr(app.state, 'collector_receipts', None)
+    sources = evstore.source_activity_summary()
+    with evstore._db() as con:
+        cur = evstore._cursor(con)
+        cur.execute('SELECT alert_type, COUNT(*) AS count FROM alerts WHERE status IN (\'Open\', \'Acknowledged\') GROUP BY alert_type')
+        alerts = evstore._rows(cur)
+    origins = {'rule': 0, 'model': 0, 'observation': 0, 'unverified': 0}
+    for row in alerts:
+        kind = row['alert_type']
+        origin = ('rule' if kind in {'rarity_spike', 'anomalous_behavior'} else
+                  'observation' if kind == 'new_user' else
+                  'model' if kind == 'ae_critical' else 'unverified')
+        origins[origin] += int(row['count'])
+    return {'generated_at': datetime.now(timezone.utc).isoformat(),
+            'application_mode': ARGUS_MODE, 'sources': sources,
+            'active_alerts_by_origin': origins,
+            'coverage': 'observed_events_completeness_unknown',
+            'scoring_status': cloud_ae_scorer.readiness(),
+            'collector_status': summaries(receipts['connected_dir'], receipts['source_root'])
+            if LIVE_MODE and isinstance(receipts, dict) else {}}
 
 # ---------------------------------------------------------------------------
 # CORS — controlled via ALLOWED_ORIGINS env var.
@@ -158,8 +190,12 @@ def _cloud_source_map() -> dict[str, str]:
 def _mode_live_scores() -> list[dict[str, Any]]:
     rows = evstore.get_all_live_scores()
     if LIVE_MODE:
-        accounts = _cloud_source_map()
-        rows = [row for row in rows if str(row['user_id']) in accounts]
+        observed = _cloud_source_map()
+        if accounts.enabled():
+            indexed = {str(row['user_id']): row for row in rows}
+            rows = [indexed.get(key, {'user_id': key, 'ae_live': None}) for key in observed]
+        else:
+            rows = [row for row in rows if str(row['user_id']) in observed]
     return rows
 
 
@@ -355,6 +391,7 @@ async def list_users(
         )
 
     combined: list[UserSummary] = []
+    directory = evstore.account_directory() if LIVE_MODE and accounts.enabled() else {}
 
     # --- CERT (parquet) users: full risk-sorted set, merged/paginated below ---
     if not LIVE_MODE and source in ("all", "cert"):
@@ -385,6 +422,10 @@ async def list_users(
                 continue
             combined.append(UserSummary(
                 user=uid,
+                display_name=directory.get(uid, {}).get('account_label'),
+                identity_basis=directory.get(uid, {}).get('account_basis'),
+                source_account_id=directory.get(uid, {}).get('source_account_id'),
+                account_kind=directory.get(uid, {}).get('account_kind'),
                 ae_score=round(ae_live, 6) if ae_live is not None else None,
                 risk_level=rl,
                 is_insider=None if LIVE_MODE else 0,
@@ -396,7 +437,7 @@ async def list_users(
     # --- Search filter (case-insensitive substring on user ID) ---
     if q:
         needle = q.strip().lower()
-        combined = [u for u in combined if needle in u.user.lower()]
+        combined = [u for u in combined if needle in u.user.lower() or needle in (u.display_name or '').lower()]
 
     # --- Rank by risk tier first, then score within tier, then paginate.
     # CERT and cloud detectors use different score scales (CERT High >= ~0.066,
@@ -470,6 +511,17 @@ def admin_purge_live(
     return {"status": "ok", "scope": "all", "events_removed": removed}
 
 
+def _resolve_account_reference(value: str) -> str:
+    if not (LIVE_MODE and accounts.enabled()) or accounts.is_key(value):
+        return value
+    keys = evstore.legacy_account_keys(value)
+    if len(keys) == 1 and None not in keys:
+        return next(iter(keys))
+    if keys:
+        raise HTTPException(status_code=409, detail='This legacy identifier is ambiguous or unattributed. Select a source-scoped account from the dashboard.')
+    return value
+
+
 def _event_store_user_detail(user_id: str) -> UserDetail | None:
     """
     Build a synthetic UserDetail for a user that exists only in the event store
@@ -500,8 +552,14 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
     # Determine risk tier from AE score
     risk_level = _live_risk_tier(ae_live)
 
+    identity_info = evstore.account_directory().get(user_id, {}) if accounts.enabled() else {}
     return UserDetail(
         user=user_id,
+        display_name=identity_info.get('account_label'),
+        identity_basis=identity_info.get('account_basis'),
+        account_kind=identity_info.get('account_kind'),
+        source=identity_info.get('source'),
+        source_account_id=identity_info.get('source_account_id'),
         application_mode=ARGUS_MODE,
         scoring_status=cloud_ae_scorer.readiness() if LIVE_MODE else None,
         ae_score=round(ae_live, 6) if ae_live is not None else None,
@@ -534,6 +592,7 @@ async def get_user(user_id: str) -> UserDetail:
     Falls back to a live-scoring-only profile for cloud users (CloudTrail,
     Azure AD, etc.) that are not present in the CERT parquet dataset.
     """
+    user_id = _resolve_account_reference(user_id)
     _guard_loaded()
 
     row = store.get_user(user_id)
@@ -568,6 +627,7 @@ async def get_user_shap(user_id: str) -> UserShap:
       `'decreases_risk'` for negative ones.
     - `reason` is a plain-English summary built from the top 3 positive features.
     """
+    user_id = _resolve_account_reference(user_id)
     _guard_loaded()
 
     # Confirm user exists in scores table first
@@ -719,7 +779,8 @@ async def list_investigations(
     ),
 ) -> list[InvestigationRecord]:
     records = inv_store.list_all(status=status)
-    return [InvestigationRecord(**r) for r in records]
+    directory = evstore.account_directory() if accounts.enabled() else {}
+    return [InvestigationRecord(**r, display_name=directory.get(r['user_id'], {}).get('account_label')) for r in records]
 
 
 @app.get(
@@ -728,6 +789,8 @@ async def list_investigations(
     summary="Get the investigation record for a user",
 )
 async def get_investigation(user_id: str) -> InvestigationRecord:
+    if inv_store.get(user_id) is None:
+        user_id = _resolve_account_reference(user_id)
     record = inv_store.get(user_id)
     if record is None:
         raise HTTPException(
@@ -749,6 +812,7 @@ async def upsert_investigation(
     user_id: str,
     body: InvestigationUpdate,
 ) -> InvestigationRecord:
+    user_id = _resolve_account_reference(user_id)
     _guard_loaded()
     # Accept CERT parquet users, event-store users, and bulk-seeded users
     user_exists = (
@@ -787,6 +851,7 @@ async def upsert_investigation(
     summary="Delete an investigation record",
 )
 async def delete_investigation(user_id: str) -> None:
+    user_id = _resolve_account_reference(user_id)
     deleted = inv_store.delete(user_id)
     if not deleted:
         raise HTTPException(
@@ -895,13 +960,25 @@ async def ingest_event(body: IngestRequest) -> PipelineResult:
         return _process_ingest(body)
 
 
-def _process_ingest(body: IngestRequest) -> PipelineResult:
+@app.post('/ingest/github-repository-activity', response_model=PipelineResult)
+def ingest_github_activity(body: GitHubActivityIngestRequest):
+    from backend.github_activity import normalize_activity
+    try:
+        normalised = normalize_activity(body.event, body.repository, body.repository_id)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    request = IngestRequest(source='github_events', source_account_id=body.source_account_id, event=body.event)
+    with evstore.transaction():
+        return _process_ingest(request, normalised_override=normalised)
+
+
+def _process_ingest(body: IngestRequest, normalised_override=None) -> PipelineResult:
     if LIVE_MODE and body.source not in CLOUD_SOURCES:
         raise HTTPException(status_code=422, detail="Live mode accepts cloud sources only")
 
     # ── Stage 1: Normalize ───────────────────────────────────────────────
     try:
-        normalised = normalize(body.event, body.source)
+        normalised = normalised_override if normalised_override is not None else normalize(body.event, body.source)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TypeError as exc:
@@ -915,12 +992,15 @@ def _process_ingest(body: IngestRequest) -> PipelineResult:
             raise HTTPException(status_code=422, detail='AWS record and source account namespace disagree')
         namespace = namespace or native_account
     normalised['source_account_id'] = namespace
-    evstore.lock_user(normalised['user'])
+    identity = accounts.identify(normalised) if accounts.enabled() else None
+    scope_id = identity['account_key'] if identity else normalised['user']
+    evstore.lock_user(scope_id)
 
     # ── Stage 2: Feature extraction ──────────────────────────────────────
     features = fex.extract(normalised)
 
-    user_id = normalised["user"]
+    user_id = scope_id
+    actor_label = identity['account_label'] if identity else normalised['user']
 
     # ── Stage 2b: Snapshot history BEFORE inserting the current event ─────
     # Rarity flags must compare against PRIOR history only; fetching after
@@ -940,11 +1020,17 @@ def _process_ingest(body: IngestRequest) -> PipelineResult:
         cached['duplicate'] = True
         return PipelineResult(**normalised, **cached)
 
+    if accounts.enabled() and identity is None:
+        result = PipelineResult(**normalised, extracted_features=features,
+                                account_key=None, identity_status='unattributed', total_events=1)
+        evstore.save_ingest_result(normalised, result.model_dump(exclude=set(NormalizedEvent.model_fields)))
+        return result
+
     # ── Stage 4: Live score (24-hour rolling window, rule-based) ──────────
-    window_events    = evstore.get_user_events_window(normalised["user"], hours=24)
+    window_events    = evstore.get_user_events_window(user_id, hours=24)
     cumulative       = fex.aggregate(window_events)
     score            = fex.live_score(cumulative)
-    total_events     = evstore.get_total_event_count(normalised["user"])
+    total_events     = evstore.get_total_event_count(user_id)
 
     # ── Stage 5: Live AE score (trained model, all stored events) ─────────
     # Route to the appropriate AE based on event source:
@@ -981,20 +1067,20 @@ def _process_ingest(body: IngestRequest) -> PipelineResult:
         # First event ever for this user
         _maybe_alert(
             user_id, "new_user", "Low",
-            f"New user observed: {user_id}",
+            f"New user observed: {actor_label}",
             {"total_events": total_events, "source": normalised["source"]},
         )
 
     if ae_live is not None and ae_live >= 0.7:
         _maybe_alert(
             user_id, "ae_critical", "Critical",
-            f"Critical AE anomaly score ({ae_live:.3f}) for {user_id}",
+            f"Critical AE anomaly score ({ae_live:.3f}) for {actor_label}",
             {"ae_live": ae_live, "rule_live": score, "rarity_score": r_score},
         )
     elif ae_live is not None and ae_live >= 0.5:
         _maybe_alert(
             user_id, "ae_critical", "High",
-            f"Elevated AE anomaly score ({ae_live:.3f}) for {user_id}",
+            f"Elevated AE anomaly score ({ae_live:.3f}) for {actor_label}",
             {"ae_live": ae_live, "rule_live": score},
         )
 
@@ -1002,20 +1088,22 @@ def _process_ingest(body: IngestRequest) -> PipelineResult:
         severity = "Critical" if r_score >= 0.8 else "High"
         _maybe_alert(
             user_id, "rarity_spike", severity,
-            f"Multi-signal anomaly: {flags_fired} rarity flags fired for {user_id}",
+            f"Multi-signal anomaly: {flags_fired} rarity flags fired for {actor_label}",
             {"rarity_score": r_score, "flags": r_flags, "source": normalised["source"]},
         )
 
     if r_flags.get("first_time_action") and r_flags.get("off_hours"):
         _maybe_alert(
             user_id, "anomalous_behavior", "High",
-            f"First-time action outside business hours for {user_id}",
+            f"First-time action outside business hours for {actor_label}",
             {"action": normalised["action"], "resource": normalised["resource"],
              "timestamp": normalised["timestamp"]},
         )
 
     result = PipelineResult(
         **normalised,
+        account_key=identity['account_key'] if identity else None,
+        identity_status='native_principal' if identity else 'legacy',
         extracted_features  = features,
         live_score          = score,
         ae_live_score       = ae_live,
@@ -1047,6 +1135,7 @@ async def get_user_events(
     Events are populated by POST /ingest calls — they represent logs that
     have been normalised and stored through the ingestion pipeline.
     """
+    user_id = _resolve_account_reference(user_id)
     if LIVE_MODE and user_id not in _cloud_source_map():
         return []
     rows = evstore.get_user_events(user_id, limit=limit)
@@ -1076,6 +1165,7 @@ async def get_live_score(user_id: str) -> LiveScore:
     event_count : all-time event count for this user
     updated_at  : ISO timestamp of last ingest for this user
     """
+    user_id = _resolve_account_reference(user_id)
     row = (None if LIVE_MODE and user_id not in _cloud_source_map()
            else evstore.get_live_score(user_id))
     if row is None:
@@ -1084,7 +1174,7 @@ async def get_live_score(user_id: str) -> LiveScore:
             ae_live     = None,
             rule_live   = 0.0,
             rarity      = 0.0,
-            event_count = 0,
+            event_count = evstore.get_total_event_count(user_id),
             updated_at  = None,
         )
     return LiveScore(
@@ -1134,7 +1224,8 @@ async def list_alerts(
     crossed (rarity spike, critical AE score, first-time off-hours action, etc.)
     """
     rows = astore.list_alerts(status=status, limit=limit, offset=offset)
-    return [Alert(**r) for r in rows]
+    directory = evstore.account_directory() if accounts.enabled() else {}
+    return [Alert(**r, display_name=directory.get(r['user_id'], {}).get('account_label')) for r in rows]
 
 
 @app.patch(
@@ -1174,10 +1265,24 @@ async def escalate_alert(alert_id: int) -> dict:
     if alert is None:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found.")
 
-    uid  = str(alert["user_id"])
+    if alert['status'] not in {'Open', 'Acknowledged'}:
+        raise HTTPException(status_code=409, detail='Reopen this alert before creating an investigation.')
+    uid  = _resolve_account_reference(str(alert["user_id"]))
     note = f"Escalated from alert #{alert_id}: {alert.get('title', '')}"
-    record = inv_store.upsert(uid, "Under Investigation", "Analyst", note)
-    astore.update_status(alert_id, "Acknowledged")
+    existing = inv_store.get(uid)
+    if uid != str(alert['user_id']) and inv_store.get(str(alert['user_id'])) is not None:
+        raise HTTPException(status_code=409, detail='This alert has a legacy case that needs reviewed identity migration.')
+    if existing and existing.get('status') in {'Cleared', 'Confirmed Insider'}:
+        raise HTTPException(status_code=409, detail='This account has a closed case. Review and reopen the case before escalating.')
+    previous_notes = (existing or {}).get('notes') or ''
+    if existing and note in previous_notes.split('\n') and existing.get('status') == 'Under Investigation':
+        record = {'user_id': uid, **existing}
+    else:
+        notes = previous_notes.rstrip() + '\n' + note if previous_notes else note
+        record = inv_store.upsert(uid, 'Under Investigation',
+                                  (existing or {}).get('analyst') or 'Analyst', notes)
+    if alert['status'] != 'Acknowledged':
+        astore.update_status(alert_id, 'Acknowledged')
 
     return {"status": "ok", "alert_id": alert_id, "user_id": uid, "investigation": record}
 

@@ -18,12 +18,12 @@ foreach ($mode in @('serve', 'tick')) {
         $taskSid -ne $sid -or $task.Principal.LogonType -ne 'Interactive' -or
         $task.Principal.RunLevel -ne 'Limited') { throw 'Owned task identity/state mismatch; nothing replaced.' }
     $original = Export-ScheduledTask -TaskName $name
-    $backup = Join-Path $cfg.state_dir ($name + '-before-v2.xml')
+    $backup = Join-Path $cfg.state_dir ($name + '-before-v3.xml')
     if (-not (Test-Path -LiteralPath $backup)) { [IO.File]::WriteAllText($backup, $original, [Text.Encoding]::Unicode) }
     [xml]$xml = $original
     foreach ($trigger in $xml.Task.Triggers.ChildNodes) {
         if (-not $trigger.EndBoundary) { throw 'Missing finite task expiry.' }
-        $trigger.EndBoundary = '2026-11-14T16:00:00Z'
+        $trigger.EndBoundary = '2026-11-16T16:00:00Z'
     }
     $updates += @{Name=$name; Xml=$xml.OuterXml}
 }
