@@ -284,3 +284,8 @@ The events `timestamp` is probably not the provider event time. Measure properly
 - Tests: 12 in the file. Full suite: 747 passed, 1 skipped.
 
 **B1.3:** 0 duplicates; a unique index on (source, `source_account_id`, `event_id`).
+
+## 2026-11-05 19:49 MYT — 3011/8015 redeployed with triage view
+3011/8015 redeployed with triage view at 19:48 MYT (scheduled task argus-deploy-triage-to-3011-2026-11-05). Build OK; /workspace/status mode=isolated_copy; triage_counts review_first=5, automation_context=31, office_hours_context=15; B1 check: B1.9/B1.10/B1.11 PASS, B1.1 WARN (snapshot ~23.5 h old), rest MANUAL. Side preview 8016/3012 stopped.
+Backups: data\live\workspace-case-preview-20261030-v1\frontend\pages\workspace.js.bak-20261105 ; data\live\workspace-case-preview-20261030-v1\frontend\.next-bak-20261105
+New PIDs: API 33860 (venv launcher), UI 40956.

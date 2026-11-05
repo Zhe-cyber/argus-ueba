@@ -35,12 +35,14 @@ play the pre-recorded clip (see §6, decision).
 |---|---|---|---|
 | 1 | Connections | "Three real providers, collected continuously. Every planned test action is checked against the provider's own log." | The three source cards; "verified" counts |
 | 2 | Work queue | "52 rule alerts, all recorded High. A small team can't read 52." | The summary line |
-| 3 | Work queue, **Triage = Review first** | "Argus puts 5 first: activity on the AWS **root** account outside Malaysian office hours. 31 are automation accounts and 15 are inside office hours; they are context, not alarms." | The 5 rows |
+| 3 | Work queue, **Triage = Review first** | "Argus puts 5 first: activity on the AWS **root** account outside Malaysian office hours. 31 are automation accounts and 16 are inside office hours; they are context, not alarms." | The 5 rows |
 | 4 | Finding #32 | "Root account, 07:09 Malaysian time, a cost query. Here is exactly what fired and when." | Drawer: triage, event time in Malaysia, action, resource |
 | 5 | Case | "The analyst opens a case, adds the person's other accounts, writes a decision. Everything is audited and versioned." | Create case → note → decision → closed (or the recorded clip) |
 | 6 | Entities → People | "One person, three providers. Linked only after recorded approval, which is evidence of ownership, not proof of who acted." | Person with approved links; cross-provider timeline |
 | 7 | Account-day model panel | "The behavioural model explains each score feature by feature, or says precisely why it can't score yet." | A scored day with per-feature terms (from about 7 Nov), or "0 of 5 usable days" |
 | 8 | Headline slide | "Benchmark result, collection completeness, cost." | §5 table |
+
+**Count scope (verified 5 Nov):** select **Status = All** for the recorded 52-finding breakdown: 5 review first + 31 automation + 16 inside office hours. The current **Open** filter has 51: 5 + 31 + 15. These are status-filter differences, not a detection change. Use the selected screen's actual counts during the demo.
 
 **Backup scenario (14 Nov):** persona-01 and persona-02 make an unannounced substitution to
 bucket p06. If the A2 case study produces a finding, step 4 uses that finding instead.
