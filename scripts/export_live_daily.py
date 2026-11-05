@@ -12,11 +12,11 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from scripts import live_history_readiness as readiness
+from scripts import live_history_readiness as readiness, aws_study_v3 as protocol
 from scripts.aws_lab_daily_features import CONTRACT, extract
 from scripts.simulation_lab import buckets
 
-SOURCES = ('scripts/export_live_daily.py', 'scripts/aws_lab_daily_features.py',
+SOURCES = ('scripts/aws_study_v3.py', 'scripts/export_live_daily.py', 'scripts/aws_lab_daily_features.py',
            'scripts/live_history_readiness.py', 'scripts/persona_history_plan.py', 'scripts/simulation_lab.py')
 
 
@@ -63,7 +63,7 @@ def export(ledger, database, account, stack, output, now=None):
     last_day = readiness.WINDOWS['normal_calibration'][1]
     windows_closed = now.astimezone(readiness.MALAYSIA).date().isoformat() > last_day
     status = 'empty_dataset' if not rows else 'normal_windows_complete' if windows_closed else 'partial_dataset'
-    dataset = {'schema': 'argus_live_daily_dataset_v1', 'dataset_kind': 'audited_aws_daily_workloads',
+    dataset = {'schema': protocol.DATASET_SCHEMA, 'study': protocol.binding(), 'study_sha256': protocol.binding_sha256(), 'dataset_kind': 'audited_aws_daily_workloads',
                'status': status, 'profile': CONTRACT['profile'], 'feature_contract_sha256': digest(CONTRACT),
                'rows': rows, 'readiness': report,
                'provenance': {'exported_at_utc': now.isoformat(), 'profile_sha256': readiness.PROFILE_SHA,
@@ -81,7 +81,7 @@ def export(ledger, database, account, stack, output, now=None):
         (stage / 'feature_contract.json').write_bytes(canonical(CONTRACT))
         data_bytes = canonical(dataset) + b'\n'
         (stage / 'dataset.json').write_bytes(data_bytes)
-        manifest = {'schema': 'argus_live_daily_export_manifest_v1', 'status': status,
+        manifest = {'schema': 'argus_live_daily_export_manifest_v3', 'study': protocol.binding(), 'study_sha256': protocol.binding_sha256(), 'status': status,
                     'dataset_sha256': hashlib.sha256(data_bytes).hexdigest(),
                     'feature_contract_sha256': digest(CONTRACT), 'source_sha256': before,
                     'partition_rows': {part: sum(r['partition'] == part for r in rows) for part in readiness.WINDOWS},

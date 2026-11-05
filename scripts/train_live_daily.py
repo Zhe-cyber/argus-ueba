@@ -15,7 +15,8 @@ from scripts.aws_lab_daily_features import CONTRACT, FEATURES
 from scripts import export_live_daily as exporter, live_history_readiness as readiness, live_daily_method as method
 
 CONTRACT_SHA = '1612cd7401704efef92d0c462543f3eeebf5c7c0cbe39285998299b498688ebc'
-SOURCES = ('scripts/train_live_daily.py', 'scripts/live_daily_method.py', 'docs/LIVE_METHOD_ANNEX_V1.md')
+from scripts import aws_study_v3 as protocol
+SOURCES = ('scripts/aws_study_v3.py', 'scripts/train_live_daily.py', 'scripts/live_daily_method.py', 'docs/LIVE_METHOD_ANNEX_V1.md')
 
 
 class Refusal(ValueError):
@@ -40,12 +41,17 @@ def prepare(directory, now=None):
     manifest = json.loads((directory / 'manifest.json').read_text())
     raw = (directory / 'dataset.json').read_bytes()
     data = json.loads(raw)
+    try:
+        protocol.require_binding(data)
+        protocol.require_binding(manifest)
+    except ValueError as exc:
+        raise Refusal('Dataset study binding differs') from exc
     if (hashlib.sha256(raw).hexdigest() != manifest.get('dataset_sha256')
             or sha(directory / 'feature_contract.json') != CONTRACT_SHA
             or manifest.get('feature_contract_sha256') != CONTRACT_SHA
             or data.get('feature_contract_sha256') != CONTRACT_SHA
             or exporter.digest(CONTRACT) != CONTRACT_SHA
-            or data.get('schema') != 'argus_live_daily_dataset_v1'
+            or data.get('schema') != protocol.DATASET_SCHEMA
             or data.get('profile') != 'aws_lab_daily_v1'
             or data.get('provenance', {}).get('source_sha256') != exporter.hashes()
             or manifest.get('source_sha256') != exporter.hashes()
@@ -99,7 +105,7 @@ def prepare(directory, now=None):
     usable = [{'persona': r['persona'], 'day': r['date_local'], 'partition': p, 'status': 'usable'}
               for p, rows in parts.items() for r in rows]
     # Include every role in the gate even if exclusions removed all its rows.
-    usable += [{'persona': role, 'day': '2026-10-30', 'partition': 'fit', 'status': 'excluded'} for role in method.ROLES]
+    usable += [{'persona': role, 'day': readiness.WINDOWS['fit'][0], 'partition': 'fit', 'status': 'excluded'} for role in method.ROLES]
     gates = readiness.history_gates(usable)
     if (not gates['history_gates_pass'] or gates['eligible_roles'] != 6 or len(parts['fit']) < 30):
         raise Refusal('Insufficient eligible closed history after IP exclusions')
@@ -167,6 +173,7 @@ def load_bundle(directory, *, expected_scope_sha256, allow_synthetic=False, _ver
     import torch
     directory = Path(directory)
     manifest = json.loads((directory / 'manifest.json').read_text())
+    protocol.require_binding(manifest)
     if manifest.get('run_kind') != 'controlled_aws_lab' and not (allow_synthetic and manifest.get('run_kind') == 'synthetic_contract_test'):
         raise Refusal('Synthetic/unknown bundle cannot be loaded as real-study artifacts')
     if manifest.get('reloaded_score_parity') is not True and not _verify_in_progress:
@@ -221,7 +228,8 @@ def train(directory, output, now=None, *, synthetic=False):
               'validation_summary': method.validation_summary(scored['validation'], calibration)}
     for name, value in [('scaler.json', scaler), ('references.json', references), ('normal_report.json', report)]:
         (output / name).write_bytes(exporter.canonical(value))
-    manifest = {'profile': method.METHOD['profile'], 'method': method.METHOD, 'source_sha256': before,
+    manifest = {'study': protocol.binding(), 'study_sha256': protocol.binding_sha256(),
+                'profile': method.METHOD['profile'], 'method': method.METHOD, 'source_sha256': before,
                 'feature_contract_sha256': CONTRACT_SHA, 'dataset_sha256': data['_input_sha256'],
                 'data_source_sha256': data['provenance']['source_sha256'], 'scope_sha256': data['provenance']['scope_sha256'],
                 'artifact_sha256': {name: sha(output / name) for name in ('weights.pt', 'scaler.json', 'references.json', 'normal_report.json')},

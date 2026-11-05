@@ -1,4 +1,4 @@
-"""Read-only prospective V2 history gates, not scoring or model activation."""
+"""Read-only prospective V3 history gates, not scoring or model activation."""
 from collections import Counter
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
@@ -16,9 +16,8 @@ from scripts.persona_history_plan import make_plan, MALAYSIA
 from scripts.simulation_lab import buckets, validate_scope
 
 PROFILE_SHA = '150529b73fa71ac75eab06b162ad4bc913d7d0a19e3ff52c009d60ef3ba3899c'
-WINDOWS = {'fit': ('2026-10-30', '2026-11-05'),
-           'validation': ('2026-11-06', '2026-11-07'),
-           'normal_calibration': ('2026-11-08', '2026-11-10')}
+from scripts import aws_study_v3 as protocol
+WINDOWS = protocol.WINDOWS
 
 
 def expected_actions(account, stack):
@@ -154,7 +153,7 @@ def evaluate(ledger, database, account, stack, now=None, *, with_evidence=False)
         row['status'] = ('future' if row['day'] > today else 'current_partial' if row['day'] == today
                          else 'usable' if row['verified'] * 10 >= row['planned'] * 9 and row['unresolved'] == 0 else 'incomplete')
     gates = history_gates(days)
-    report = {'schema': 'argus_live_history_readiness_v1', 'computed_at_utc': now.isoformat(),
+    report = {'schema': 'argus_live_history_readiness_v1', 'study': protocol.binding(), 'study_sha256': protocol.binding_sha256(), 'computed_at_utc': now.isoformat(),
             'timezone': 'Asia/Kuala_Lumpur', 'profile_sha256': PROFILE_SHA, 'days': days, **gates,
             'status': 'history_minimums_met' if gates['history_gates_pass'] else 'history_pending',
             'model_activated': False, 'model_release_evaluated': False,
