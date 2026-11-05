@@ -36,7 +36,7 @@ jobs:
         run: |
           pip install --quiet fastapi uvicorn[standard] pandas pyarrow \
             fastparquet python-dotenv python-multipart scikit-learn \
-            joblib psycopg2-binary ijson pytest httpx boto3 requests
+            joblib psycopg2-binary ijson pytest httpx boto3 requests cryptography
 
       - name: Run tests
         run: python -m pytest backend/tests/ scripts/tests/ -v --tb=short
