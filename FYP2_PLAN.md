@@ -35,7 +35,7 @@ One-liner: *"Commercial UEBA serves the 1% of companies with a SOC. Argus is gla
 | # | Item | Effort | Cost | Why now |
 |---|---|---|---|---|
 | 1 | **Repositioning language** — "insider threat" → "insider & account-compromise detection" across README/slides/paper | days | RM0 | Word-level edits, big positioning gain; everything after builds on this claim |
-| 2 | **Signups + safety rails** — AWS account (+ **billing alarm at $1**), M365 Developer Program sandbox, send **ECLOGIC NDA request** | days | RM0 | All calendar-bound, not effort-bound; surprises must surface in week 1 |
+| 2 | **Signups + safety rails** — AWS account (+ **billing alarm at $1**) ✅ done 2026-07-05, ~~M365 Developer Program sandbox~~ *(dead route — gated to VS Pro subs; use Entra P1/P2 trial per R12, only when #12 starts)*, send **ECLOGIC NDA request** | days | RM0 | All calendar-bound, not effort-bound; surprises must surface in week 1 |
 
 ### P1 — Core: production-gap fixes that ARE specialty requirements (weeks 1–9, all RM0)
 | # | Item | Effort | Audit gap | Specialty link |
@@ -53,7 +53,7 @@ One-liner: *"Commercial UEBA serves the 1% of companies with a SOC. Argus is gla
 | 9 | **Auth + RBAC + analyst audit log** (NextAuth, analyst vs admin) | 1–1.5 wk | RM0 | Audit gap #5; **prerequisite for multi-tenancy** — can't have tenants without auth |
 | 10 | **Multi-tenancy (MSP mode)** — tenant column + scoped queries + tenant switcher in dashboard | 1.5–2 wk | RM0 | Back on-spine: the MSP delivery requirement; demo = "one ECLOGIC engineer, N client orgs" |
 | 11 | **Phished-account demo scenario** — same login, new country, new IP, 3 AM, first-time mass download → rarity flags light up | days | RM0 | Cheap, showcases geo_rarity/new_ip; the account-compromise claim made visible |
-| 12 | **Azure AD live poller** (Graph API sign-in logs via M365 dev sandbox — E5 incl. Entra P2, required for the sign-in API) | 2 wk | RM0 (renewal friction) | Completes "multi-cloud live"; fallback: Azure free account $200 credit |
+| 12 | **Azure AD live poller — STRETCH GOAL** (Graph API sign-in logs via **self-service Entra ID P1/P2 30-day trial**, the RM0 route per UPGRADE_PLAN R12 — M365 dev sandbox is gated, and Azure's $200 credit does NOT unlock the Entra P1 license the sign-in API needs) | 2 wk, must fit inside ONE 30-day trial window | RM0 | Behind the GitHub+AWS multi-source demo; Azure gets its own latency claim (~5–15 min, no SLA), kept separate from the <60s criterion |
 
 ### P3 — Evaluation centerpiece (weeks 12–14)
 | # | Item | Effort | Why it's the gem |
@@ -94,7 +94,7 @@ One-liner: *"Commercial UEBA serves the 1% of companies with a SOC. Argus is gla
 |---|---|
 | ECLOGIC NDA/study timeline slips | Request in week 1; study is a bonus, not a dependency — system stands alone |
 | AWS needs credit card / cost anxiety | Billing alarm + `LookupEvents` fallback needs nothing but an access key |
-| M365 dev sandbox renewal tightened | Renewal needs visible dev activity; fallback = Azure free credit |
+| ~~M365 dev sandbox renewal tightened~~ **Superseded (R12): sandbox gated entirely; route = Entra P1/P2 30-day self-service trial** | Single 30-day clock, no renewal — schedule the whole Azure slice inside it; if infeasible, the multi-source demo ships on GitHub+AWS |
 | Neon 0.5 GB fills from live pollers | Retention purge job (#5) is scheduled early on purpose |
 | Transformer-style flat results | Doesn't apply — CUSUM study is the buffer, not the spine; no single technique can sink this plan |
 
