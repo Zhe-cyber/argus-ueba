@@ -1,0 +1,88 @@
+{
+  "schema": "aws_v3_ordinary_plan_equivalence_v1",
+  "days": [
+    {
+      "day": "2026-11-01",
+      "planned_actions": 19,
+      "actions_sha256": "d867be2015d61506645f2aea22898d53f336200f5873223fecec027e04de257e",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-02",
+      "planned_actions": 14,
+      "actions_sha256": "9d7ace7d9449ff22a349eb1c58bbe323c3a6b55ba30766ba3bfa76282941b566",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-03",
+      "planned_actions": 19,
+      "actions_sha256": "38762f52d9448cc1f8457a0ea7f48394ff6f73f867aae635882235355f14860c",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-04",
+      "planned_actions": 17,
+      "actions_sha256": "b6d62b866a8560967bc178d058d5880e4ddbbabfe11e90a2acf3a617d067b71f",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-05",
+      "planned_actions": 23,
+      "actions_sha256": "23705d066a3265736c78adf6b238e94dfbbf7f3f6d9c2088a26c0e9d60958d6f",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-06",
+      "planned_actions": 21,
+      "actions_sha256": "32b86f69c7dd24ccc85d3fe5b54c7cc63d42d3972a76330c1df426dda298fb4f",
+      "equal_to_preserved_v2": true
+    },
+    {
+      "day": "2026-11-07",
+      "planned_actions": 19,
+      "actions_sha256": "c8e9d00e2585c3759d67dad0627943a1ea76d3d82108fb528942b432109350d2",
+      "equal_to_preserved_v2": true
+    }
+  ],
+  "native_matches_ast_unchanged": true,
+  "study_bound_sources": [
+    "scripts/aws_study_v3.py",
+    "scripts/reserved_study.py",
+    "scripts/run_reserved_study.py",
+    "scripts/evaluate_reserved_study.py",
+    "scripts/run_persona_history.py",
+    "scripts/local_pilot.py",
+    "scripts/persona_history_plan.py",
+    "scripts/persona_profiles_v2.json",
+    "scripts/run_simulation.py",
+    "scripts/simulation_lab.py",
+    "scripts/aws_lab_daily_features.py",
+    "scripts/live_history_readiness.py",
+    "scripts/export_live_daily.py",
+    "scripts/train_live_daily.py",
+    "scripts/live_daily_method.py",
+    "docs/LIVE_METHOD_ANNEX_V1.md",
+    "docs/LIVE_EVALUATION_PROTOCOL_V3.md",
+    "specs/W34-aws-study-v3.md"
+  ],
+  "staged_source_sha256": {
+    "scripts/aws_study_v3.py": "b045951f015dfcf383b519a87da73324acacbfe29068a16c63c245a9d2902d73",
+    "scripts/reserved_study.py": "5cfbddf6382640c2aae2700f0b6f79ceb1dfad1de371efb9f085610ea4d9fe91",
+    "scripts/run_reserved_study.py": "18d311cf6a16c952e1e2e879bd85d9d91da522de9d5b720d91bf81b0a2915bbe",
+    "scripts/evaluate_reserved_study.py": "2d5d5075896cb23b15a2524b2e273219e135ae5eef925256885f92807a844645",
+    "scripts/run_persona_history.py": "d478d28e5f07f5f9e4436c403f9646ea537f447a0026f5e2243d19a4c6ce9813",
+    "scripts/local_pilot.py": "3ce0cbe96cb015405280f5c5eb034b7941d98605df6be96ae0891bd8cf9ef86a",
+    "scripts/persona_history_plan.py": "290f6fd3d6cf3d13296b49b1c441e9b3693740779275decd389c491dfd163157",
+    "scripts/persona_profiles_v2.json": "150529b73fa71ac75eab06b162ad4bc913d7d0a19e3ff52c009d60ef3ba3899c",
+    "scripts/run_simulation.py": "9e575cbf0351e6d0709411514a75f0c268bf972141941206cb2603358148e745",
+    "scripts/simulation_lab.py": "66285ec887c5e1db0317478916c376e03ea09b75ad7f7cb4895257ba286d1ec4",
+    "scripts/aws_lab_daily_features.py": "37865f44e85eb518a6d2825ecc99d606dd9bc98106532a9fab3865d7c4528e9d",
+    "scripts/live_history_readiness.py": "43f3a29461f2dd80a78a3ac0d5445a1e446e06ed0ec9408e90f50a7777e091eb",
+    "scripts/export_live_daily.py": "6eab990a4f670f318ba6d09150b3bcf6923e432ed65998c81dc4eb931688f730",
+    "scripts/train_live_daily.py": "a05b982d0b7ca853ec6e171970647726b07766628fd4555f421e641c9e1573f8",
+    "scripts/live_daily_method.py": "2ed9432284c693b2888945a9f936e61995662d579acbe066bfcae99fd0ccba9a",
+    "docs/LIVE_METHOD_ANNEX_V1.md": "a51f50fdb20d0519c8fb9e4769507d62c07ef281775fed2eec3309fbcf3523ad",
+    "docs/LIVE_EVALUATION_PROTOCOL_V3.md": "c89619ef66108f870244f496421ec7bd2e91aed12c5be3d3a457d7d939ec0a7e",
+    "specs/W34-aws-study-v3.md": "63dc490be306670a1eaf8ff03c9eed68d124368f1b5324495ff5e0e7468c345a"
+  }
+}

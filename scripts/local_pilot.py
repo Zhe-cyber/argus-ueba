@@ -24,7 +24,8 @@ NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 LEGACY_PROFILE_SHA = '98bf9d641823d7764e510f3ff944c365f109ca9941349bf3f51788f92a74566b'
 PROFILE_SHA = '150529b73fa71ac75eab06b162ad4bc913d7d0a19e3ff52c009d60ef3ba3899c'
 RUNTIME_SCRIPTS = ('local_pilot.py', 'run_persona_history.py', 'persona_history_plan.py',
-                   'run_simulation.py', 'simulation_lab.py', 'collect_live.py', 'setup_cloudflare.py')
+                   'run_simulation.py', 'simulation_lab.py', 'collect_live.py', 'setup_cloudflare.py',
+                   'aws_study_v3.py', 'reserved_study.py', 'run_reserved_study.py', 'evaluate_reserved_study.py')
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -68,9 +69,9 @@ def read_scope(ledger_dir):
 
 
 def validate(cfg):
-    if (cfg.get('schema') != 'argus_local_pilot_v2' or Path(cfg['source_root']).resolve() != ROOT
+    if (cfg.get('schema') != 'argus_local_pilot_v2' or cfg.get('study_protocol') != 'aws_controlled_study_v3' or Path(cfg['source_root']).resolve() != ROOT
             or cfg.get('api') != API or cfg.get('actor_start') != '2026-10-29'
-            or cfg.get('end_local') != '2026-11-14' or cfg.get('actor_end') != '2026-11-13' or cfg.get('repo') != 'Zhe-cyber/argus-ueba'
+            or cfg.get('end_local') != '2026-11-16' or cfg.get('actor_end') != '2026-11-15' or cfg.get('repo') != 'Zhe-cyber/argus-ueba'
             or cfg.get('stack') != 'argus-ueba-actors' or re.fullmatch('[0-9a-f]{32}', cfg.get('runtime_id', '')) is None
             or re.fullmatch('[0-9]{12}', cfg.get('account_id', '')) is None):
         raise ValueError('Unsupported pilot scope')
@@ -157,6 +158,7 @@ def command(cfg, script, arguments, timeout=150):
     if not isinstance(value, dict):
         return {'ok': False, 'status': 'unexpected_child_output'}
     for key in ('received', 'inserted', 'duplicates', 'retained', 'malformed', 'skipped', 'acknowledged',
+                'provider_revisions', 'revision_snapshots_created',
                 'new_actions', 'newly_provider_verified', 'pending_or_ambiguous', 'reserved_sdk_calls_today'):
         if type(value.get(key)) is int:
             report[key] = value[key]
@@ -195,13 +197,15 @@ def tick(cfg, now=None):
     elif not phases['aws']['ok'] or unknown:
         phases['actors'] = {'ok': False, 'status': 'blocked_collection_or_unknown_claims', 'unknown_claims': unknown}
     else:
-        phases['actors'] = command(cfg, 'run_persona_history.py', ['--account-id', cfg['account_id'], '--stack', cfg['stack'],
+        runner = 'run_reserved_study.py' if actor_day in ('2026-11-14', '2026-11-15') else 'run_persona_history.py'
+        phases['actors'] = command(cfg, runner, ['--account-id', cfg['account_id'], '--stack', cfg['stack'],
                                                                  '--profile', 'argus-simulator', '--state-dir', cfg['ledger_dir'], '--execute'], timeout=360)
     phases['audit'] = command(cfg, 'run_persona_history.py', ['--account-id', cfg['account_id'], '--state-dir', cfg['ledger_dir'],
                                                             '--audit-events', str(Path(cfg['connected_dir']) / 'events.db')], timeout=60)
     poll_path = Path(cfg['state_dir']) / 'poll_state.json'
     polls = json.loads(poll_path.read_text()) if poll_path.exists() else {}
-    sources = {'github': ['github', '--repo', cfg['repo']]}
+    sources = {'github': ['github', '--repo', cfg['repo'], '--revision-dir',
+                          str(Path(cfg['connected_dir']) / 'github-event-revisions')]}
     if cfg.get('cloudflare'):
         sources['cloudflare'] = ['cloudflare', '--account-id', cfg['cloudflare']['account'], '--app-id', cfg['cloudflare']['app_id']]
     else:
@@ -258,9 +262,22 @@ def serve(cfg):
     env = {'DATABASE_URL': 'sqlite-local', 'ARGUS_MODE': 'live', 'DEMO_MODE': 'false',
            'CLOUD_MODEL_PROFILE': 'unverified', 'LIVE_STATE_DIR': cfg['connected_dir'], 'ADMIN_TOKEN': '',
            'ALLOWED_ORIGINS': 'http://localhost:3000,http://127.0.0.1:3000'}
+    if cfg.get('account_keys') not in (None, 'source-principal-v1'):
+        raise ValueError('Unsupported live account-key contract')
+    env['ARGUS_ACCOUNT_KEYS'] = cfg.get('account_keys') or ''
     os.environ.update(env)
+    # Explicit local presentation option; never enables live inference.
+    if cfg.get('offline_replay_dir'):
+        replay = Path(cfg['offline_replay_dir']).resolve()
+        if replay != (ROOT / 'data/processed/clue-replay-v1').resolve():
+            raise ValueError('Only the existing local offline replay is supported')
+        from backend.clue_replay import read_bundle
+        read_bundle(replay)  # Validate digests and policy before exposing any rows.
+        os.environ['CLUE_REPLAY_DIR'] = str(replay)
     from backend import config, event_store
     from backend.main import app
+    # Explicit opt-in: other deployments and unit tests must not read local pilot receipts.
+    app.state.collector_receipts = {'connected_dir': cfg['connected_dir'], 'source_root': str(ROOT)}
     if (event_store._PG or Path(event_store.DB_PATH).resolve() != (Path(cfg['connected_dir']) / 'events.db').resolve()
             or not config.LIVE_MODE or config.CLOUD_MODEL_PROFILE != 'unverified'):
         raise ValueError('Backend storage/mode mismatch')
@@ -308,12 +325,12 @@ def initialize(live_dir, config_path):
                 cf_status = 'configured_existing_app'
     except Exception:
         cf_status = 'existing_scope_or_credential_unavailable'
-    cfg = {'schema': 'argus_local_pilot_v2', 'source_root': str(ROOT), 'python': str(Path(sys.executable).with_name('python.exe')),
+    cfg = {'schema': 'argus_local_pilot_v2', 'study_protocol': 'aws_controlled_study_v3', 'source_root': str(ROOT), 'python': str(Path(sys.executable).with_name('python.exe')),
            'pythonw': str(Path(sys.executable).with_name('pythonw.exe')), 'gh': shutil.which('gh'),
            'state_dir': str(state), 'connected_dir': str(live / 'connected'), 'ledger_dir': str(live / 'persona-history-v1'),
            'account_id': account, 'stack': stack, 'queue_url': queue, 'api': API,
            'repo': 'Zhe-cyber/argus-ueba', 'cloudflare': cf, 'cloudflare_setup_status': cf_status,
-           'actor_start': '2026-10-29', 'actor_end': '2026-11-13', 'end_local': '2026-11-14', 'runtime_id': uuid4().hex,
+           'actor_start': '2026-10-29', 'actor_end': '2026-11-15', 'end_local': '2026-11-16', 'runtime_id': uuid4().hex,
            'source_hashes': pinned_sources()}
     validate(cfg)
     state.mkdir(parents=True, exist_ok=False)

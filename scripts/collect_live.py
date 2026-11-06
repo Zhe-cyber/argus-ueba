@@ -7,9 +7,11 @@ Only counts/status are printed; provider credentials remain in their local store
 from __future__ import annotations
 
 import argparse
+import hashlib
 from datetime import datetime, timedelta, timezone
 import ipaddress
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -56,19 +58,78 @@ class LocalBackend:
                 or health.get('ingestion_protocol') != 'native-receipt-v1'):
             raise CollectionError('Require a live backend with native-receipt-v1; no events forwarded.')
 
-    def post(self, source, namespace, record, native_id):
+    def post_receipt(self, source, namespace, record, native_id):
         try:
             response = self.session.post(self.url + '/ingest', timeout=45, allow_redirects=False,
                                          json={'source': source, 'source_account_id': namespace, 'event': record})
             receipt = response.json()
         except (requests.RequestException, ValueError):
             return None
+        if (source == 'github_events' and response.status_code == 409
+                and receipt == {'detail': 'Native event key already exists with different content'}):
+            return {'status': 'payload_conflict'}
         if (response.status_code != 200 or not isinstance(receipt, dict)
                 or receipt.get('source') != source or receipt.get('source_account_id') != namespace
                 or receipt.get('event_id') != str(native_id) or type(receipt.get('duplicate')) is not bool
                 or not isinstance(receipt.get('total_events'), int) or receipt['total_events'] < 1):
             return None
+        return {'status': 'committed', 'duplicate': receipt['duplicate']}
+
+    def post(self, source, namespace, record, native_id):
+        receipt = self.post_receipt(source, namespace, record, native_id)
+        return receipt['duplicate'] if receipt and receipt['status'] == 'committed' else None
+
+    def post_github_activity(self, namespace, repository, repo_id, record):
+        from backend.github_activity import receipt_id
+        expected = receipt_id(repo_id, record.get('id'))
+        try:
+            response = self.session.post(self.url + '/ingest/github-repository-activity', timeout=45,
+                allow_redirects=False, json={'source_account_id': namespace, 'repository': repository,
+                                             'repository_id': repo_id, 'event': record})
+            receipt = response.json()
+        except (requests.RequestException, ValueError):
+            return None
+        if (response.status_code != 200 or not isinstance(receipt, dict)
+                or receipt.get('source') != 'github_events' or receipt.get('source_account_id') != namespace
+                or receipt.get('event_id') != expected or type(receipt.get('duplicate')) is not bool
+                or type(receipt.get('total_events')) is not int or receipt['total_events'] < 1):
+            return None
         return receipt['duplicate']
+
+
+def archive_github_revision(directory, namespace, record, native_id):
+    """Keep changed provider representations separate from immutable event receipts.
+
+    Content-addressed, exclusively created snapshots are not new activity events.
+    A failed or corrupt snapshot remains a collection failure.
+    """
+    payload = json.dumps(record, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode('utf-8')
+    if len(payload) > 512 * 1024:
+        raise CollectionError('Provider revision exceeds archive size limit.')
+    payload_sha = hashlib.sha256(payload).hexdigest()
+    identity = {'source': 'github_events', 'source_account_id': namespace,
+                'event_id': str(native_id), 'payload_sha256': payload_sha}
+    key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / (key + '.json')
+    snapshot = {**identity, 'schema': 'github_provider_revision_v1', 'event': record,
+                'captured_at_utc': datetime.now(timezone.utc).isoformat(),
+                'interpretation': 'Changed provider representation; not a new activity event.'}
+    try:
+        with path.open('xb') as stream:
+            stream.write(json.dumps(snapshot, sort_keys=True, ensure_ascii=False, allow_nan=False).encode('utf-8'))
+            stream.flush()
+            os.fsync(stream.fileno())
+        return True
+    except FileExistsError:
+        if path.stat().st_size > 1024 * 1024:
+            raise CollectionError('Existing revision archive is invalid.')
+        existing = json.loads(path.read_bytes())
+        if (not isinstance(existing, dict) or any(existing.get(k) != v for k, v in identity.items())
+                or existing.get('schema') != snapshot['schema'] or existing.get('event') != record):
+            raise CollectionError('Existing revision archive is invalid.')
+        return False
 
 
 def stats():
@@ -82,8 +143,12 @@ def valid_time(value):
         return False
 
 
-def forward(backend, source, namespace, records, native_field):
+def forward(backend, source, namespace, records, native_field, revision_dir=None):
     counts = stats()
+    if revision_dir is not None:
+        if source != 'github_events':
+            raise CollectionError('Revision archive is supported only for GitHub.')
+        counts.update(provider_revisions=0, revision_snapshots_created=0)
     for record in records:
         counts['received'] += 1
         native = record.get(native_field)
@@ -92,7 +157,20 @@ def forward(backend, source, namespace, records, native_field):
             counts['malformed'] += 1
             counts['retained'] += 1
             continue
-        duplicate = backend.post(source, namespace, record, native)
+        if revision_dir is not None:
+            receipt = backend.post_receipt(source, namespace, record, native)
+            if receipt and receipt['status'] == 'payload_conflict':
+                try:
+                    created = archive_github_revision(revision_dir, namespace, record, native)
+                except (OSError, ValueError, CollectionError):
+                    counts['retained'] += 1
+                else:
+                    counts['provider_revisions'] += 1
+                    counts['revision_snapshots_created'] += int(created)
+                continue
+            duplicate = receipt['duplicate'] if receipt and receipt['status'] == 'committed' else None
+        else:
+            duplicate = backend.post(source, namespace, record, native)
         counts['retained' if duplicate is None else ('duplicates' if duplicate else 'inserted')] += 1
     return counts
 
@@ -206,7 +284,8 @@ def collect_github(args, backend):
     since = datetime.now(timezone.utc) - timedelta(hours=24)
     selected = [r for r in records if isinstance(r, dict) and valid_time(r.get('created_at'))
                 and datetime.fromisoformat(r['created_at'].replace('Z', '+00:00')) >= since]
-    counts = forward(backend, 'github_events', 'github-owner:' + str(repo['owner']['id']), selected, 'id')
+    counts = forward(backend, 'github_events', 'github-owner:' + str(repo['owner']['id']), selected, 'id',
+                     revision_dir=getattr(args, 'revision_dir', None))
     counts['received'] = len(records)
     counts['skipped'] = len(records) - len(selected)
     return counts
@@ -226,6 +305,7 @@ def main():
     cf.add_argument('--app-id', required=True)
     gh = sub.add_parser('github', description='GitHub activity Events API, not organization security audit logs.')
     gh.add_argument('--repo', required=True)
+    gh.add_argument('--revision-dir', type=Path, help='Private local archive for changed GitHub event representations.')
     args = parser.parse_args()
     if args.source == 'aws' and not re.fullmatch(r'[0-9]{12}', args.account_id):
         parser.error('AWS account ID must have 12 digits')

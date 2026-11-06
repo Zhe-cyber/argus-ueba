@@ -18,6 +18,7 @@ unified 8-field internal schema:
 
 from __future__ import annotations
 
+import re
 from typing import Callable
 
 # ---------------------------------------------------------------------------
@@ -335,10 +336,20 @@ def parse_cloudflare_access(event: dict) -> dict:
     action = action_type if allowed else f"{action_type} (denied)"
 
     metadata: dict = {}
-    for key in ("country", "app_uid", "ray_id", "user_id", "app_type"):
+    for key in ("country", "app_uid", "ray_id", "user_id", "app_type", "connection"):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
+
+    if type(event.get("allowed")) is bool:
+        metadata["allowed"] = event["allowed"]
+    # Access service logs put the native Client ID in user_email, without a
+    # human user_id. Preserve that explicit non-identity evidence as a machine
+    # principal; never infer it from a token-looking human email alone.
+    client_id = event.get("user_email")
+    if (event.get("connection") == "nonidentity" and isinstance(client_id, str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,128}\.access", client_id)):
+        metadata["service_client_id"] = client_id
 
     return _build(
         source=SOURCE_CF,
@@ -544,8 +555,9 @@ def parse_github_events(event: dict) -> dict:
     elif ev_type == "IssuesEvent" and pr_action:
         action = f"Issue {pr_action}"
     elif ev_type == "PushEvent":
-        size = payload.get("size", 0)
-        action = f"Code push ({size} commit{'s' if size != 1 else ''})"
+        size = payload.get("size")
+        if type(size) is int and size >= 0:
+            action = f"Code push ({size} commit{'s' if size != 1 else ''})"
 
     repo_name = str(repo.get("name", ""))
 
@@ -554,7 +566,13 @@ def parse_github_events(event: dict) -> dict:
     metadata["public"]   = event.get("public", True)
     if payload.get("ref"):
         metadata["ref"] = payload["ref"]
-    if payload.get("size") is not None:
+    if ev_type == "PushEvent":
+        size = payload.get("size")
+        known_count = type(size) is int and size >= 0
+        metadata["commit_count_status"] = "known" if known_count else "unknown"
+        if known_count:
+            metadata["commits"] = size
+    elif payload.get("size") is not None:
         metadata["commits"] = payload["size"]
     if actor.get("id"):
         metadata["actor_id"] = actor["id"]

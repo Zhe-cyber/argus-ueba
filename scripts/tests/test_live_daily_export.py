@@ -79,7 +79,7 @@ def test_readonly_export_evidence_parity_privacy_and_no_overwrite(export_study, 
 
 def test_missing_receipt_removes_whole_day_not_just_failed_action(export_study, tmp_path):
     with sqlite3.connect(export_study[0]) as db:
-        day, role, event_id = db.execute("SELECT day,persona,native_event_id FROM actions WHERE day='2026-10-30' LIMIT 1").fetchone()
+        day, role, event_id = db.execute("SELECT day,persona,native_event_id FROM actions WHERE day='2026-11-01' LIMIT 1").fetchone()
     with sqlite3.connect(export_study[1]) as db:
         db.execute('DELETE FROM events WHERE event_id=?', (event_id,))
     out = tmp_path / 'missing'
@@ -93,7 +93,7 @@ def test_later_normal_events_cannot_change_fitting_features(export_study, tmp_pa
     first = tmp_path / 'first'
     exporter.export(*export_study, ACCOUNT, STACK, first, NOW)
     with sqlite3.connect(export_study[1]) as db:
-        db.execute("UPDATE events SET ip_address='2001:db8::1' WHERE timestamp>='2026-11-06'")
+        db.execute("UPDATE events SET ip_address='2001:db8::1' WHERE timestamp>='2026-11-08'")
     second = tmp_path / 'second'
     exporter.export(*export_study, ACCOUNT, STACK, second, NOW)
     rows1 = json.loads((first / 'dataset.json').read_text())['rows']
@@ -103,7 +103,7 @@ def test_later_normal_events_cannot_change_fitting_features(export_study, tmp_pa
 
 def test_early_empty_export_and_partial_day_exclusion(export_study, tmp_path):
     with sqlite3.connect(export_study[0]) as db:
-        db.execute("DELETE FROM actions WHERE day>='2026-10-30'")
+        db.execute("DELETE FROM actions WHERE day>='2026-11-01'")
     out = tmp_path / 'early'
     m = exporter.export(*export_study, ACCOUNT, STACK, out, datetime(2026, 10, 29, tzinfo=timezone.utc))
     assert m['status'] == 'empty_dataset' and not m['history_gates_pass']
@@ -122,10 +122,10 @@ def test_source_drift_refuses_export(export_study, tmp_path, monkeypatch):
 
 def test_open_local_fitting_day_is_not_exported(export_study, tmp_path):
     out = tmp_path / 'open'
-    exporter.export(*export_study, ACCOUNT, STACK, out, datetime(2026, 10, 30, 12, tzinfo=timezone.utc))
+    exporter.export(*export_study, ACCOUNT, STACK, out, datetime(2026, 11, 1, 12, tzinfo=timezone.utc))
     data = json.loads((out / 'dataset.json').read_text())
     assert not data['rows']
-    assert all(r['status'] == 'current_partial' for r in data['readiness']['days'] if r['day'] == '2026-10-30')
+    assert all(r['status'] == 'current_partial' for r in data['readiness']['days'] if r['day'] == '2026-11-01')
 
 
 def test_legacy_trainer_refuses_new_profile_before_fitting(export_study, tmp_path):
@@ -133,4 +133,4 @@ def test_legacy_trainer_refuses_new_profile_before_fitting(export_study, tmp_pat
     out = tmp_path / 'incompatible'
     exporter.export(*export_study, ACCOUNT, STACK, out, NOW)
     with pytest.raises(TrainingRefusal, match='Unsupported dataset contract'):
-        prepare(out / 'dataset.json', '2026-11-05', '2026-11-07', '2026-11-10')
+        prepare(out / 'dataset.json', '2026-11-07', '2026-11-09', '2026-11-12')

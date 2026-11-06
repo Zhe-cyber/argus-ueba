@@ -1,0 +1,23 @@
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { Frame, ErrorNotice, request, secondary, when } from '@/components/WorkspaceUI'
+
+const LABELS = { recent: 'Recent check at capture', attention: 'Needs review', stale: 'Stale at capture', unavailable: 'No status available', ended: 'Ended' }
+function Check({ label, value }) {
+  const historical = value.attention_scope === 'historical'
+  const warn = !historical && ['attention', 'stale'].includes(value.status)
+  return <section className="border-t pt-3 space-y-1"><p className="text-sm font-medium">{label} <span className={'ml-2 text-xs rounded px-2 py-1 ' + (warn ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600')}>{historical ? 'Previous outcome unresolved' : label === 'Collector' && value.status === 'attention' ? 'Poll needs review' : LABELS[value.status] || LABELS.unavailable}</span></p><p className="text-xs text-slate-500">Last check: {when(value.last_checked_at)}{Number.isInteger(value.age_seconds_at_capture) && ` · ${Math.floor(value.age_seconds_at_capture / 60)} min before capture`}</p></section>
+}
+function Activity({ source }) {
+  const window = source.activity_window || {}, history = source.workload_history || {}
+  const labels = { outside_hours: 'Outside activity hours', within_hours: 'Activity window open', not_started: 'Activity has not started', ended: 'Activity ended', unavailable: 'Activity schedule unavailable' }
+  return <section className="border-t pt-3 text-xs text-slate-600 space-y-2"><p className="font-medium">{labels[window.status] || labels.unavailable}{['outside_hours', 'within_hours'].includes(window.status) && ' · 08:00–20:00 MYT'}</p>{history.available ? <><p>Recorded day ({history.day}): {history.today.verified} verified · {history.today.pending_receipts} pending · {history.today.unresolved} unresolved · {history.today.missed} missed</p>{(history.prior_days.unresolved > 0 || history.prior_days.missed > 0 || history.prior_days.pending_receipts > 0) && <p>Previous days: {history.prior_days.unresolved} unresolved · {history.prior_days.missed} missed · {history.prior_days.pending_receipts} pending</p>}</> : <p>Daily workload history unavailable.</p>}</section>
+}
+export default function Connections() {
+  const router = useRouter()
+  const [data, setData] = useState(null), [error, setError] = useState(null)
+  async function load() { try { setData(await request('/workspace/connections')); setError(null) } catch (e) { setError(e.message) } }
+  useEffect(() => { load() }, [])
+  return <Frame title="Connections"><ErrorNotice error={error} />{router.query.case_id && <Link className="text-sm text-indigo-700" href={{ pathname: '/cases/' + encodeURIComponent(router.query.case_id), query: { provider: router.query.provider || '', start: router.query.start || '', end: router.query.end || '' } }}>← Return to case with timeline filters</Link>}<div className="flex flex-wrap gap-3 items-center"><p className="text-sm text-slate-500">Operational snapshot: {data?.captured_at ? when(data.captured_at) : 'Unavailable'}. Refresh reloads this snapshot.</p><button className={secondary} onClick={load}>Refresh snapshot</button></div>{!data ? !error && <p>Loading connections…</p> : <><div className="grid md:grid-cols-3 gap-4">{data.sources.filter(source => !router.query.provider || source.source === router.query.provider).map(source => <article key={source.source} className="bg-white rounded-xl border p-5 space-y-4"><h2 className="text-lg font-semibold">{source.title}</h2><div className="flex gap-6"><div><p className="text-2xl font-semibold">{source.event_count}</p><p className="text-xs text-slate-500">Stored events in copy</p></div><div><p className="text-2xl font-semibold">{source.account_count}</p><p className="text-xs text-slate-500">Observed accounts</p></div></div><p className="text-xs text-slate-500">Latest activity in scan: {when(source.latest_observed_in_scan)}</p><Check label="Collector" value={source.collector} /><Check label="Controlled workload" value={source.workload} /><Activity source={source} /><Link className="inline-block text-sm text-indigo-700" href={{ pathname: '/workspace', query: { provider: source.source } }}>Review source findings →</Link></article>)}</div>{!data.sources.length && <p>No observed sources or connection receipts in this copy.</p>}<p className="text-xs text-slate-500">Idle outside activity hours is expected; log collection may continue overnight. Event totals do not establish complete coverage. Missing receipts remain unresolved; no action is retried here.{data.event_scan_capped && ' Latest-activity scan is capped at 10,000 rows.'}</p></>}</Frame>
+}

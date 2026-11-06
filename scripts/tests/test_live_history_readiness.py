@@ -8,7 +8,7 @@ import pytest
 from scripts import live_history_readiness as readiness
 
 ACCOUNT, STACK = '123456789012', 'argus-ueba-actors'
-NOW = datetime(2026, 11, 11, 12, tzinfo=timezone.utc)
+NOW = datetime(2026, 11, 13, 12, tzinfo=timezone.utc)
 
 
 @pytest.fixture
@@ -54,8 +54,8 @@ def test_complete_history_gates_and_no_warmup_or_score_claim(study):
 
 def test_current_my_day_never_usable_despite_all_receipts(study):
     # 10Nov16:00UTC is exactly midnight11NovMY; just before it calibration10Nov is open.
-    report = check(study, datetime(2026, 11, 10, 15, 59, tzinfo=timezone.utc))
-    assert all(r['status'] == 'current_partial' for r in report['days'] if r['day'] == '2026-11-10')
+    report = check(study, datetime(2026, 11, 12, 15, 59, tzinfo=timezone.utc))
+    assert all(r['status'] == 'current_partial' for r in report['days'] if r['day'] == '2026-11-12')
     assert not report['pooled_calibration_history_pass']
 
 
@@ -63,7 +63,7 @@ def test_current_my_day_never_usable_despite_all_receipts(study):
 def test_status_alone_never_proves_usable_day(study, fault):
     ledger, native = study
     with sqlite3.connect(ledger) as db:
-        target, day, persona, event_id = db.execute('SELECT action_id,day,persona,native_event_id FROM actions WHERE day>=? LIMIT 1', ('2026-10-30',)).fetchone()
+        target, day, persona, event_id = db.execute('SELECT action_id,day,persona,native_event_id FROM actions WHERE day>=? LIMIT 1', ('2026-11-01',)).fetchone()
         if fault == 'pending':
             db.execute("UPDATE actions SET status='api_ok_audit_pending' WHERE action_id=?", (target,))
         elif fault == 'missing_action':
@@ -92,7 +92,7 @@ def test_scope_and_stored_plan_drift_rejected(study):
         check(study)
     with sqlite3.connect(study[0]) as db:
         db.execute('UPDATE scope SET contract=?', (original,))
-        db.execute("UPDATE actions SET plan='{}' WHERE day='2026-10-30'")
+        db.execute("UPDATE actions SET plan='{}' WHERE day='2026-11-01'")
     with pytest.raises(ValueError, match='frozen plan'):
         check(study)
 
@@ -108,7 +108,7 @@ def test_early_report_does_not_mistake_future_for_normal(study):
 
 def test_five_fit_days_must_span_seven_calendar_days(study):
     with sqlite3.connect(study[0]) as db:
-        db.execute("DELETE FROM actions WHERE day IN ('2026-11-04','2026-11-05')")
+        db.execute("DELETE FROM actions WHERE day IN ('2026-11-06','2026-11-07')")
     report = check(study)
     assert all(len(r['usable_dates']['fit']) == 5 for r in report['roles'])
     assert all(not r['fitting_history_pass'] for r in report['roles'])

@@ -25,6 +25,7 @@ from typing import Any, Generator
 from uuid import uuid4
 
 from backend.config import BASE_DIR, LIVE_MODE, LIVE_STATE_DIR
+from backend import account_identity as accounts
 
 # ---------------------------------------------------------------------------
 # Backend detection
@@ -136,6 +137,53 @@ def _rows(cur) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+def source_activity_summary() -> list[dict]:
+    """Observed persisted evidence, not a collector-health/completeness claim."""
+    account_column = 'account_key' if accounts.enabled() else '"user"'
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'''SELECT source, COUNT(*) AS event_count,
+            COUNT(DISTINCT {account_column}) AS account_references,
+            MAX(timestamp) AS latest_event_at, MAX(ingested_at) AS latest_ingested_at,
+            SUM(CASE WHEN ip_address IS NULL OR ip_address = '' THEN 1 ELSE 0 END) AS missing_ip_events
+            FROM events GROUP BY source ORDER BY source''')
+        return _rows(cur)
+
+
+def account_directory() -> dict[str, dict]:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute('''SELECT account_key, account_label, account_kind, account_basis,
+                       source, source_account_id FROM events WHERE id IN
+                       (SELECT MAX(id) FROM events WHERE account_key IS NOT NULL GROUP BY account_key)''')
+        return {row['account_key']: row for row in _rows(cur)}
+
+
+def legacy_account_keys(label: str) -> set:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SELECT DISTINCT account_key FROM events WHERE "user"={_PH}', (label,))
+        return {row['account_key'] for row in _rows(cur)}
+
+
+def backfill_account_keys() -> dict:
+    """Explicit additive migration; original events, receipts and digests untouched."""
+    updated = unresolved = 0
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute('SELECT id, "user", source, source_account_id, metadata FROM events WHERE account_key IS NULL ORDER BY id')
+        for row in _rows(cur):
+            identity = accounts.identify(row)
+            if identity is None:
+                unresolved += 1
+                continue
+            cur.execute(f'''UPDATE events SET account_key={_PH}, account_label={_PH},
+                account_kind={_PH}, account_basis={_PH} WHERE id={_PH} AND account_key IS NULL''',
+                (identity['account_key'], identity['account_label'], identity['account_kind'], identity['account_basis'], row['id']))
+            updated += cur.rowcount
+    return {'updated': updated, 'unattributed': unresolved}
+
+
 @contextmanager
 def transaction():
     """Share one connection/commit across event, scores, alerts and receipt."""
@@ -193,6 +241,8 @@ def init_db() -> None:
             'source_account_id': "TEXT NOT NULL DEFAULT ''",
             'payload_digest': 'TEXT',
             'pipeline_result': 'TEXT',
+            'account_key': 'TEXT', 'account_label': 'TEXT',
+            'account_kind': 'TEXT', 'account_basis': 'TEXT',
         }
         if _PG:
             for name, definition in columns.items():
@@ -209,6 +259,7 @@ def init_db() -> None:
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_ts   ON events(ingested_at)")
         cur.execute(_DDL_LIVE_SCORES)
         cur.execute(_DDL_CLOUD_SHAP)
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_ev_account_key ON events(account_key)')
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +273,7 @@ def _native_key(event: dict) -> tuple:
 def insert_event(event: dict[str, Any]) -> bool:
     """Insert once per native key; ID-less replay rows are always independent."""
     event_id = event.get('event_id')
+    identity = accounts.identify(event) or {}
     digest = hashlib.sha256(json.dumps(event.get('raw', event), sort_keys=True,
                                       separators=(',', ':')).encode()).hexdigest() if event_id else None
     with _db() as con:
@@ -230,8 +282,8 @@ def insert_event(event: dict[str, Any]) -> bool:
             f"""
             INSERT INTO events
                 ("user", timestamp, source, action, resource, ip_address, metadata, ingested_at,
-                 event_id, source_account_id, payload_digest)
-            VALUES ({', '.join([_PH] * 11)})
+                 event_id, source_account_id, payload_digest, account_key, account_label, account_kind, account_basis)
+            VALUES ({', '.join([_PH] * 15)})
             ON CONFLICT (source, source_account_id, event_id) DO NOTHING
             """,
             (
@@ -246,6 +298,8 @@ def insert_event(event: dict[str, Any]) -> bool:
                 event_id,
                 event.get('source_account_id', ''),
                 digest,
+                identity.get('account_key'), identity.get('account_label'),
+                identity.get('account_kind'), identity.get('account_basis'),
             ),
         )
         inserted = cur.rowcount == 1
@@ -284,6 +338,10 @@ def save_ingest_result(event: dict, result: dict) -> None:
 # Read
 # ---------------------------------------------------------------------------
 
+def _identity_column(user_id):
+    return 'account_key' if accounts.is_key(user_id) else '"user"'
+
+
 def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
     """Return the most recent *limit* events for *user_id*, newest first.
 
@@ -296,7 +354,7 @@ def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
             f"""
             SELECT id, "user", timestamp, source, action, resource, ip_address, ingested_at
             FROM events
-            WHERE "user" = {_PH}
+            WHERE {_identity_column(user_id)} = {_PH}
             ORDER BY ingested_at DESC
             LIMIT {_PH}
             """,
@@ -316,7 +374,7 @@ def get_user_events_full(user_id: str, limit: int = 500) -> list[dict[str, Any]]
         cur.execute(
             f"""
             SELECT * FROM events
-            WHERE "user" = {_PH}
+            WHERE {_identity_column(user_id)} = {_PH}
             ORDER BY ingested_at DESC
             LIMIT {_PH}
             """,
@@ -341,7 +399,7 @@ def get_user_events_window(user_id: str, hours: int = 24) -> list[dict[str, Any]
         cur.execute(
             f"""
             SELECT * FROM events
-            WHERE "user" = {_PH} AND ingested_at >= {_PH}
+            WHERE {_identity_column(user_id)} = {_PH} AND ingested_at >= {_PH}
             ORDER BY ingested_at DESC
             """,
             (str(user_id), since),
@@ -354,7 +412,7 @@ def get_total_event_count(user_id: str) -> int:
     with _db() as con:
         cur = _cursor(con)
         cur.execute(
-            f'SELECT COUNT(*) AS cnt FROM events WHERE "user" = {_PH}',
+            f'SELECT COUNT(*) AS cnt FROM events WHERE {_identity_column(user_id)} = {_PH}',
             (str(user_id),),
         )
         row = cur.fetchone()
@@ -367,7 +425,7 @@ def delete_event_store_user(user_id: str) -> int:
     """Delete a single user's events and live score. Returns events removed."""
     with _db() as con:
         cur = _cursor(con)
-        cur.execute(f'DELETE FROM events WHERE "user" = {_PH}', (str(user_id),))
+        cur.execute(f'DELETE FROM events WHERE {_identity_column(user_id)} = {_PH}', (str(user_id),))
         removed = cur.rowcount or 0
         cur.execute(f'DELETE FROM live_scores WHERE user_id = {_PH}', (str(user_id),))
         con.commit()
@@ -400,20 +458,13 @@ def list_event_store_users() -> list[dict[str, Any]]:
       - sources     : comma-separated distinct sources (e.g. 'aws_cloudtrail,azure_ad')
       - last_seen   : ISO timestamp of the most recent ingestion
     """
+    key = 'account_key' if accounts.enabled() else '"user"'
+    condition = 'WHERE account_key IS NOT NULL' if accounts.enabled() else ''
     with _db() as con:
         cur = _cursor(con)
-        cur.execute(
-            f"""
-            SELECT
-                "user",
-                COUNT(*)                       AS event_count,
-                {_GROUP_CONCAT}                AS sources,
-                MAX(ingested_at)               AS last_seen
-            FROM events
-            GROUP BY "user"
-            ORDER BY event_count DESC
-            """
-        )
+        cur.execute(f"""SELECT {key} AS "user", COUNT(*) AS event_count,
+                    {_GROUP_CONCAT} AS sources, MAX(ingested_at) AS last_seen
+                    FROM events {condition} GROUP BY {key} ORDER BY event_count DESC""")
         return _rows(cur)
 
 

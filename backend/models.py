@@ -79,6 +79,10 @@ class UserSummary(BaseModel):
     """
 
     user: str
+    display_name: Optional[str] = None
+    identity_basis: Optional[str] = None
+    source_account_id: Optional[str] = None
+    account_kind: Optional[str] = None
     ae_score: Optional[float]
     risk_level: str = Field(..., description="High, Medium, Low, or Unknown when scoring is unavailable")
     is_insider: Optional[int] = Field(..., ge=0, le=1, description="Benchmark ground truth; null for live accounts")
@@ -259,6 +263,7 @@ class Alert(BaseModel):
 
     id:          int
     user_id:     str
+    display_name: Optional[str] = None
     alert_type:  str  = Field(..., description="rarity_spike | ae_critical | anomalous_behavior | new_user")
     severity:    str  = Field(..., description="Critical | High | Medium | Low")
     title:       str
@@ -307,6 +312,7 @@ class InvestigationRecord(BaseModel):
     """Full investigation record returned by GET /users/{id}/investigation."""
 
     user_id:       str
+    display_name: Optional[str] = None
     status:        str = Field(..., description="Pending | Under Investigation | Cleared | Confirmed Insider")
     analyst:       str = Field(..., description="Display name of the analyst who last updated the record")
     notes:         str = Field("", description="Free-text analyst notes")
@@ -342,6 +348,8 @@ class PipelineResult(NormalizedEvent):
     and a summary of the user's accumulated event history.
     """
 
+    account_key: Optional[str] = None
+    identity_status: str = 'legacy'
     duplicate: bool = Field(False, description="A committed native event was returned without processing it again")
 
     # Step 2 — feature extraction
@@ -420,6 +428,14 @@ class LiveEvent(BaseModel):
     resource:    str
     ip_address:  str
     ingested_at: str
+
+
+class GitHubActivityIngestRequest(BaseModel):
+    """Repository context comes from the verified collector request, not the row."""
+    event: Dict[str, Any]
+    source_account_id: str = Field(..., min_length=1, max_length=128, pattern=r'^github-owner:[0-9]+$')
+    repository: str = Field(..., max_length=256, pattern=r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
+    repository_id: int = Field(..., gt=0, strict=True)
 
 
 class IngestRequest(BaseModel):

@@ -133,10 +133,20 @@ def status(db, day):
             'reserved_sdk_calls_today': db.execute('SELECT coalesce(sum(reserved_calls),0) FROM runs WHERE day=?', (day,)).fetchone()[0]}
 
 
-def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-live-trail', commissioning=False):
+def execute(plan, state_dir, profile='argus-simulator', trail_name='argus-ueba-live-trail', commissioning=False, reserved=False):
     # Regenerate from shipped profile, never execute caller-supplied targets/actions.
-    expected = (commissioning_plan(plan['account_id'], plan['stack'], datetime.fromisoformat(plan['created_at_utc']))
-                if commissioning else plan_today(plan['account_id'], plan['stack']))
+    from scripts import reserved_study
+    day = utc_now().astimezone(MALAYSIA).date().isoformat()
+    if reserved:
+        if commissioning or day not in reserved_study.CASES:
+            raise ValueError('Reserved execution only on registered case dates')
+        expected = reserved_study.plan_for_date(plan['account_id'], plan['stack'], day)
+        reserved_study.validate_release(Path(state_dir) / reserved_study.protocol.RELEASE_NAME, plan['account_id'], plan['stack'])
+    else:
+        if day in reserved_study.CASES:
+            raise ValueError('Use the frozen reserved executor on reserved dates')
+        expected = (commissioning_plan(plan['account_id'], plan['stack'], datetime.fromisoformat(plan['created_at_utc']))
+                    if commissioning else plan_today(plan['account_id'], plan['stack']))
     if any(plan.get(k) != v for k, v in expected.items() if k != 'created_at_utc'):
         raise ValueError('Plan changed; no calls performed')
     if trail_name != 'argus-ueba-live-trail':

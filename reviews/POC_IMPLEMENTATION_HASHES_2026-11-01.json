@@ -1,0 +1,18 @@
+{
+  "source_sha256": {
+    "workspace_next/diagnostic_receipts.py": "4466fad7f804edf639ed5b61b489b9aa57be136cce4866a5a2e1e4a6f43cec95",
+    "workspace_next/app.py": "49edfd25a3f0edd534efe080f991e2cb579b69850e6b5d13d4f89fc6c125d311",
+    "workspace_next/case_store.py": "929a54783f27a2debbd677b900eda200e37aa2af1371f155106cfef6851f0685",
+    "workspace_next/queries.py": "152cf618f59ffd7a531458692d3cdd4192e91e01fa14f04c6129d3504ec1bd32",
+    "scripts/refresh_live_diagnostics.py": "647cfc3479953ea12def734b176b1a09aa70fec0237c2c74a38d5b84c7b29844",
+    "scripts/install_diagnostic_refresh.ps1": "4ae57e2e55503dc93c65d90adccca783f4292d0c7956b25aec452ff72fa0994c",
+    "backend/tests/test_poc_diagnostic_workflow.py": "d4f4fcdfbde4772ab7df68b62b6646a52a8ffa1c1628acce2711ac8b0bed703e",
+    "scripts/tests/test_refresh_live_diagnostics.py": "f0c82cd2364568d4c4798cc164b70193ae6d9b6696439368d6dd5697f7a7453a",
+    "workspace_next/frontend/components/DiagnosticPanel.js": "01c7530c13878fa9c3e59781015018b48074ed6fbaa21fbd50f08079a1a88e28",
+    "workspace_next/frontend/lib/diagnosticPrivacy.js": "65c6e2e28e1e6355bc4d4076798941f85a20951a4ff9cc6d478763eca1ca225c"
+  },
+  "targeted_tests_passed": 79,
+  "browser_real_readiness_workflow_passed": true,
+  "privacy_check_passed": true,
+  "real_scores_displayed": false
+}

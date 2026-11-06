@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import DashboardViews from '@/components/DashboardViews'
+import SourceActivity from '@/components/SourceActivity'
 import { fetchUsers, fetchStats } from '@/lib/api'
 import ScoringStatusNotice from '@/components/ScoringStatusNotice'
 
@@ -86,7 +87,7 @@ function StatCard({ label, count, pct, styleKey }) {
 }
 
 function RiskBadge({ level }) {
-  const s = RISK_STYLE[level] ?? RISK_STYLE.Low
+  const s = RISK_STYLE[level] ?? RISK_STYLE.Unknown
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.badge}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
@@ -208,32 +209,17 @@ export default function Dashboard() {
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <DashboardViews />
 
-          {stats?.application_mode && (
-            <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-              <strong>{stats.application_mode === 'live' ? 'Live cloud monitoring' : 'Benchmark exploration'}</strong>
-              <p className="mt-1 text-xs">
-                {stats.application_mode === 'live'
-                  ? 'Accounts observed in cloud events. No benchmark users or ground-truth attack labels are loaded.'
-                  : 'Includes evaluation data. Benchmark labels and results do not establish live cloud detection accuracy.'}
-              </p>
-              {stats.unscored_users > 0 && (
-                <p className="mt-1 text-xs font-semibold" role="status">
-                  {stats.unscored_users} account(s) have no AE score available. Unknown risk requires review.
-                </p>
-              )}
-            </div>
-          )}
-
+          {stats?.application_mode === 'live' && <SourceActivity />}
           {stats?.application_mode === 'live' && <ScoringStatusNotice status={stats.scoring_status} />}
 
           {/* ── Stats bar ── */}
-          {stats && (
+          {stats && (stats.application_mode !== 'live' || stats.scoring_status?.model_ready) && (
             <section aria-label="Risk summary">
-              <div className={`grid grid-cols-2 ${stats.application_mode === 'live' ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-4`}>
+              <div className={`grid grid-cols-2 ${stats.application_mode === 'live' ? stats.scoring_status?.model_ready ? 'sm:grid-cols-5' : 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-4`}>
                 <StatCard label={stats.application_mode === 'live' ? 'Observed Accounts' : 'Total Users'} count={stats.total_users} styleKey="total" />
-                <StatCard label="High Risk"   count={stats.high_risk}   pct={pct(stats.high_risk)}   styleKey="High" />
-                <StatCard label="Medium Risk" count={stats.medium_risk} pct={pct(stats.medium_risk)} styleKey="Medium" />
-                <StatCard label="Low Risk"    count={stats.low_risk}    pct={pct(stats.low_risk)}    styleKey="Low" />
+                {(stats.application_mode !== 'live' || stats.scoring_status?.model_ready) && <><StatCard label="High priority"   count={stats.high_risk}   pct={pct(stats.high_risk)}   styleKey="High" />
+                <StatCard label="Medium priority" count={stats.medium_risk} pct={pct(stats.medium_risk)} styleKey="Medium" />
+                <StatCard label="Low priority"    count={stats.low_risk}    pct={pct(stats.low_risk)}    styleKey="Low" /></>}
                 {stats.application_mode === 'live' && <StatCard label="Unscored" count={stats.unscored_users} pct={pct(stats.unscored_users)} styleKey="Unknown" />}
               </div>
             </section>
@@ -247,7 +233,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-700">
-                    {stats?.application_mode === 'live' ? 'Account Risk Overview' : (filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`)}
+                    {stats?.application_mode === 'live' ? 'Observed accounts' : (filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`)}
                   </h2>
                   {!loading && !error && (
                     <p className="text-xs text-slate-400 mt-0.5">
@@ -271,7 +257,7 @@ export default function Dashboard() {
                       type="text"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
-                      placeholder="Search user ID…"
+                      placeholder="Search account…"
                       className="w-full sm:w-52 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-7 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-200"
                     />
                     {searchInput && (
@@ -287,7 +273,7 @@ export default function Dashboard() {
 
                   {/* Source filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Source filter">
-                    {SOURCE_FILTERS.filter((s) => stats?.application_mode !== 'live' || s !== 'CERT').map((s) => (
+                    {SOURCE_FILTERS.filter(() => stats?.application_mode !== 'live').map((s) => (
                       <button
                         key={s}
                         onClick={() => setSourceFilter(s)}
@@ -306,7 +292,7 @@ export default function Dashboard() {
                   </div>
                   {/* Risk filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Risk filter">
-                    {(stats?.application_mode === 'live' ? [...RISK_FILTERS, 'Unknown'] : RISK_FILTERS).map((f) => (
+                    {(stats?.application_mode === 'live' ? stats.scoring_status?.model_ready ? [...RISK_FILTERS, 'Unknown'] : ['All', 'Unknown'] : RISK_FILTERS).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFilter(f)}
@@ -340,14 +326,14 @@ export default function Dashboard() {
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 w-12">#</th>
-                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User ID</th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Account</th>
                           <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
                               title="AE anomaly score. Scores from different models or sources are not directly comparable.">
-                            Risk Score
+                            AE score
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
                               title="Operational risk tier, not a probability of compromise. Live thresholds remain provisional.">
-                            Risk Level
+                            Review priority
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Source</th>
                         </tr>
@@ -367,7 +353,8 @@ export default function Dashboard() {
                               {offset + idx + 1}
                             </td>
                             <td className="px-5 py-3.5 font-mono text-slate-700 font-medium">
-                              {user.user}
+                              {user.display_name || user.user}
+                              {user.account_kind && <span className="block text-[10px] font-sans text-slate-400 mt-0.5">{user.account_kind}{user.source_account_id ? ' · ' + user.source_account_id : ''}</span>}
                             </td>
                             <td className="px-5 py-3.5 text-right">
                               <ScoreBar score={user.ae_score} risk={user.risk_level} />
@@ -421,10 +408,10 @@ export default function Dashboard() {
 // ---------------------------------------------------------------------------
 
 function ScoreBar({ score, risk }) {
-  if (score == null) {
+  if (score == null || !Number.isFinite(score)) {
     return <span className="text-xs text-slate-500">Unavailable</span>
   }
-  const pct = Math.round(score * 100)
+  const pct = Math.max(0, Math.min(100, Math.round(score * 100)))
 
   const trackColor =
     risk === 'High'   ? 'bg-red-400'
