@@ -1,8 +1,9 @@
 """Isolated API on an explicitly marked DB copy; never import the live main app."""
 import json
 import os
+import sqlite3
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from fastapi.middleware.cors import CORSMiddleware
 from backend import event_store as store
@@ -10,6 +11,7 @@ from workspace_next import case_store
 from workspace_next.case_api import router
 from workspace_next import operations
 from workspace_next import diagnostic_receipts
+from workspace_next import baseline_alerts, baseline_score, live_mirror, workload_groups
 
 
 class RetainDiagnostic(BaseModel):
@@ -38,6 +40,7 @@ def create_app():
         raise RuntimeError('Invalid workspace copy marker')
     store.DB_PATH=path
     case_store.init_db()
+    baseline_alerts.sync(path)  # makes baseline findings available even before the mirror runs
     app=FastAPI(title='Argus workspace — isolated copy')
     app.state.diagnostic_receipt_config = None
     app.state.experimental_diagnostics_approved = False
@@ -59,7 +62,49 @@ def create_app():
 
     @app.get('/workspace/status')
     def status():
-        return {'mode':'isolated_copy','live_cutover':False}
+        return {'mode':'isolated_copy','live_cutover':False,'rehearsal':declaration.get('rehearsal') is True}
+
+    @app.get('/workspace/baseline')
+    def baseline(account: str, days: int = Query(14, ge=1, le=60)):
+        return baseline_score.account_days(path, account, days)
+
+    @app.get('/workspace/baseline/summary')
+    def baseline_summary(day: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$')):
+        try:
+            return baseline_score.summary(path, day)
+        except ValueError as error:
+            raise HTTPException(422, 'Invalid day') from error
+
+    day_query = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    groups_path = path.parent / 'workload-groups.json'
+
+    @app.get('/workspace/groups')
+    def workload_groups_view(day: str | None = day_query):
+        try:
+            return workload_groups.groups(path, groups_path, day)
+        except ValueError as error:
+            raise HTTPException(422, 'Invalid day') from error
+
+    @app.get('/workspace/groups/{group}/timeline')
+    def workload_group_timeline(group: str, day: str | None = day_query):
+        try:
+            result = workload_groups.timeline(path, groups_path, group, day)
+        except ValueError as error:
+            raise HTTPException(422, 'Invalid day') from error
+        if result is None:
+            raise HTTPException(404, 'Unknown workload group')
+        return result
+
+    @app.get('/workspace/live-feed')
+    def live_feed():
+        try:
+            return live_mirror.feed(path, path.parent)
+        except (OSError, sqlite3.Error) as error:
+            raise HTTPException(503, 'Live feed unavailable') from error
+
+    @app.get('/workspace/mirror-status')
+    def mirror_status():
+        return live_mirror.read_status_file(path.parent) or {'last_pass_utc': None}
 
     @app.get('/workspace/connections')
     def connections():

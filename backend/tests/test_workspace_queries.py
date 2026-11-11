@@ -79,3 +79,14 @@ def test_mapping_revocation_preserves_historical_case_scope(client,monkeypatch):
     assert len(result['events'])==1
     assert result['mapping_provenance'][0]['current_status']=='revoked'
     assert row['links'][0]['snapshot']['approved_links'][0]['effective_status']=='approved'
+
+
+def test_learning_filter_partitions_findings(client,monkeypatch):
+    for name in ('a-learn','b-scored'): alert_store.create_alert(name,'rarity_spike','High','x')
+    monkeypatch.setattr(queries,'_baseline',lambda row:{'tier':'Learning'} if row['user_id']=='a-learn' else {'tier':'High','score':80})
+    get=lambda v: client.get('/findings?status=Open&limit=500'+v).json()
+    every,out,only=get(''),get('&learning=exclude'),get('&learning=only')
+    assert len(every['findings'])==2 and len(out['findings'])+len(only['findings'])==2
+    assert [r['user_id'] for r in only['findings']]==['a-learn'] and only['findings'][0]['learning_period']
+    assert every['learning_count']==1 and out['learning_count']==1
+    assert client.get('/findings?learning=bogus').status_code in (400,422)

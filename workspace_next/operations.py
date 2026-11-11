@@ -139,6 +139,10 @@ def overview(snapshot_path=None):
         cur=store._cursor(con)
         cur.execute("SELECT alert_type,COUNT(*) AS n FROM alerts WHERE status='Open' GROUP BY alert_type")
         counts={row['alert_type']:row['n'] for row in store._rows(cur)}
+        try:
+            cur.execute("SELECT COUNT(*) AS n FROM workspace_baseline_alerts WHERE status='Open'")
+            counts['baseline_risk']=dict(cur.fetchone())['n']
+        except sqlite3.OperationalError: pass  # table appears on first baseline sync
         cur.execute("SELECT COUNT(*) AS n FROM analyst_cases WHERE status!='Closed'")
         active=dict(cur.fetchone())['n']
         cur.execute("SELECT id,title,owner,status,priority FROM analyst_cases WHERE status!='Closed' ORDER BY updated_at DESC,id DESC LIMIT 3")
@@ -147,10 +151,10 @@ def overview(snapshot_path=None):
     for row in recent: row['display_title']=display_title(row['title'])
     checks=connections(snapshot_path)
     issues=sum(any(row[kind]['status'] in {'attention','stale'} for kind in ['collector','workload']) for row in checks['sources'])
-    return {'open_security_findings':sum(counts.get(kind,0) for kind in ['rarity_spike','anomalous_behavior','ae_critical']),
+    return {'open_security_findings':sum(counts.get(kind,0) for kind in ['rarity_spike','anomalous_behavior','ae_critical','baseline_risk']),
             'open_observations':counts.get('new_user',0),'active_cases':active,
             'sources_needing_review_at_capture':issues,'operations_captured_at':checks['captured_at'],
-            'recent_cases':recent,'recent_findings':findings(limit=5)['findings'],
+            'recent_cases':recent,'recent_findings':[r for r in findings(limit=500,learning='exclude')['findings'] if not r['infrastructure']][:5],
             'scoring':'not_enabled_in_workspace_preview','mode':'isolated_copy'}
 
 

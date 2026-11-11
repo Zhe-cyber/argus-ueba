@@ -5,6 +5,7 @@ import json
 import re
 from zoneinfo import ZoneInfo
 from backend import event_store as store
+from workspace_next import system_accounts
 
 RULE_WINDOW='Mon–Fri 07:00–19:00 UTC = 15:00–03:00 next day MYT (UTC weekends outside window)'
 # Display-only triage context. The detector, its UTC window and the recorded severity are unchanged.
@@ -13,6 +14,8 @@ TENANT_TZ=ZoneInfo('Asia/Kuala_Lumpur'); OFFICE_HOURS=(8,18)
 TRIAGE_LABELS={'review_first':'Review first',
                'automation_context':'Context: automation or service account',
                'office_hours_context':'Context: inside Malaysian office hours'}
+# Kept separate: scripts/tests/test_finding_triage.py pins TRIAGE_LABELS to its original three keys.
+INFRASTRUCTURE_LABEL={'infrastructure_context':'Context: monitoring infrastructure'}
 
 
 def local_time(event_at):
@@ -21,7 +24,9 @@ def local_time(event_at):
     return local.isoformat(),local.weekday()<5 and OFFICE_HOURS[0]<=local.hour<OFFICE_HOURS[1]
 
 
-def triage(alert_type,entity_context,in_office_hours):
+def triage(alert_type,entity_context,in_office_hours,severity=None,infrastructure=False):
+    if infrastructure: return 'infrastructure_context'  # precedence: never review_first
+    if alert_type=='baseline_risk' and severity=='High': return 'review_first'
     if entity_context=='service_or_workload': return 'automation_context'
     if alert_type=='anomalous_behavior' and in_office_hours: return 'office_hours_context'
     return 'review_first'
@@ -53,6 +58,7 @@ def context(row,directory=None,event_cache=None):
     result={'account_label':label,'account_kind':account.get('account_kind') if account else 'unclassified',
             'entity_context':'other_or_unclassified','history_context':'unavailable',
             'prior_observed_active_days':None,'rule_window':None}
+    result['infrastructure']=system_accounts.is_infrastructure(label,result['account_kind'],account.get('source') if account else None,system_accounts.declared(store.DB_PATH))
     if account:
         if account.get('account_kind') in {'service_token','service','bot'}:
             result['entity_context']='service_or_workload'
@@ -89,6 +95,6 @@ def context(row,directory=None,event_cache=None):
         if account: result['display_title']=result['display_title'].replace(row['user_id'],label)
         event_at=stamp(details.get('timestamp')) or stamp(row.get('created_at'))
     result['event_time_myt'],result['in_myt_office_hours']=local_time(event_at)
-    result['triage']=triage(row['alert_type'],result['entity_context'],result['in_myt_office_hours'])
-    result['triage_label']=TRIAGE_LABELS[result['triage']]
+    result['triage']=triage(row['alert_type'],result['entity_context'],result['in_myt_office_hours'],row.get('severity'),result['infrastructure'])
+    result['triage_label']=({**TRIAGE_LABELS,**INFRASTRUCTURE_LABEL})[result['triage']]
     return result

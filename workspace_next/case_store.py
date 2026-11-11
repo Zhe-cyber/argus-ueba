@@ -9,6 +9,7 @@ import json
 from uuid import uuid4, uuid5, NAMESPACE_URL
 
 from backend import event_store as store
+from workspace_next import baseline_alerts
 
 STATUSES = {'New', 'In progress', 'Closed'}
 RESOLUTIONS = {'Security incident confirmed', 'Expected or authorized activity',
@@ -283,8 +284,10 @@ def link(case_id, expected_version, actor, request_key, kind, target, reason):
         elif kind == 'finding':
             if not target.isdecimal():
                 raise ValueError('Invalid finding id')
-            cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}', (int(target),))
-            found = cur.fetchone()
+            found = baseline_alerts.get(cur, int(target), store._PH)
+            if found is None:
+                cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}', (int(target),))
+                found = cur.fetchone()
             if found is None:
                 raise CaseNotFound('Finding not found')
             snapshot = dict(found)

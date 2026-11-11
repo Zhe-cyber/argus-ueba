@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from workspace_next import case_store as cases
 from workspace_next import queries
 from backend import event_store as store
+from workspace_next import system_accounts
 
 router = APIRouter(tags=['Case workspace'])
 
@@ -38,6 +39,13 @@ class FromFinding(Create):
     finding_id: int = Field(ge=1)
     reason: str = Field(min_length=1,max_length=2000)
     include_account: bool = False
+
+
+class FindingStatus(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    status: str = ''
+    analyst: str = ''
+    reason: str = ''
 
 
 def call(operation,*args,**kwargs):
@@ -110,11 +118,11 @@ def cursor(time,identifier):
 
 
 @router.get('/findings')
-def findings(limit: int = Query(50,ge=1,le=100), before_time: str | None = None,
+def findings(limit: int = Query(50,ge=1,le=500), before_time: str | None = None,
              before_id: str | None = None,category: str='security',status: str='Open',
              provider: str | None=None,account: str | None=None,start: str | None=None,end: str | None=None,entity_context: str | None=None,
-             triage: str | None=None):
-    return call(lambda: queries.findings(limit,cursor(before_time,before_id),category,status,provider,account,start,end,entity_context,triage))
+             triage: str | None=None,learning: str='include'):
+    return call(lambda: queries.findings(limit,cursor(before_time,before_id),category,status,provider,account,start,end,entity_context,triage,learning))
 
 
 @router.get('/findings/{finding_id}')
@@ -122,9 +130,16 @@ def finding(finding_id: int):
     return call(queries.finding,finding_id)
 
 
+@router.post('/findings/{finding_id}/status')
+def finding_status(finding_id: int,body: FindingStatus):
+    return call(queries.set_status,finding_id,body.status,body.analyst,body.reason)
+
+
 @router.get('/workspace/accounts')
 def accounts():
-    return list(store.account_directory().values())
+    declared=system_accounts.declared(store.DB_PATH)
+    return [{**a,'infrastructure':system_accounts.is_infrastructure(a.get('account_label'),a.get('account_kind'),a.get('source'),declared)}
+            for a in store.account_directory().values()]
 
 
 @router.get('/workspace/people')
