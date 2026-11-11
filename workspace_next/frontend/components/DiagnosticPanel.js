@@ -31,7 +31,7 @@ export default function DiagnosticPanel({ account, initialDay = '', caseContext 
   return <section className="border-t pt-4 space-y-3" aria-label="Account-day model diagnostic">
     <h3 className="font-medium text-sm">Model diagnostic</h3>
     <label className="block text-xs text-slate-600">Activity day (MYT)<input type="date" className={field} value={day} onChange={e => setDay(e.target.value)} /></label>
-    {error || command.error ? <p role="alert" className="text-sm text-red-700">{error || command.error}</p> : !day ? <p className="text-xs text-slate-500">Choose a closed day.</p> : !source || !scope || !key ? <p className="text-sm text-slate-500">Account provenance unavailable.</p> : !data ? <p className="text-sm text-slate-500">Loading diagnostic…</p> : <>
+    {error || command.error ? <p role="alert" className="text-sm text-red-700">{error || command.error}</p> : !day ? <p className="text-xs text-slate-500">Choose a closed day.</p> : !source || !scope || !key ? null : !data ? <p className="text-sm text-slate-500">Loading diagnostic…</p> : <>
       <p className="text-sm">{data.status === 'unavailable' ? data.reason : data.status === 'unscored' ? receipt.input.why_unscored : 'Experimental model output'}</p>
       {receipt && <>
         <p className="text-xs text-slate-500">{data.mode === 'recorded' ? 'Recorded diagnostic' : 'Live-source diagnostic'} · {when(data.cutoff_utc)}</p>
