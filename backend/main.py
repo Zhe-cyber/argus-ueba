@@ -356,6 +356,19 @@ def _update_baseline(account_key: str, timestamp: str) -> None:
         logging.getLogger(__name__).warning("Baseline score update failed: %s", type(exc).__name__)
 
 
+def _update_ml(account_key: str, timestamp: str) -> None:
+    """Live autoencoder v2 comparator (backend.live_ae, L10): rescore the persona account-day (AWS role or Cloudflare
+    service token) when ARGUS_LIVE_AE_BUNDLE names a bundle. Never alerts; best effort in its own savepoint; rebuild with `python -m backend.live_ae backfill`."""
+    if not os.getenv('ARGUS_LIVE_AE_BUNDLE'):
+        return
+    try:
+        from backend import live_ae
+        with evstore.savepoint():
+            live_ae.on_event(account_key, timestamp)
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning("ML anomaly score update failed: %s", type(exc).__name__)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -1135,6 +1148,8 @@ def _process_ingest(body: IngestRequest, normalised_override=None) -> PipelineRe
     # -- Stage 9: Baseline risk score v1.1 for this account-day (one scoring path) --
     if identity:
         _update_baseline(identity['account_key'], normalised['timestamp'])
+        if normalised['source'] in ('aws_cloudtrail', 'cloudflare_access'):
+            _update_ml(identity['account_key'], normalised['timestamp'])
 
     result = PipelineResult(
         **normalised,

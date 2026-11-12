@@ -178,10 +178,23 @@ def _rho(sets):
     return (hits / n if n >= NOVELTY_MIN_DAYS else 0.0), hits, n
 
 
+def prior_days(days, day):
+    """The account's earlier active days inside the WINDOW_DAYS calendar days before `day`, oldest first."""
+    return sorted(d for d in days if day - timedelta(days=WINDOW_DAYS) <= d < day)
+
+
+def usual_hours(hist):
+    """The account's usual MYT hours from its history events (hour first): every hour within +-1 h, circular, of
+    an hour holding >= 5% of the history events. No business-hours setting is read here."""
+    hours = Counter(e[0] for e in hist)
+    core = {h for h, c in hours.items() if c >= USUAL_CORE_SHARE * len(hist)}
+    return {(h + k) % 24 for h in core for k in range(-USUAL_WIDEN_HOURS, USUAL_WIDEN_HOURS + 1)}
+
+
 def score_day(days, day):
     """days: {date: events}. Returns the result dict for `day` (a date with events)."""
     today = days[day]
-    prior = sorted(d for d in days if day - timedelta(days=WINDOW_DAYS) <= d < day)
+    prior = prior_days(days, day)
     out = {'day': day.isoformat(), 'history_days': len(prior), 'events_today': len(today),
            'partial': day == datetime.now(MYT).date()}
     if len(prior) < MIN_HISTORY:
@@ -212,10 +225,7 @@ def score_day(days, day):
             if rho_r >= NOVELTY_FACT_RHO: discount('resources', rho_r, hits_r, n_r)
     else:
         sig['new_resource'] = None  # unavailable: weights renormalise
-    hours = Counter(e[0] for e in hist)
-    core = {h for h, c in hours.items() if c >= USUAL_CORE_SHARE * len(hist)}
-    # v1.1: +-1 h, circular. The account's OWN usual hours: no business-hours setting is read here.
-    usual = {(h + k) % 24 for h in core for k in range(-USUAL_WIDEN_HOURS, USUAL_WIDEN_HOURS + 1)}
+    usual = usual_hours(hist)  # v1.1: +-1 h, circular; the account's OWN usual hours
     share = sum(e[0] not in usual for e in today) / len(today)
     sig['unusual_hours'] = min(1.0, share / UNUSUAL_FULL_SHARE)
     if share:

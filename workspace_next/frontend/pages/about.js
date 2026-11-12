@@ -9,7 +9,7 @@ const LIMITS = [
   'Only observed activity is shown; completeness is unknown. Event totals do not establish complete coverage.',
   'Rule severity is the severity recorded by the detection rule. Triage labels are display context only; recorded severity and detection are unchanged.',
   'A baseline finding describes an account-day compared with the account’s own history. Findings raised by older rules are not bound to the exact triggering events.',
-  'The autoencoder diagnostic stays hidden until its evaluation is finished; where shown it is experimental.',
+  'The older autoencoder diagnostic stays hidden until its evaluation is finished; where shown it is experimental. The ML anomaly score below is a separate comparator.',
   'A case keeps the finding as it was when linked. Account activity added to a case is related context, not proof of attribution.'
 ]
 
@@ -34,6 +34,10 @@ export default function About() {
       <table className="w-full text-left"><thead><tr><th className="py-1 pr-3">Signal</th><th className="py-1 pr-3">Weight</th><th className="py-1">What it looks at</th></tr></thead><tbody>{SIGNALS.map(([name, weight, text]) => <tr key={name} className="border-t align-top"><td className="py-1 pr-3 font-medium">{name}</td><td className="py-1 pr-3">{weight}</td><td className="py-1">{text}</td></tr>)}</tbody></table>
       <p>The score is the weighted average of the signals that apply. An account that regularly does new things has its novelty signals discounted, so routine variety does not look alarming.</p>
       <p><b>Tiers:</b> 60 and above is High, 30–59 Medium, below 30 Low. Each account-day scored Medium or High becomes a finding in the work queue.</p></section>
+    <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">ML anomaly score (autoencoder v2)</h2>
+      <p>Beside the risk score, each lab persona account-day (the six AWS persona roles and the six Cloudflare persona service tokens) gets an ML anomaly score from a small unsupervised autoencoder (9-6-3-6-9, 168 weights). Its nine inputs compare the day with that account’s own previous active days (up to 28 days back, at least 5; before that the day shows Learning): number of events, distinct actions, distinct resources, share of activity outside the account’s usual hours, new actions, volume against a usual day, share of new resources, and how far the mix of actions and the hours of activity moved from the account’s history.</p>
+      <p>It was trained on the persona accounts’ own days up to 12 November 2026: fitted on days up to 8 Nov, checkpoint chosen on 9–10 Nov, normal range set on 11–12 Nov. A day is <b>above the model’s normal range</b> when its score is higher than the threshold that at most 5% of those calibration days exceeded. The explanation shows which inputs contributed most of the reconstruction error.</p>
+      <p>It is shown for comparison only: it does not raise alerts, change the risk score or its tiers, and it was trained on machine workloads, not people. Other accounts show “not applicable”.</p></section>
     <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">Sensitive resources</h2><SensitivePatterns /></section>
     <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">Where the data comes from</h2>
       <p>Argus collects audit events from AWS CloudTrail, GitHub and Cloudflare Access, and refreshes this workspace about once a minute. The header shows <b>Live</b> while data is recent and the time of the last update otherwise. Accounts that belong to monitoring or provider plumbing are labelled infrastructure and ranked below workloads. Workload groups combine the accounts of one lab workload across providers (highest member score, plus 10 when two sources each score 30 or more).</p></section>
