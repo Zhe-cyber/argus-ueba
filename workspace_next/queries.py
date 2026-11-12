@@ -13,7 +13,8 @@ from workspace_next.finding_context import context,object_value
 from workspace_next import baseline_score
 SCAN_LIMIT = 10000
 ORIGINS = {'rarity_spike':'rule','anomalous_behavior':'rule',
-           'ae_critical':'model','new_user':'observation','baseline_risk':'baseline'}
+           'ae_critical':'model','new_user':'observation','baseline_risk':'baseline',
+           'behaviour_drift':'observation','source_drift':'observation'}
 STATUSES = ('Open','Acknowledged','Resolved','False Positive')
 
 

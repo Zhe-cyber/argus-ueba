@@ -12,6 +12,7 @@ from workspace_next.case_api import router
 from workspace_next import operations
 from workspace_next import diagnostic_receipts
 from workspace_next import baseline_score, live_mirror, workload_groups
+from workspace_next.drift_api import router as drift_router
 
 
 class RetainDiagnostic(BaseModel):
@@ -63,6 +64,7 @@ def create_app():
     app.add_middleware(CORSMiddleware,allow_origins=[os.environ.get('ARGUS_WORKSPACE_UI_ORIGIN','http://127.0.0.1:3011')],
                        allow_credentials=True,allow_methods=['GET','POST','PATCH'],allow_headers=['Content-Type','X-Argus-Request'])
     app.include_router(router)
+    app.include_router(drift_router)
 
     @app.get('/health')
     def health():

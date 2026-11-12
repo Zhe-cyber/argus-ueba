@@ -1,0 +1,12 @@
+{
+  "_comment": "TEMPLATE. Copy to config/entra.json and fill in. No real values belong in this file.",
+  "tenant_id": "00000000-0000-0000-0000-000000000000",
+  "client_id": "00000000-0000-0000-0000-000000000000",
+  "client_secret_file": "C:/path/outside/the/repo/entra_client_secret.txt",
+  "state_file": "C:/path/outside/the/repo/entra_state.json",
+  "api": "http://127.0.0.1:8000",
+  "page_size": 100,
+  "max_requests": 20,
+  "overlap_minutes": 60,
+  "initial_lookback_hours": 24
+}

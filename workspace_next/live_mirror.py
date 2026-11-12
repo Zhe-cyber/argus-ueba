@@ -35,7 +35,7 @@ PILOT_DATA = Path(r'C:\Users\yyzhe\.codex\worktrees\argus-cloud-live\fyp-ueba\da
 PILOT_SOURCE_ROOT = Path(r'C:\Users\yyzhe\.codex\worktrees\clue-benchmark-replay\fyp-ueba')
 PILOT_TICK = PILOT_DATA / 'pilot-local-v1' / 'last_tick.json'
 STATUS_FILE = 'mirror-status.json'
-SOURCES = ('aws_cloudtrail', 'github_events', 'cloudflare_access')
+SOURCES = ('aws_cloudtrail', 'github_events', 'cloudflare_access', 'azure_ad')
 NEWEST, RAW_NEWEST = 8, 200  # lines shown per source; repeats are collapsed from the newest RAW_NEWEST events
 _EMAIL = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
 _ACCOUNT = re.compile(r'\d{12}')
@@ -188,6 +188,25 @@ def _rescore(dest, events, cols, now):
     return len(todo)
 
 
+DRIFT_MARKER = 'drift-last-run.json'
+
+
+def _drift_daily(dest, now):
+    """Run the drift monitor once per MYT day on the copy. Best-effort: any failure is logged and never stops the pass."""
+    marker, day = Path(dest).parent / DRIFT_MARKER, now.astimezone(MYT).date().isoformat()
+    try:
+        if (_read(marker) or {}).get('day') == day:
+            return None
+        from backend import drift_monitor
+        with _on_copy(dest):
+            counts = drift_monitor.run_once(now=now)
+        _write_json(marker, {'day': day, **counts})
+        return counts
+    except Exception as error:  # noqa: BLE001 - observations are optional; scoring must not depend on them
+        print(f'[mirror] drift run failed: {type(error).__name__}', file=sys.stderr)
+        return None
+
+
 def run_pass(source, dest, now=None, tick_snapshot=True):
     """One mirror pass. Returns the status dict, or None when skipped (source busy). Never deletes anything."""
     now = now or datetime.now(timezone.utc)
@@ -214,6 +233,7 @@ def run_pass(source, dest, now=None, tick_snapshot=True):
         try: stamps.append(bs._stamp(value))
         except (ValueError, TypeError): pass
     rescored = _rescore(dest, events, ev_cols, now)
+    _drift_daily(dest, now)
     status = {'last_pass_utc': now.isoformat(), 'events_added': len(events), 'alerts_added': len(alerts),
               'source_latest_event_utc': max(stamps).astimezone(timezone.utc).isoformat() if stamps else None,
               'guard_active': guard_active(now), 'account_days_rescored': rescored}

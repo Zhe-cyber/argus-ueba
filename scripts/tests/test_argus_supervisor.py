@@ -138,3 +138,27 @@ def test_workspace_components_endpoint_reads_health(monkeypatch, tmp_path):
         sign_in(client, tmp_path / 'auth' / 'users.json')
         body = client.get('/workspace/components').json()
     assert body['available'] and [c['name'] for c in body['components']] == ['collector']
+
+
+def test_drift_daily_spawns_once_per_myt_day_and_never_raises(tmp_path):
+    started = []
+    tick = sup.drift_daily('py', tmp_path / 'preview.db', spawn=lambda argv, **kw: started.append(argv))
+    tick(1_700_000_000.0); tick(1_700_000_060.0)
+    assert len(started) == 1 and started[0][1:3] == ['-m', 'backend.drift_monitor']
+    tick(1_700_000_000.0 + 86400)
+    assert len(started) == 2
+
+    def broken(argv, **kw):
+        raise OSError('no python')
+    sup.drift_daily('py', tmp_path / 'x.db', spawn=broken)(1_700_000_000.0)  # swallowed
+
+
+def test_run_survives_a_failing_daily_hook():
+    calls = []
+
+    def daily(now):
+        calls.append(now)
+        raise RuntimeError('boom')
+    ticks = iter([False, False, True])
+    sup.run([], None, spawn=None, clock=lambda: 0.0, sleep=lambda s: None, until=lambda: next(ticks), daily=daily)
+    assert len(calls) == 2

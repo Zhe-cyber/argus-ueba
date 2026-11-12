@@ -261,6 +261,19 @@ def parse_azure_ad(event: dict) -> dict:
     # ── Resource ──────────────────────────────────────────────────────────────
     resource = _aad_extract_resource(event)
 
+    # ── Graph signIn schema (GET /v1.0/auditLogs/signIns) ─────────────────────
+    # Detected by fields only the signIn resource carries, so legacy records keep
+    # their old mapping (action = app name). Success/failure becomes the action;
+    # the app (what was signed in to) is the resource.
+    graph_signin = any(k in event for k in ("signInEventTypes", "riskLevelDuringSignIn", "isInteractive"))
+    if graph_signin:
+        status = event.get("status") if isinstance(event.get("status"), dict) else {}
+        code = status.get("errorCode")
+        # ponytail: any non-zero code is a failure (includes MFA-interrupt 50074/50140); refine if noisy
+        action = "signin_success" if code == 0 else "signin_failure" if isinstance(code, int) and not isinstance(code, bool) else "signin"
+        resource = event.get("appDisplayName") or event.get("resourceDisplayName") or ""
+        user = user or event.get("servicePrincipalName") or event.get("appDisplayName") or ""
+
     # ── IP address ────────────────────────────────────────────────────────────
     ip_address = (
         event.get("ipAddress")
@@ -286,12 +299,17 @@ def parse_azure_ad(event: dict) -> dict:
         "status", "Result", "clientAppUsed", "deviceDetail", "location",
         "UserAgent", "Category", "LoggedByService", "AADOperationType",
         "Type", "SourceSystem",
+        "userId", "userDisplayName", "appId", "appDisplayName", "servicePrincipalId", "servicePrincipalName",
+        "riskLevelDuringSignIn", "resourceDisplayName", "isInteractive", "userType",
     ):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
     if country:
         metadata["country"] = country
+    if graph_signin:
+        metadata["clientApp"] = event.get("clientAppUsed") or ""
+        metadata["errorCode"] = code
 
     return _build(
         source=SOURCE_AZURE,

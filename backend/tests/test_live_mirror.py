@@ -156,3 +156,19 @@ def test_feed_has_sources_and_hides_emails_and_account_numbers(pair, tmp_path):
     assert out['collector']['ok'] is True and out['mirror']['events_added'] == 29
     assert 1 <= len(out['sources']['aws_cloudtrail']['newest']) <= 8  # repeats collapse
     assert 'ip_address' not in text
+
+
+def test_drift_runs_once_per_myt_day_and_a_failure_never_breaks_the_pass(pair, monkeypatch):
+    source, dest = pair
+    calls = []
+    from backend import drift_monitor
+    real = drift_monitor.run_once
+    monkeypatch.setattr(drift_monitor, 'run_once', lambda **kw: calls.append(1) or real(**kw))
+    lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
+    lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
+    assert len(calls) == 1 and json.loads((dest.parent / lm.DRIFT_MARKER).read_text())['day'] == '2026-11-10'
+    lm.run_pass(source, dest, datetime(2026, 11, 11, 12, tzinfo=timezone.utc), tick_snapshot=False)
+    assert len(calls) == 2  # next MYT day runs again
+    (dest.parent / lm.DRIFT_MARKER).unlink()
+    monkeypatch.setattr(drift_monitor, 'run_once', lambda **kw: 1 / 0)
+    assert lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)['events_added'] == 0  # still returns a status

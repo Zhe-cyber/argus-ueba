@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -121,12 +121,36 @@ def components(cfg, config_path):
     return result
 
 
-def run(children, health_path, spawn=spawn_process, clock=time.time, sleep=time.sleep, until=None):
+def drift_daily(python, db, today=None, spawn=subprocess.Popen):
+    """Once per MYT day start the drift monitor on the workspace copy as a detached child; returns a callable(now).
+    Best-effort: a failed start is skipped until tomorrow; the supervisor loop never waits on it."""
+    state = {'day': None}
+    myt = timezone(timedelta(hours=8))
+
+    def tick(now):
+        day = (today or (lambda t: datetime.fromtimestamp(t, myt).date().isoformat()))(now)
+        if state['day'] == day:
+            return
+        state['day'] = day
+        try:
+            spawn([python, '-m', 'backend.drift_monitor', '--db', str(db)], cwd=ROOT, env={**os.environ, 'DATABASE_URL': 'sqlite-local'},
+                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, creationflags=NO_WINDOW)
+        except OSError:
+            pass
+    return tick
+
+
+def run(children, health_path, spawn=spawn_process, clock=time.time, sleep=time.sleep, until=None, daily=None):
     last = 0.0
     try:
         while until is None or not until():
             now = clock()
             step(children, now, spawn)
+            if daily is not None:
+                try:
+                    daily(now)
+                except Exception:  # noqa: BLE001 - daily jobs never block supervision
+                    pass
             if now - last >= HEALTH_EVERY:
                 atomic_json(health_path, health(children, now))
                 last = now
@@ -143,7 +167,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     cfg = ops_collect.load_config(args.config)
     cfg['status_dir'].mkdir(parents=True, exist_ok=True)
-    run(components(cfg, args.config.resolve()), cfg['status_dir'] / 'health.json')
+    children = components(cfg, args.config.resolve())
+    daily = drift_daily(cfg['supervisor'].get('python') or sys.executable, prepare_workspace(cfg) / 'preview.db')
+    run(children, cfg['status_dir'] / 'health.json', daily=daily)
 
 
 if __name__ == '__main__':

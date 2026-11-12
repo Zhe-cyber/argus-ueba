@@ -21,10 +21,10 @@ def test_snapshot_is_bounded_sanitized_and_labels_its_capture(tmp_path):
     path.write_text(json.dumps({'captured_at':'2026-10-31T08:00:00+08:00','sources':{
         'aws_cloudtrail':{'collector':{'status':'attention','last_checked_at':'2026-10-31T00:00:00Z',
             'unresolved':2,'missed':-1,'token':'must-not-leak','path':'private'},
-            'workload':{'status':'invented','last_checked_at':None}},'azure_ad':{'secret':'not configured'}}}))
+            'workload':{'status':'invented','last_checked_at':None}},'unlisted_source':{'secret':'not configured'}}}))
     result=operations.read_snapshot(path)
     assert result['captured_at']=='2026-10-31T00:00:00+00:00'
-    assert 'azure_ad' not in result['sources']
+    assert 'unlisted_source' not in result['sources']
     check=result['sources']['aws_cloudtrail']['collector']
     assert check=={'status':'attention','last_checked_at':'2026-10-31T00:00:00+00:00','unresolved':2,'age_seconds_at_capture':0}
     assert 'token' not in json.dumps(result) and 'private' not in json.dumps(result)
@@ -54,6 +54,7 @@ def test_activity_latest_is_utc_not_text_sort_and_sources_stay_real(db):
         con.execute('UPDATE events SET timestamp=? WHERE id=?',('2026-10-31T10:00:00+08:00',a))
         con.execute('UPDATE events SET timestamp=? WHERE id=?',('2026-10-31T03:00:00Z',b))
     result=operations.connections()
+    result['sources']=[r for r in result['sources'] if r['source']!='azure_ad']  # Entra is always listed
     assert len(result['sources'])==1
     assert result['sources'][0]['latest_observed_in_scan']=='2026-10-31T03:00:00+00:00'
 
@@ -122,6 +123,7 @@ def test_historical_annotation_does_not_hide_current_failure(db,tmp_path):
                             'prior_days':{**today,'unresolved':1,'missed':2}}}}}
     path.write_text(json.dumps(value))
     connections=operations.connections(path)
+    connections['sources']=[r for r in connections['sources'] if r['source']!='azure_ad']
     assert len(connections['sources'])==1
     source=connections['sources'][0]
     assert source['activity_window']['status']=='outside_hours' # Supplied label is not trusted.
@@ -140,3 +142,15 @@ def test_multiple_provider_histories_survive_sanitization(tmp_path):
     parsed=operations.read_snapshot(path)
     assert set(parsed['sources'])==set(operations.PROVIDERS)
     assert all(row['workload_history']['available'] for row in parsed['sources'].values())
+
+
+def test_entra_is_listed_as_not_connected_until_it_has_events(db):
+    from backend import event_store
+    row=[r for r in operations.connections()['sources'] if r['source']=='azure_ad'][0]
+    assert row['title']=='Microsoft Entra ID' and row['connected'] is False and row['event_count']==0
+    seed()
+    assert all(r['connected'] for r in operations.connections()['sources'] if r['source']!='azure_ad')
+    with event_store._db() as con:
+        con.execute("UPDATE events SET source='azure_ad'")
+    row=[r for r in operations.connections()['sources'] if r['source']=='azure_ad'][0]
+    assert row['connected'] is True and row['event_count']==1

@@ -1,0 +1,21 @@
+{
+  "version": "drift-monitor-v1",
+  "note": "Design choices, not validated thresholds. Observation only; never feeds the baseline score or any tier.",
+  "account": {
+    "recent_days": 7,
+    "reference_days": 21,
+    "min_active_days": 14,
+    "min_recent_active_days": 3,
+    "volume_shift_log2": 1.0,
+    "action_js_distance": 0.30,
+    "resource_js_distance": 0.30,
+    "new_item_share": 0.50
+  },
+  "source": {
+    "median_days": 14,
+    "low_share_of_median": 0.25,
+    "low_check_from_hour_myt": 18,
+    "gap_hours": 6,
+    "gap_window_myt": [8, 20]
+  }
+}

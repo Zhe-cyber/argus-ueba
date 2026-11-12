@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from backend import event_store as store, collector_status
 from workspace_next.queries import stamp, findings
 
-PROVIDERS={'aws_cloudtrail':'AWS CloudTrail','cloudflare_access':'Cloudflare Access','github_events':'GitHub'}
+PROVIDERS={'aws_cloudtrail':'AWS CloudTrail','cloudflare_access':'Cloudflare Access','github_events':'GitHub','azure_ad':'Microsoft Entra ID'}
 STATES={'recent','attention','stale','unavailable','ended'}
 MY=ZoneInfo('Asia/Kuala_Lumpur')
 
@@ -114,7 +114,7 @@ def connections(snapshot_path=None):
     for source,title in PROVIDERS.items():
         counts=totals.get(source,{})
         checks=snapshot['sources'].get(source,{})
-        if not counts and not checks: continue
+        if not counts and not checks and source!='azure_ad': continue  # Entra is always listed (as not connected) until it has events
         workload=dict(checks.get('workload',{'status':'unavailable','last_checked_at':None}))
         history=checks.get('workload_history',{'available':False})
         if (workload['status']=='attention' and checks.get('latest_run_status')=='attention_required'
@@ -122,7 +122,7 @@ def connections(snapshot_path=None):
                 and history['today']['pending_receipts']==0 and history['today']['missed']==0
                 and history['prior_days']['unresolved']>0):
             workload['attention_scope']='historical'
-        rows.append({'source':source,'title':title,'event_count':counts.get('event_count',0),
+        rows.append({'source':source,'title':title,'connected':bool(counts) or source!='azure_ad','event_count':counts.get('event_count',0),
                      'account_count':counts.get('account_count',0),
                      'latest_observed_in_scan':latest.get(source),
                      'invalid_timestamps_in_scan':invalid.get(source,0),
@@ -148,7 +148,7 @@ def overview(snapshot_path=None):
     checks=connections(snapshot_path)
     issues=sum(any(row[kind]['status'] in {'attention','stale'} for kind in ['collector','workload']) for row in checks['sources'])
     return {'open_security_findings':sum(counts.get(kind,0) for kind in ['rarity_spike','anomalous_behavior','ae_critical','baseline_risk']),
-            'open_observations':counts.get('new_user',0),'active_cases':active,
+            'open_observations':sum(counts.get(k,0) for k in ['new_user','behaviour_drift','source_drift']),'active_cases':active,
             'sources_needing_review_at_capture':issues,'operations_captured_at':checks['captured_at'],
             'recent_cases':recent,'recent_findings':[r for r in findings(limit=500,learning='exclude')['findings'] if not r['infrastructure']][:5],
             'scoring':'not_enabled_in_workspace_preview','mode':'isolated_copy'}
