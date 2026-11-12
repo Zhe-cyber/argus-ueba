@@ -42,13 +42,30 @@ def combine(member_scores):
     return min(100, top)
 
 
+def _group_day(db, member_keys):
+    """Latest MYT day on which any member of the group has a stored score (None if never)."""
+    if not member_keys:
+        return None
+    con = bs._ro(db)
+    try:
+        marks = ','.join('?' * len(member_keys))
+        value = con.execute(f'SELECT MAX(day) FROM baseline_scores WHERE account_key IN ({marks})',
+                            list(member_keys)).fetchone()[0]
+    finally:
+        con.close()
+    return datetime.strptime(value, '%Y-%m-%d').date() if value else None
+
+
 def groups(db, groups_path, day=None):
+    """Without an explicit day each group is shown on its own latest scored day, so a new
+    calendar day with no member activity yet does not blank every group to Learning."""
     accounts = bs.load(db)
-    day = datetime.strptime(day, '%Y-%m-%d').date() if day else bs.latest_day(db)
+    fixed_day = datetime.strptime(day, '%Y-%m-%d').date() if day else None
     out, unknown, personas = [], [], _persona_labels()
     declared = system_accounts.declared(db)
-    scores = dict(bs._scores(db, 'WHERE day=?', (day.isoformat(),))) if day else {}  # stored backend scores
     for g in _read(groups_path):
+        day = fixed_day or _group_day(db, g['members'])
+        scores = dict(bs._scores(db, 'WHERE day=?', (day.isoformat(),))) if day else {}  # stored backend scores
         members, facts = [], []
         for key in g['members']:
             a = accounts.get(key)
@@ -61,11 +78,15 @@ def groups(db, groups_path, day=None):
                             'infrastructure': system_accounts.is_infrastructure(a['label'], a['kind'], a['source'], declared)})
             facts += [f"[{a['source']}] {f}" for f in r['facts']]
         score = combine([(m['source'], m['score']) for m in members])
+        if score is not None:
+            tier = bs.tier(score)
+        else:
+            tier = 'Learning' if any(m['tier'] == 'Learning' for m in members) else 'No activity'
         out.append({'group': g['group'],
                     'label': f"{personas[g['group']]} ({g['group']})" if g['group'] in personas else g['label'], 'members': members, 'group_score': score,
-                    'tier': 'Learning' if score is None else bs.tier(score), 'facts': facts})
+                    'tier': tier, 'facts': facts, 'day': day.isoformat() if day else None})
     out.sort(key=lambda r: (r['group_score'] is None, -(r['group_score'] or 0)))
-    return {'basis': BASIS, 'day': day.isoformat() if day else None, 'groups': out, 'unknown_members': unknown}
+    return {'basis': BASIS, 'day': fixed_day.isoformat() if fixed_day else None, 'groups': out, 'unknown_members': unknown}
 
 
 def timeline(db, groups_path, group, day=None, limit=200):
@@ -73,7 +94,7 @@ def timeline(db, groups_path, group, day=None, limit=200):
     g = next((x for x in _read(groups_path) if x['group'] == group), None)
     if g is None:
         return None
-    day = datetime.strptime(day, '%Y-%m-%d').date() if day else bs.latest_day(db)
+    day = datetime.strptime(day, '%Y-%m-%d').date() if day else _group_day(db, g['members'])
     labels = {k: bs.load(db).get(k, {}).get('label') for k in g['members']}
     rows = []
     marks = ','.join('?' * len(g['members']))
