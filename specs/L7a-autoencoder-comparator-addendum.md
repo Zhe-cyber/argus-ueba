@@ -20,16 +20,18 @@ result. Code: `backend/live_ae.py` (v2).
 | Split (MYT date) | Fit ≤ 8 Nov; validation 9–10 Nov (checkpoint and early stopping only); calibration 11–12 Nov (threshold only) |
 | Training rule | Inputs standardised with fit-only mean/std (zero variance → scale 1); CPU, seed 42, deterministic, one thread; full-batch Adam lr 0.001, weight decay 0.001, gradient-norm clip 5; up to 2000 epochs; checkpoint = earliest epoch with the minimum validation MSE (strict improvement); stop after 200 epochs without improvement |
 | Threshold | `live_daily_method.empirical_threshold` on the calibration scores (k = floor(0.05 n), value at index n − k − 1); a day is **flagged** only if its score is strictly greater |
+| Secondary operating point | `live_daily_method.empirical_threshold` on the v2 scores of **all** scorable persona account-days dated up to and including 12 Nov 2026 MYT (the 104 fit + validation + calibration rows; AWS persona roles and Cloudflare persona tokens), computed with the frozen bundle and the same feature function, events DB read-only, nothing dated 13 Nov or later: k = floor(0.05 n), value at index n − k − 1, flagged only if strictly greater. Stored as `secondary_threshold` in `config/live_ae_v2.json` (`python -m backend.live_ae secondary-threshold --db <events.db>` reproduces it); stored per day as `ml_scores.flagged_secondary`. Not used for alerts; reported alongside the primary, which remains the declared main comparator |
 | Score | Standardised reconstruction MSE, with each feature's share of the squared error as the explanation |
 | Frozen bundle | Model sha256 (manifest) and weights sha256 recorded in §3 before the first scenario |
 
 ## 2. What is reported (in addition to L7 §5)
 
 1. Per scenario, for the AWS account-day and the Cloudflare account-day separately: the autoencoder score, flagged
-   yes/no, and the top three feature shares.
-2. Normal comparison (the same evaluable persona account-days as L7 §4, AWS and Cloudflare): flagged out of N,
-   reported twice — all days, and excluding 12 November (a calibration day of this model), so the held-out
-   result is visible on its own.
+   yes/no at the primary threshold **and** at the secondary operating point, and the top three feature shares.
+2. Normal comparison (the same evaluable persona account-days as L7 §4, AWS and Cloudflare): flagged out of N at
+   the primary threshold and at the secondary operating point, each reported twice — all days, and excluding
+   12 November (a calibration day of this model and inside the secondary's 104 days), so the held-out result is
+   visible on its own.
 3. The model manifest hash actually loaded by the running deployment, recorded before the first scenario; it must
    equal the hash in §3, otherwise the comparator is reported as not evaluated.
 4. Side by side per scenario: baseline tier (alert = Medium or High) and autoencoder flag, as both / baseline only /
@@ -48,6 +50,7 @@ negatives. Counts with denominators only; no accuracy percentage.
 | Best validation MSE | 0.1356 (predicting the fit mean, the comparison baseline: 0.7289) |
 | Selected epoch / stop epoch | 1038 / 1238 |
 | Threshold | 0.283617 (calibration days above it: 1 of 24; validation days above it: 3 of 24) |
+| Secondary operating point (13 Nov 2026, 05:55 MYT, before any scenario) | 0.509095 (`0.5090951323509216`); n = 104, k = 5; days above it: 5 of 104 (AWS 5 of 61, Cloudflare 0 of 43). Primary threshold on the same 104 days: 15 above (AWS 15 of 61, Cloudflare 0 of 43). Loaded manifest sha256 = the one below; last day used 12 Nov |
 | Trainable parameters | 168 |
 | Model sha256 (manifest) | `d41e86a92cc24e6db706b161caef780a10d54f5f7c82592bcd7da6f2d7a2ffc0` |
 | Weights sha256 | `b446da78e8625d39ef26d40812f18c563674ae38b1479f0aa54c3b77706f411c` |
@@ -69,6 +72,13 @@ single extra request moves them strongly. 12 November is a calibration day and a
 comparison window; it is reported but marked as a calibration day.
 
 ## 5. Changes before freeze (disclosed)
+
+**Secondary operating point added, 13 November 2026 (MYT), before any scenario call.** The primary threshold was set
+on 24 calibration days (k = 1) and already exceeds the 5% budget on normal pre-freeze days (15 of 104 above it, all
+AWS). A second, pre-declared operating point (§1) applies the same 5% budget rule to all 104 pre-freeze scorable
+persona days with the frozen bundle; its value and counts are in §3. The primary threshold remains the declared main
+comparator; both flags are reported (§2). The model was not retrained and the bundle, its manifest hash and the
+primary threshold 0.283617 are unchanged.
 
 **v1 → v2, 13 November 2026 (MYT), before any scenario call.** v1 was a population autoencoder 8-4-2-4-8 on the
 eight raw daily counts of the `aws_lab_daily_v1` contract (AWS persona roles only), trained 13 Nov 00:33 MYT
