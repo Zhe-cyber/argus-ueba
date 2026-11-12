@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from backend import alert_store, event_store as events
 from workspace_next import baseline_alerts as ba, case_store as cases
 from workspace_next.case_api import router
+from backend.tests.auth_helpers import signed_in_client
 from backend.tests.test_baseline_alerts import put, history_rows
 
 
@@ -20,7 +21,7 @@ def env(monkeypatch, tmp_path):
     ba.sync(events.DB_PATH)
     rule = alert_store.create_alert('a', 'rarity_spike', 'High', 'rule alert', {})['id']
     app = FastAPI(); app.include_router(router)
-    with TestClient(app) as c:
+    with signed_in_client(app, tmp_path) as c:
         yield c, rule, ba.ID_OFFSET + 1
 
 
@@ -44,7 +45,7 @@ def test_status_change_filters_and_audits_for_both_kinds(env):
         assert con.execute('SELECT resolved_at FROM alerts WHERE id=?', (rule,)).fetchone()[0] is None
 
 
-@pytest.mark.parametrize('over,text', [({'analyst': ' '}, 'Analyst'), ({'reason': ''}, 'Reason'), ({'status': 'Bogus'}, 'Status')])
+@pytest.mark.parametrize('over,text', [({'reason': ''}, 'Reason'), ({'status': 'Bogus'}, 'Status')])
 def test_validation_messages(env, over, text):
     c, rule, _ = env
     r = post(c, rule, **over)

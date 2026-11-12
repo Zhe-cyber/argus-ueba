@@ -9,7 +9,7 @@ export function activityDay(timestamp) {
 
 export default function DiagnosticPanel({ account, initialDay = '', caseContext = null }) {
   const [day, setDay] = useState(initialDay), [data, setData] = useState(null), [error, setError] = useState(null)
-  const [analyst, setAnalyst] = useState(''), [reason, setReason] = useState('')
+  const [reason, setReason] = useState('')
   const command = useCommand()
   const source = account?.source, scope = account?.source_account_id, key = account?.account_key
   useEffect(() => {
@@ -44,10 +44,9 @@ export default function DiagnosticPanel({ account, initialDay = '', caseContext 
         {!!receipt.facts?.length && <details className="text-xs"><summary className="cursor-pointer">Behaviour facts</summary><ul className="mt-2 space-y-2">{receipt.facts.map((fact, i) => <li key={i}>{display(fact.text)}</li>)}</ul></details>}
         <details className="text-xs"><summary className="cursor-pointer">Coverage and provenance</summary><p className="mt-2">{receipt.coverage.policy_status} · {receipt.completeness}</p><p>Receipt {receipt.receipt_id.slice(0, 12)} · {receipt.schema}</p><p>Coverage concerns planned actions; other activity may be incomplete.</p></details>
         {caseContext?.open && <div data-write-action className="space-y-2 border-t pt-3">
-          <label className="block text-xs">Analyst for diagnostic context<input className={field} maxLength={200} value={analyst} onChange={e => setAnalyst(e.target.value)} /></label>
           <label className="block text-xs">Reason for retaining context<input className={field} maxLength={2000} value={reason} onChange={e => setReason(e.target.value)} /></label>
-          <button className={secondary} disabled={command.busy || !analyst.trim() || !reason.trim()} onClick={() => command.run(`/cases/${caseContext.id}/diagnostics`, {
-            source, scope, account: key, day, actor: analyst, reason, expected_version: caseContext.version,
+          <button className={secondary} disabled={command.busy || !reason.trim()} onClick={() => command.run(`/cases/${caseContext.id}/diagnostics`, {
+            source, scope, account: key, day, reason, expected_version: caseContext.version,
             receipt_id: receipt.receipt_id, artifact_manifest_sha256: data.artifact_manifest_sha256
           }, 'POST', value => { caseContext.onRetained(value); setReason('') })}>Retain diagnostic context</button>
         </div>}

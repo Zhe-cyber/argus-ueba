@@ -3,10 +3,10 @@ import json
 import os
 import sqlite3
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from fastapi.middleware.cors import CORSMiddleware
-from backend import event_store as store
+from backend import auth, event_store as store
 from workspace_next import case_store
 from workspace_next.case_api import router
 from workspace_next import operations
@@ -20,7 +20,7 @@ class RetainDiagnostic(BaseModel):
     scope: str = Field(min_length=1, max_length=256)
     account: str = Field(max_length=128)
     day: str = Field(max_length=10)
-    actor: str = Field(min_length=1, max_length=200)
+    actor: str = Field(default='', max_length=200)  # deprecated: ignored, the session names the analyst
     reason: str = Field(min_length=1, max_length=2000)
     request_key: str = Field(min_length=1, max_length=128)
     expected_version: int = Field(ge=1)
@@ -56,9 +56,29 @@ def create_app():
                 raise diagnostic_receipts.ReceiptError('invalid_configuration')
             return diagnostic_receipts.strict_json(receipt_config.read_bytes())
         return app.state.diagnostic_receipt_config
+    auth_dir = path.parent / 'auth'  # git-ignored data folder unless the environment points elsewhere
+    auth.install(app, auth.Auth(os.environ.get('ARGUS_AUTH_USERS_FILE') or auth_dir / 'users.json',
+                                os.environ.get('ARGUS_AUTH_SECRET_FILE') or auth_dir / 'session.key'),
+                 cookie_name=os.environ.get('ARGUS_SESSION_COOKIE', auth.COOKIE))  # before CORS: CORS stays outermost
     app.add_middleware(CORSMiddleware,allow_origins=[os.environ.get('ARGUS_WORKSPACE_UI_ORIGIN','http://127.0.0.1:3011')],
-                       allow_methods=['GET','POST','PATCH'],allow_headers=['Content-Type'])
+                       allow_credentials=True,allow_methods=['GET','POST','PATCH'],allow_headers=['Content-Type','X-Argus-Request'])
     app.include_router(router)
+
+    @app.get('/health')
+    def health():
+        return {'status': 'ok'}
+
+    @app.get('/workspace/components')
+    def components():
+        """One row per supervised component, from the supervisor's health.json (signed-in users only)."""
+        source = os.environ.get('ARGUS_SUPERVISOR_HEALTH')
+        try:
+            data = json.loads(Path(source).read_text(encoding='utf-8')) if source else None
+        except (OSError, ValueError):
+            data = None
+        if not data:
+            return {'available': False, 'components': []}
+        return {'available': True, 'at_utc': data.get('at_utc'), 'components': data.get('components', [])}
 
     @app.get('/workspace/status')
     def status():
@@ -144,8 +164,9 @@ def create_app():
                     'reason_code': error.code, 'live_activation': False, 'risk_tier': None, 'scores_visible': False}
 
     @app.post('/cases/{case_id}/diagnostics')
-    def retain_diagnostic(case_id: str, body: RetainDiagnostic):
+    def retain_diagnostic(case_id: str, body: RetainDiagnostic, request: Request):
         from workspace_next.case_api import call
+        analyst = auth.session_user(request, body.actor)
         def retain():
             config = current_receipt_config()
             if config is None or config.get('manifest_sha256') != body.artifact_manifest_sha256:
@@ -161,7 +182,7 @@ def create_app():
                 raise case_store.CaseConflict('Diagnostic receipt changed; reload account-day context')
             snapshot = {**result, 'artifact_manifest_sha256': config['manifest_sha256'],
                         'association': 'account_day_context_not_trigger_attribution'}
-            return case_store.retain_diagnostic(case_id, body.expected_version, body.actor,
+            return case_store.retain_diagnostic(case_id, body.expected_version, analyst,
                 body.request_key, body.reason, snapshot)
         return call(retain)
     return app

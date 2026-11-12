@@ -29,8 +29,21 @@ export const field = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text
 export const button = 'rounded-lg bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50'
 export const secondary = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:opacity-50'
 export const when = value => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }) + ' MYT' : '—'
+// Signed-in session (set by the sign-in gate in _app.js). Viewers get no change controls.
+let session = null
+export const setSession = value => { session = value }
+export const useSession = () => session
+export const canChange = value => value?.role === 'analyst'
+export const beforeSignIn = (value, at) => !value?.sign_in_since_utc || Date.parse(at) < Date.parse(value.sign_in_since_utc)
 export async function request(path, body, method = 'POST') {
-  const response = await fetch(API + path, body === undefined ? {} : { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  // Cookie session (HTTP-only, set by the API); the header marks requests as coming from this UI.
+  const init = { credentials: 'include', headers: { 'X-Argus-Request': '1' } }
+  const response = await fetch(API + path, body === undefined ? init : { ...init, method, headers: { ...init.headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (response.status === 401 && path !== '/auth/login' && typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    session = null
+    window.location.assign('/login?next=' + encodeURIComponent(window.location.pathname + window.location.search))
+    throw new Error('Sign-in required')
+  }
   const result = await response.json()
   if (!response.ok) throw new Error(response.status === 409 ? 'This request conflicts with a newer edit or a reused request key. Reload the case before making a new decision.' : typeof result.detail === 'string' ? result.detail : `Request failed (${response.status})`)
   return result
@@ -58,6 +71,11 @@ export function useCommand() {
   }
   return { run, busy, error, setError }
 }
+async function signOut() {
+  try { await request('/auth/logout', {}) } catch {}
+  session = null
+  window.location.assign('/login')
+}
 const ago = seconds => seconds < 60 ? seconds + 's' : seconds < 3600 ? Math.floor(seconds / 60) + 'm' : Math.floor(seconds / 3600) + 'h'
 export function Frame({ title, children }) {
   const router = useRouter()
@@ -71,7 +89,7 @@ export function Frame({ title, children }) {
   }, [])
   const nav = [['/', 'Overview'], ['/workspace', 'Work queue'], ['/cases', 'Cases'], ['/entities', 'Entities'], ['/connections', 'Connections']]
   const shown = display(title), live = pass != null && now - pass < 300000
-  return <main className="max-w-7xl mx-auto px-5 py-7 space-y-5"><Head><title>{'Argus — ' + shown}</title></Head><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold tracking-wide text-indigo-700">Argus</p><h1 className="text-2xl font-semibold text-slate-900">{shown}</h1><div className="mt-1 flex flex-wrap gap-2 text-xs">{live ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">Live · updated {ago(Math.max(0, Math.floor((now - pass) / 1000)))} ago</span> : pass != null && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-600">Data as of {when(new Date(pass).toISOString())}</span>}{rehearsal && <span className="rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 font-semibold text-amber-900">Simulated scenario</span>}</div></div><nav aria-label="Workspace navigation" className="flex flex-wrap gap-1 text-sm">{nav.map(([href,label]) => { const active = href === '/' ? router.pathname === '/' : router.pathname.startsWith(href); return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={'rounded-lg px-3 py-2 ' + (active ? 'bg-indigo-700 text-white' : 'text-slate-600 hover:bg-slate-200')}>{label}</Link> })}</nav></div>{children}<footer className="border-t pt-3 text-xs text-slate-500"><Link href="/about" className="hover:underline">Method &amp; limits</Link></footer></main>
+  return <main className="max-w-7xl mx-auto px-5 py-7 space-y-5"><Head><title>{'Argus — ' + shown}</title></Head><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold tracking-wide text-indigo-700">Argus</p><h1 className="text-2xl font-semibold text-slate-900">{shown}</h1><div className="mt-1 flex flex-wrap gap-2 text-xs">{live ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">Live · updated {ago(Math.max(0, Math.floor((now - pass) / 1000)))} ago</span> : pass != null && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-600">Data as of {when(new Date(pass).toISOString())}</span>}{rehearsal && <span className="rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 font-semibold text-amber-900">Simulated scenario</span>}</div></div><nav aria-label="Workspace navigation" className="flex flex-wrap gap-1 text-sm">{nav.map(([href,label]) => { const active = href === '/' ? router.pathname === '/' : router.pathname.startsWith(href); return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={'rounded-lg px-3 py-2 ' + (active ? 'bg-indigo-700 text-white' : 'text-slate-600 hover:bg-slate-200')}>{label}</Link> })}</nav>{session && <div className="flex items-center gap-2 text-sm text-slate-600"><span data-testid="signed-in-user">{display(session.user)} · {session.role}</span><button className={secondary} onClick={signOut}>Sign out</button></div>}</div>{children}<footer className="border-t pt-3 text-xs text-slate-500"><Link href="/about" className="hover:underline">Method &amp; limits</Link></footer></main>
 }
 export function ErrorNotice({ error }) { return error ? <p role="alert" className="border border-rose-200 bg-rose-50 text-rose-800 p-3 rounded-lg text-sm">{error}</p> : null }
 export function Drawer({ title, close, children }) {

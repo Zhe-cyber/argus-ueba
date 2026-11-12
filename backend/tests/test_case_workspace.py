@@ -10,6 +10,7 @@ import pytest
 from backend import event_store as events, alert_store
 from workspace_next import case_store as cases
 from workspace_next.case_api import router
+from backend.tests.auth_helpers import signed_in_client
 
 
 @pytest.fixture
@@ -21,9 +22,9 @@ def db(monkeypatch,tmp_path):
 
 
 @pytest.fixture
-def client(db):
+def client(db,tmp_path):
     app = FastAPI(); app.include_router(router)
-    with TestClient(app) as client:
+    with signed_in_client(app,tmp_path) as client:
         yield client
 
 

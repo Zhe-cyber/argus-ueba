@@ -1,9 +1,9 @@
 """Case API for isolated workspace development. Not mounted by main.py yet."""
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from workspace_next import case_store as cases
 from workspace_next import queries
-from backend import event_store as store
+from backend import auth, event_store as store
 from workspace_next import system_accounts
 
 router = APIRouter(tags=['Case workspace'])
@@ -11,7 +11,7 @@ router = APIRouter(tags=['Case workspace'])
 
 class Command(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    actor: str = Field(min_length=1,max_length=200)
+    actor: str = Field(default='',max_length=200)  # deprecated: ignored, the session names the analyst
     request_key: str = Field(min_length=1,max_length=128)
 
 
@@ -44,8 +44,13 @@ class FromFinding(Create):
 class FindingStatus(BaseModel):
     model_config = ConfigDict(extra='forbid')
     status: str = ''
-    analyst: str = ''
+    analyst: str = ''  # deprecated: ignored, the session names the analyst
     reason: str = ''
+
+
+def signed(request, body):
+    """Body with its actor replaced by the signed-in analyst."""
+    return body.model_copy(update={'actor': auth.session_user(request, body.actor)})
 
 
 def call(operation,*args,**kwargs):
@@ -68,8 +73,8 @@ def listing(limit: int = Query(50,ge=1,le=100), before_time: str | None = None,
 
 
 @router.post('/cases',status_code=201)
-def create(body: Create):
-    return call(cases.create,**body.model_dump())
+def create(body: Create,request: Request):
+    return call(cases.create,**signed(request,body).model_dump())
 
 
 def create_from_finding(body):
@@ -87,23 +92,23 @@ def create_from_finding(body):
 
 
 @router.post('/cases/from-finding',status_code=201)
-def from_finding(body: FromFinding):
-    return call(create_from_finding,body)
+def from_finding(body: FromFinding,request: Request):
+    return call(create_from_finding,signed(request,body))
 
 
 @router.get('/cases/{case_id}')
-def get(case_id: str):
+def get(case_id: str,request: Request):
     return call(cases.get,case_id)
 
 
 @router.patch('/cases/{case_id}')
-def edit(case_id: str,body: Edit):
-    return call(cases.update,case_id,**body.model_dump())
+def edit(case_id: str,body: Edit,request: Request):
+    return call(cases.update,case_id,**signed(request,body).model_dump())
 
 
 @router.post('/cases/{case_id}/links')
-def link(case_id: str,body: Link):
-    return call(cases.link,case_id,**body.model_dump())
+def link(case_id: str,body: Link,request: Request):
+    return call(cases.link,case_id,**signed(request,body).model_dump())
 
 
 @router.get('/events/{event_id}')
@@ -131,8 +136,8 @@ def finding(finding_id: int):
 
 
 @router.post('/findings/{finding_id}/status')
-def finding_status(finding_id: int,body: FindingStatus):
-    return call(queries.set_status,finding_id,body.status,body.analyst,body.reason)
+def finding_status(finding_id: int,body: FindingStatus,request: Request):
+    return call(queries.set_status,finding_id,body.status,auth.session_user(request,body.analyst),body.reason)
 
 
 @router.get('/workspace/accounts')

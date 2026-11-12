@@ -3,23 +3,23 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import DiagnosticPanel, { activityDay } from '@/components/DiagnosticPanel'
 import BaselinePanel, { ScoreChip } from '@/components/BaselinePanel'
-import { display, Frame, Drawer, Facts, ErrorNotice, FieldError, Info, request, useCommand, field, button, secondary, when } from '@/components/WorkspaceUI'
+import { display, Frame, Drawer, Facts, ErrorNotice, FieldError, Info, request, useCommand, useSession, canChange, field, button, secondary, when } from '@/components/WorkspaceUI'
 const TRIAGE = { review_first: 'Review first', automation_context: 'Automation account', office_hours_context: 'Office hours', infrastructure_context: 'Monitoring infrastructure' }
 // The date filters are typed in Malaysia time (MYT, UTC+8) and sent to the API as UTC.
 const mytToUtc = value => { const t = Date.parse((value.length === 16 ? value + ':00' : value) + '+08:00'); return Number.isFinite(t) ? new Date(t).toISOString() : '' }
 const ACTIONS = [['Acknowledged', 'Acknowledge'], ['Resolved', 'Resolve'], ['False Positive', 'False positive'], ['Open', 'Reopen']]
 
 function StatusActions({ id, finding, onDone }) {
-  const [analyst, setAnalyst] = useState(''), [reason, setReason] = useState(''), [busy, setBusy] = useState(false)
+  const [reason, setReason] = useState(''), [busy, setBusy] = useState(false), session = useSession()
   const [error, setError] = useState(null), [tried, setTried] = useState(false)
   async function change(status) {
     setTried(true); setError(null)
-    if (!analyst.trim() || !reason.trim()) return
+    if (!reason.trim()) return
     setBusy(true)
-    try { await request(`/findings/${id}/status`, { status, analyst: analyst.trim(), reason: reason.trim() }); setTried(false); setReason(''); await onDone() } catch (e) { setError(e.message) } finally { setBusy(false) }
+    try { await request(`/findings/${id}/status`, { status, reason: reason.trim() }); setTried(false); setReason(''); await onDone() } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
+  if (!canChange(session)) return <section className="border-t pt-3" aria-label="Finding status"><h3 className="text-sm font-semibold">Status: {finding.status}</h3></section>
   return <section className="border-t pt-3 space-y-2" aria-label="Finding status"><h3 className="text-sm font-semibold">Status: {finding.status}</h3><ErrorNotice error={error} />
-    <label className="block text-sm">Analyst<input maxLength={200} className={field} value={analyst} onChange={e => setAnalyst(e.target.value)} /><FieldError show={tried && !analyst.trim()}>Analyst name is required.</FieldError></label>
     <label className="block text-sm">Reason<input maxLength={2000} className={field} value={reason} onChange={e => setReason(e.target.value)} /><FieldError show={tried && !reason.trim()}>Reason is required.</FieldError></label>
     <div className="flex flex-wrap gap-2">{ACTIONS.map(([status, label]) => <button key={status} className={secondary} disabled={busy || finding.status === status} onClick={() => change(status)}>{label}</button>)}</div></section>
 }
@@ -41,7 +41,7 @@ function Diagnostic({ finding, id }) {
 function FindingDrawer({ id, close, changed }) {
   const router = useRouter()
   const [finding, setFinding] = useState(null), [error, setError] = useState(null)
-  const [title, setTitle] = useState(''), [actor, setActor] = useState(''), [owner, setOwner] = useState('')
+  const [title, setTitle] = useState(''), [owner, setOwner] = useState(''), session = useSession()
   const [reason, setReason] = useState(''), [includeAccount, setIncludeAccount] = useState(true), [tried, setTried] = useState(false)
   const [mode, setMode] = useState(null), [cases, setCases] = useState([]), [selected, setSelected] = useState(''), [cursor, setCursor] = useState(null)
   const command = useCommand()
@@ -59,10 +59,10 @@ function FindingDrawer({ id, close, changed }) {
     event.preventDefault()
     setTried(true)
     const target = cases.find(row => row.id === selected)
-    if (!actor.trim() || !reason.trim() || (mode === 'new' && !title.trim()) || (mode === 'existing' && !target)) return
+    if (!reason.trim() || (mode === 'new' && !title.trim()) || (mode === 'existing' && !target)) return
     command.run(mode === 'new' ? '/cases/from-finding' : `/cases/${selected}/links`, mode === 'new'
-      ? { title, owner, actor, finding_id: Number(id), reason, include_account: includeAccount }
-      : { actor, expected_version: target.version, kind: 'finding', target: String(id), reason }, 'POST', row => router.push('/cases/' + row.id))
+      ? { title, owner, finding_id: Number(id), reason, include_account: includeAccount }
+      : { expected_version: target.version, kind: 'finding', target: String(id), reason }, 'POST', row => router.push('/cases/' + row.id))
   }
   const day = finding && (finding.origin === 'baseline' ? finding.details?.day : activityDay(finding.rule_event_time_utc || finding.created_at))
   return <Drawer title={'Finding #' + id} close={close}><ErrorNotice error={error || command.error} />{!finding ? <p>Loading evidence…</p> : <>
@@ -72,10 +72,9 @@ function FindingDrawer({ id, close, changed }) {
     <Facts value={{ account: finding.account_label, triage: TRIAGE[finding.triage], event_time_malaysia: finding.event_time_myt ? when(finding.event_time_myt) + (finding.in_myt_office_hours ? ' (inside office hours, Mon–Fri 08:00–18:00)' : ' (outside office hours, Mon–Fri 08:00–18:00)') : null, rule_window: finding.rule_window, event_time_utc: finding.rule_event_time_utc, ...finding.details }} />
     <p className="text-xs text-slate-500">{finding.entity_context === 'service_or_workload' ? 'Service/workload account. ' : ''}{finding.history_context === 'limited_observed_history' ? 'Limited observed history. ' : ''}{finding.origin === 'baseline' ? 'Compared with this account’s own history.' : 'Rule-based finding.'}<Info label="About this finding">{finding.history_context === 'limited_observed_history' ? 'Limited observed history; novelty alone does not establish misuse. ' : ''}{finding.origin === 'baseline' ? 'A baseline finding describes this account-day compared with the account’s own history. ' : 'Exact triggering events are not bound to this legacy signal. '}Account activity added to a case is related context. Triage is display context only; recorded severity and detection are unchanged.</Info></p>
     <Diagnostic finding={finding} id={id} />
-    {!mode ? <div data-write-action className="flex gap-2"><button className={button} onClick={() => setMode('new')}>Create case</button><button className={secondary} onClick={() => { setMode('existing'); loadCases() }}>Add to case</button></div> : <form noValidate onSubmit={submit} className="border-t pt-4 space-y-3">
+    {!canChange(session) ? null : !mode ? <div data-write-action className="flex gap-2"><button className={button} onClick={() => setMode('new')}>Create case</button><button className={secondary} onClick={() => { setMode('existing'); loadCases() }}>Add to case</button></div> : <form noValidate onSubmit={submit} className="border-t pt-4 space-y-3">
       <h3 className="font-semibold">{mode === 'new' ? 'New case' : 'Existing case'}</h3>
       {mode === 'new' ? <><label className="block text-sm">Title<input maxLength={240} className={field} value={title} onChange={e => setTitle(e.target.value)} /><FieldError show={tried && !title.trim()}>Title is required.</FieldError></label><label className="block text-sm">Owner<input maxLength={200} className={field} value={owner} onChange={e => setOwner(e.target.value)} /></label><label className="flex gap-2 text-sm"><input type="checkbox" checked={includeAccount} onChange={e => setIncludeAccount(e.target.checked)} />Include this account’s activity as related context</label></> : <><label className="block text-sm">Case<select className={field} value={selected} onChange={e => setSelected(e.target.value)}><option value="">Select an open case</option>{cases.filter(row => row.status !== 'Closed').map(row => <option key={row.id} value={row.id}>{display(row.display_title || row.title)}</option>)}</select><FieldError show={tried && !selected}>Choose a case.</FieldError></label><button type="button" className={secondary} onClick={() => loadCases(false)}>Refresh cases</button>{cursor && <button type="button" className={secondary} onClick={() => loadCases(true)}>Load more cases</button>}</>}
-      <label className="block text-sm">Analyst<input maxLength={200} className={field} value={actor} onChange={e => setActor(e.target.value)} /><FieldError show={tried && !actor.trim()}>Analyst name is required.</FieldError></label>
       <label className="block text-sm">Reason<textarea maxLength={2000} className={field} value={reason} onChange={e => setReason(e.target.value)} /><FieldError show={tried && !reason.trim()}>Reason is required.</FieldError></label>
       <div className="flex gap-2"><button disabled={command.busy} className={button}>{command.busy ? 'Saving…' : mode === 'new' ? 'Create case with finding' : 'Link finding'}</button><button type="button" disabled={command.busy} className={secondary} onClick={() => { setMode(null); setTried(false) }}>Back</button></div>
     </form>}</>}</Drawer>
