@@ -74,7 +74,10 @@ def test_marked_preview_routes_do_not_require_live_backend(db,monkeypatch,tmp_pa
     # Restore global store path after the isolated app factory mutates it.
     from backend import event_store
     monkeypatch.setattr(event_store,'DB_PATH',db)
+    from backend.tests.auth_helpers import sign_in
     with TestClient(create_app()) as client:
+        assert client.get('/workspace/overview').status_code==401
+        sign_in(client,tmp_path/'auth'/'users.json')
         assert client.get('/workspace/connections').json()['mode']=='snapshot_unavailable'
         assert client.get('/workspace/overview').json()['active_cases']==0
         assert client.get('/ingest').status_code==404

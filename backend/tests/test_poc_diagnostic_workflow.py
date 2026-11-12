@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 import json
 import shutil
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -45,6 +46,9 @@ def test_readiness_exposes_history_and_never_scores_before_display_approval(cont
     assert routes['/workspace/diagnostics'](**row['key'])['status'] == 'unavailable'
 
 
+SIGNED = SimpleNamespace(state=SimpleNamespace(user={'user': 'Test analyst', 'role': 'analyst'}), url=SimpleNamespace(path='/cases'))
+
+
 def command(row, pin, version=1, key='retain-one'):
     return workspace_app.RetainDiagnostic(**row['key'], actor='Test analyst', reason='Review account-day context',
         request_key=key, expected_version=version, receipt_id=row['receipt_id'], artifact_manifest_sha256=pin)
@@ -54,14 +58,14 @@ def test_case_retains_validated_context_with_exact_retry_and_decision(context):
     app, routes, row, pin = context
     case = create()
     body = command(row, pin)
-    retained = routes['/cases/{case_id}/diagnostics'](case['id'], body)
+    retained = routes['/cases/{case_id}/diagnostics'](case['id'], body, SIGNED)
     assert retained['version'] == 2 and len(retained['links']) == 1
     link = retained['links'][0]
     assert link['kind'] == 'diagnostic'
     assert link['snapshot']['association'] == 'account_day_context_not_trigger_attribution'
     assert link['snapshot']['receipt']['detectors'] == {}
     assert link['snapshot']['artifact_manifest_sha256'] == pin
-    assert routes['/cases/{case_id}/diagnostics'](case['id'], body) == retained
+    assert routes['/cases/{case_id}/diagnostics'](case['id'], body, SIGNED) == retained
     finished = case_store.update(case['id'], 2, 'Test analyst', 'decision', {
         'status': 'Closed', 'resolution': 'Insufficient evidence', 'closing_reason': 'Context retained; no compromise inferred.'})
     assert finished['status'] == 'Closed' and finished['links'] == retained['links']
@@ -71,12 +75,12 @@ def test_case_retains_validated_context_with_exact_retry_and_decision(context):
 def test_stale_version_and_changed_artifact_cannot_overwrite_case(context):
     app, routes, row, pin = context
     case = create()
-    retained = routes['/cases/{case_id}/diagnostics'](case['id'], command(row, pin))
+    retained = routes['/cases/{case_id}/diagnostics'](case['id'], command(row, pin), SIGNED)
     with pytest.raises(HTTPException) as conflict:
-        routes['/cases/{case_id}/diagnostics'](case['id'], command(row, pin, key='different-request'))
+        routes['/cases/{case_id}/diagnostics'](case['id'], command(row, pin, key='different-request'), SIGNED)
     assert conflict.value.status_code == 409
     with pytest.raises(HTTPException) as changed:
-        routes['/cases/{case_id}/diagnostics'](case['id'], command(row, 'f' * 64, version=2, key='changed-artifact'))
+        routes['/cases/{case_id}/diagnostics'](case['id'], command(row, 'f' * 64, version=2, key='changed-artifact'), SIGNED)
     assert changed.value.status_code == 409
     assert case_store.get(case['id']) == retained
 

@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from backend import alert_store, baseline_scorer, event_store as events
 from workspace_next import case_store as cases, queries
 from workspace_next.case_api import router
+from backend.tests.auth_helpers import signed_in_client
 
 
 def put(rows):
@@ -43,9 +44,9 @@ def db(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def client(db):
+def client(db, tmp_path):
     app = FastAPI(); app.include_router(router)
-    with TestClient(app) as c:
+    with signed_in_client(app, tmp_path) as c:
         yield c
 
 
