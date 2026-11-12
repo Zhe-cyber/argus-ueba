@@ -68,6 +68,10 @@ def create_app():
     def baseline(account: str, days: int = Query(14, ge=1, le=60)):
         return baseline_score.account_days(path, account, days)
 
+    @app.get('/workspace/ml-score')
+    def ml_score(account: str, day: str = Query(..., pattern=r'^\d{4}-\d{2}-\d{2}$')):
+        return baseline_score.ml_view(path, account, day)
+
     @app.get('/workspace/method')
     def method():
         from backend import baseline_scorer as scorer

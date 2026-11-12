@@ -185,7 +185,25 @@ def _rescore(dest, events, cols, now):
         baseline_scorer.ensure_schema()
         for (key, _), ts in sorted(todo.items()):
             baseline_scorer.on_event(key, ts, now)
+        _rescore_ml(todo, now)
     return len(todo)
+
+
+def _rescore_ml(todo, now):
+    """Live autoencoder comparator (backend.live_ae) for the same account-days, when ARGUS_LIVE_AE_BUNDLE is set.
+    Best effort: a failure is logged and never stops the baseline pass."""
+    if not os.getenv('ARGUS_LIVE_AE_BUNDLE'):
+        return
+    try:
+        from backend import live_ae
+        bundle = live_ae.configured()
+        if bundle is None:
+            return
+        live_ae.ensure_schema()
+        for (key, _), ts in sorted(todo.items()):
+            live_ae.on_event(key, ts, now, bundle)
+    except Exception as error:  # noqa: BLE001
+        print(f'[mirror] ML score pass failed: {type(error).__name__}', file=sys.stderr)
 
 
 def run_pass(source, dest, now=None, tick_snapshot=True):

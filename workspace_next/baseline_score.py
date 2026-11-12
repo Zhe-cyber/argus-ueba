@@ -104,6 +104,30 @@ def lookup(db, account, day):
     return {'score': rows[0][1]['score'], 'tier': rows[0][1]['tier']} if rows else {'tier': 'Learning'}
 
 
+def ml_view(db, account, day):
+    """ML anomaly score v2 (backend.live_ae, comparator, never alerts) for one account-day of the copy. Rows written
+    by the historical v1 model are not shown."""
+    from backend import live_ae
+    con = _ro(db)
+    try:
+        con.row_factory = sqlite3.Row
+        row = None
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ml_scores'").fetchone():
+            row = con.execute('SELECT * FROM ml_scores WHERE account_key=? AND day=?', (account, day)).fetchone()
+            if row is not None and ('model_version' not in row.keys() or row['model_version'] != live_ae.MODEL_VERSION):
+                row = None
+        events = [] if row else [dict(r) for r in con.execute(
+            'SELECT source,metadata,source_account_id,account_kind,resource FROM events WHERE account_key=? ORDER BY id LIMIT 20',
+            (account,))]
+    finally:
+        con.close()
+    if row:
+        return live_ae.describe(row)
+    if live_ae.scope(events) is None:
+        return {'status': 'not_applicable', 'reason': live_ae.NOT_APPLICABLE, 'alerting': False}
+    return {'status': 'not_scored', 'reason': 'No model score stored for this account-day.', 'alerting': False}
+
+
 def summary(db, day=None):
     day = datetime.strptime(day, '%Y-%m-%d').date() if day else latest_day(db)
     rows, declared, ident = [], system_accounts.declared(db), _identities(db)
