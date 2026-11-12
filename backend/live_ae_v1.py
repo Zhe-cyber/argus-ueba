@@ -343,8 +343,8 @@ def rescore_day(bundle, account_key, day, now=None, mode='ingest'):
         cur = store._cursor(con)
         # text prefilter: the MYT day lies inside UTC [day-1, day+1]; non-ISO stamps are kept for exact parsing
         cur.execute(f"""SELECT {_COLUMNS} FROM events WHERE account_key={ph} AND (timestamp >= {ph} AND timestamp < {ph}
-            OR timestamp NOT LIKE '____-__-__%') ORDER BY id""",
-                    (account_key, (day - timedelta(days=1)).isoformat(), (day + timedelta(days=2)).isoformat()))
+            OR timestamp NOT LIKE {ph}) ORDER BY id""",
+                    (account_key, (day - timedelta(days=1)).isoformat(), (day + timedelta(days=2)).isoformat(), '____-__-__%'))
         result = score_day(bundle, account_key, day, store._rows(cur))
         if result['status'] != 'not_applicable':
             _upsert(cur, result, now, mode)

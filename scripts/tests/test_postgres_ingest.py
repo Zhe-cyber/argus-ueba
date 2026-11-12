@@ -139,3 +139,34 @@ with ThreadPoolExecutor(max_workers=4) as pool:
     assert list(pool.map(insert,range(8))).count(True)==1
 print('Postgres migration, receipts, null scores, rollback, alert savepoints and concurrent inserts passed')
 ''')
+
+
+def test_postgres_ingest_writes_baseline_and_ml_rows():
+    """L14: after a short synthetic stream through the real ingest path, the account-day has a baseline_scores row AND
+    an ml_scores row (test-only comparator bundle, pinned in-process). Guards the bound LIKE pattern on psycopg2.
+    The SQLite equivalent is backend/tests/test_l14_readiness.py::test_ingest_writes_baseline_and_ml_rows."""
+    pytest.importorskip('torch')
+    _run_isolated(r'''
+import os, tempfile
+from pathlib import Path
+from fastapi.testclient import TestClient
+from backend import event_store as db, live_ae, main, readiness
+from backend.tests.live_ae_fixture import make_bundle, persona_stream
+assert db._PG is True
+bundle = Path(tempfile.mkdtemp()) / 'bundle'
+live_ae.EXPECTED_MANIFEST_SHA256 = make_bundle(bundle)
+os.environ['ARGUS_LIVE_AE_BUNDLE'] = str(bundle)
+main.cloud_ae_scorer.score_user = lambda *args: None
+with TestClient(main.app) as client:
+    for body in persona_stream():
+        assert client.post('/ingest', json=body).status_code == 200
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n FROM baseline_scores WHERE day='2026-10-15'")
+        assert cur.fetchone()['n'] == 1
+        cur.execute("SELECT COUNT(*) AS n FROM ml_scores WHERE day='2026-10-15' AND score IS NOT NULL")
+        assert cur.fetchone()['n'] == 1
+    assert readiness.missing_scores() == [] and readiness.schema() == {}
+    assert client.get('/readiness').json()['comparator']['ok'] is True
+print('Postgres ingest wrote baseline and ML rows')
+''', {'ARGUS_ACCOUNT_KEYS': 'source-principal-v1'})

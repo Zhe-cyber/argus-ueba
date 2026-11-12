@@ -139,6 +139,12 @@ def create_app():
     def mirror_status():
         return live_mirror.read_status_file(path.parent) or {'last_pass_utc': None}
 
+    @app.get('/workspace/readiness')
+    def readiness_view():
+        """backend.readiness.report() on this copy: method binding, comparator, missing scores (count), schema."""
+        from backend import readiness
+        return readiness.report(path)
+
     @app.get('/workspace/connections')
     def connections():
         return operations.connections(path.parent/'operations-snapshot.json')

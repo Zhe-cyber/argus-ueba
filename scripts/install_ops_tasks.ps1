@@ -4,8 +4,8 @@
 #   Argus-Ops-Personas  every 5 minutes: ops_personas.py tick (independent of fetches, so a slow fetch cannot
 #                       make a persona miss its window)
 #   Argus-Ops-Backend   at logon: ops_collect.py serve (ingest API on the configured loopback port)
-# Refuses while the old pilot collector task is enabled (one SQS consumer only): run
-# retire_pilot_tasks.ps1 -Apply first. Nothing is started here. Refuses to replace existing task names.
+# -Apply refuses until the old pilot collection has drained (task disabled and idle, no pilot tick/collect_live
+# process; waits up to 10 minutes): run retire_pilot_tasks.ps1 -Apply first. Nothing is started here. Refuses to replace existing task names.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\install_ops_tasks.ps1 -Config data\live\ops\ops.json [-Apply]
 param([Parameter(Mandatory=$true)][string]$Config, [string]$Python, [switch]$Apply)
 $ErrorActionPreference = 'Stop'
@@ -17,14 +17,36 @@ if (-not $Python -or -not (Test-Path -LiteralPath $Python)) { throw 'Give -Pytho
 $pythonw = Join-Path (Split-Path -Parent $Python) 'pythonw.exe'
 if (-not (Test-Path -LiteralPath $pythonw)) { throw 'pythonw.exe not found next to python.exe.' }
 
-# 1. One SQS consumer: the old pilot collector must be disabled first.
-$old = Get-ScheduledTask -TaskName 'Argus-Pilot-Collect' -ErrorAction SilentlyContinue
-if ($old -and $old.State -ne 'Disabled') {
-    "REFUSED: Argus-Pilot-Collect is still enabled (state $($old.State)). Two collectors would split the SQS queue."
-    'Run scripts\retire_pilot_tasks.ps1 -Apply first.'
-    exit 1
+# 1. One SQS consumer: the old pilot collection must be retired AND drained (scripts\ops_cutover_check.py decides):
+#    Argus-Pilot-Collect disabled and not Running, and no process running local_pilot.py ... tick or collect_live.
+#    -Apply waits up to 10 minutes (poll every 15 s), then refuses. Order: retire -> drain -> final snapshot/init -> install.
+function Get-CutoverState {
+    $t = Get-ScheduledTask -TaskName 'Argus-Pilot-Collect' -ErrorAction SilentlyContinue
+    $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine } |
+        ForEach-Object { @{ pid = $_.ProcessId; command_line = $_.CommandLine } })
+    $task = if ($t) { @{ state = [string]$t.State; enabled = [bool]$t.Settings.Enabled } } else { $null }
+    return (ConvertTo-Json -InputObject @{ task = $task; processes = $procs } -Depth 4 -Compress)
 }
-"old pilot collector: $(if ($old) { 'disabled' } else { 'not installed' })"
+function Test-Drained {
+    $out = Get-CutoverState | & $Python (Join-Path $root 'scripts\ops_cutover_check.py')
+    return @{ ok = ($LASTEXITCODE -eq 0); text = ($out -join '; ') }
+}
+'cutover check: Argus-Pilot-Collect disabled and not Running; no process running local_pilot.py tick or collect_live'
+$check = Test-Drained
+if ($Apply) {
+    $deadline = (Get-Date).AddMinutes(10)
+    while (-not $check.ok -and (Get-Date) -lt $deadline) {
+        "waiting for drain: $($check.text)"
+        Start-Sleep -Seconds 15
+        $check = Test-Drained
+    }
+    if (-not $check.ok) {
+        "REFUSED: the old pilot collection has not drained after 10 minutes: $($check.text)"
+        'Two collectors would split the SQS queue. Run scripts\retire_pilot_tasks.ps1 -Apply, let the running tick finish, then retry.'
+        exit 1
+    }
+}
+"cutover check now: $($check.text)$(if (-not $Apply) { ' (dry run: -Apply waits up to 10 minutes for this, then refuses)' })"
 
 # 2. Config check (prints whether the Cloudflare machine-lab app is among the collected apps).
 & $Python (Join-Path $root 'scripts\ops_collect.py') check --config $cfgFile

@@ -81,8 +81,8 @@ _DDL_CLOUD_SHAP = """
 """
 
 # Baseline risk score v1.1, one row per (account, MYT day); written by backend.baseline_scorer only.
-# scored_mode: 'ingest' (computed as events arrived) or 'backfill' (recomputed); method_sha256: the
-# config/baseline_method_v1_1.json binding the row was computed under.
+# scored_mode: 'ingest' (computed as events arrived), 'backfill' (recomputed) or 'repair' (a missing day scored by
+# --repair-missing); method_sha256: the config/baseline_method_v1_2.json binding the row was computed under.
 _DDL_BASELINE_SCORES = """
     CREATE TABLE IF NOT EXISTS baseline_scores (
         account_key  TEXT    NOT NULL,

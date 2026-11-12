@@ -31,6 +31,11 @@ Storage: ml_scores (backend/event_store.py), model_version 'v2'. Written by the 
 
     python -m backend.live_ae train --events-db <events.db, opened read-only> --out <fresh bundle dir> [--synthetic]
     python -m backend.live_ae backfill --bundle <bundle dir> --db <marked sqlite workspace copy> [--allow-synthetic]
+    python -m backend.live_ae repair-missing --bundle <bundle dir> [--db <sqlite>]   # only account-days with no row
+
+Pinned comparator: config/live_ae_v2.json names the one bundle (manifest sha256) the live evaluation may use. load()
+refuses any other real bundle, so the comparator is then not_evaluated and nothing is scored with another model.
+Each load attempt by configured() is recorded in live-ae-loaded.json next to the SQLite database and in status().
 """
 from __future__ import annotations
 
@@ -99,6 +104,9 @@ ROOT = Path(__file__).resolve().parent.parent
 _PERSONA_ARN = re.compile(r'arn:aws:sts::(\d{12}):assumed-role/(argus-[a-z0-9-]+)-(persona-0[1-6])/[^/]+')
 _CF_PERSONA = re.compile(r'/workloads/(persona-0[1-6])/')
 _COLUMNS = 'timestamp,source,action,resource,metadata,source_account_id,account_kind'
+PIN_FILE = ROOT / 'config' / 'live_ae_v2.json'
+EXPECTED_MANIFEST_SHA256 = json.loads(PIN_FILE.read_text(encoding='utf-8'))['expected_manifest_sha256']
+LOADED_FILE = 'live-ae-loaded.json'
 
 
 def canonical(value):
@@ -364,7 +372,9 @@ def train(events_db, out_dir, now=None, *, synthetic=False):
 
 
 def load(directory, *, allow_synthetic=False):
-    """Verified v2 bundle: refuses another profile or feature contract, changed artifacts or a synthetic bundle."""
+    """Verified v2 bundle: refuses another profile or feature contract, changed artifacts, a synthetic bundle, or a real
+    bundle (run_kind controlled_lab) whose manifest sha256 is not the pinned one. Synthetic test bundles load only with
+    allow_synthetic and are never pinned."""
     import torch
     directory = Path(directory)
     manifest = json.loads((directory / 'manifest.json').read_text())
@@ -373,6 +383,8 @@ def load(directory, *, allow_synthetic=False):
         raise Refusal('Bundle profile, feature contract or method differs')
     if manifest.get('run_kind') != 'controlled_lab' and not (allow_synthetic and manifest.get('run_kind') == 'synthetic_contract_test'):
         raise Refusal('Synthetic/unknown bundle refused')
+    if manifest.get('run_kind') == 'controlled_lab' and sha(directory / 'manifest.json') != EXPECTED_MANIFEST_SHA256:
+        raise Refusal('Bundle manifest sha256 is not the pinned comparator (config/live_ae_v2.json)')
     for name in ARTIFACTS:
         if sha(directory / name) != manifest['artifact_sha256'].get(name):
             raise Refusal('Bundle artifact changed')
@@ -479,8 +491,9 @@ def rescore_day(bundle, account_key, day, now=None, mode='ingest'):
         last = later[-1] if later else day
         # text prefilter: MYT days [day-28, last] lie inside UTC [day-30, last+2); non-ISO stamps kept for exact parsing
         cur.execute(f"""SELECT {_COLUMNS} FROM events WHERE account_key={ph} AND (timestamp >= {ph} AND timestamp < {ph}
-            OR timestamp NOT LIKE '____-__-__%') ORDER BY id""",
-                    (account_key, (day - timedelta(days=bs.WINDOW_DAYS + 2)).isoformat(), (last + timedelta(days=2)).isoformat()))
+            OR timestamp NOT LIKE {ph}) ORDER BY id""",
+                    (account_key, (day - timedelta(days=bs.WINDOW_DAYS + 2)).isoformat(), (last + timedelta(days=2)).isoformat(),
+                     bs.NON_ISO_STAMP))
         events = store._rows(cur)
         found = scope(events)
         if found is None:
@@ -493,11 +506,33 @@ def rescore_day(bundle, account_key, day, now=None, mode='ingest'):
 
 
 _CACHE = {}
+_LOADED = {}  # the last load attempt by configured() or a CLI, for health/readiness
+
+
+def status():
+    """Comparator state for health/readiness: loaded (pinned manifest), not_evaluated (refused) or not_configured."""
+    return dict(_LOADED) if _LOADED else {'comparator': 'not_configured', 'expected_manifest_sha256': EXPECTED_MANIFEST_SHA256}
+
+
+def record_load(path, bundle, error=None):
+    """Remember a load attempt (status()) and write it to live-ae-loaded.json next to the SQLite database."""
+    _LOADED.clear()
+    _LOADED.update({'comparator': 'loaded' if bundle else 'not_evaluated', 'bundle': Path(path).name,
+                    'loaded_manifest_sha256': bundle['model_sha256'] if bundle else None,
+                    'expected_manifest_sha256': EXPECTED_MANIFEST_SHA256,
+                    'reason': None if bundle else f'{type(error).__name__}: {error}',
+                    'at_utc': datetime.now(timezone.utc).isoformat()})
+    store = _store()
+    if not store._PG:
+        try:
+            (Path(store.DB_PATH).parent / LOADED_FILE).write_text(json.dumps(_LOADED, indent=2), encoding='utf-8')
+        except OSError as failure:
+            _log.warning('Could not write %s (%s)', LOADED_FILE, type(failure).__name__)
 
 
 def configured():
-    """The bundle named by ARGUS_LIVE_AE_BUNDLE (real v2 bundles only), cached per manifest version; None if unset or
-    unusable (logged once per version)."""
+    """The bundle named by ARGUS_LIVE_AE_BUNDLE (the pinned real v2 bundle only), cached per manifest version; None if
+    unset or unusable (logged once per version; every attempt recorded by record_load)."""
     path = os.getenv('ARGUS_LIVE_AE_BUNDLE')
     if not path:
         return None
@@ -509,9 +544,11 @@ def configured():
         _CACHE.clear()
         try:
             _CACHE[key] = load(path)
+            record_load(path, _CACHE[key])
         except Exception as error:  # noqa: BLE001  a bad bundle disables the comparator, never ingest
             _log.warning('Live AE bundle unusable (%s); ML scores not computed', type(error).__name__)
             _CACHE[key] = None
+            record_load(path, None, error)
     return _CACHE[key]
 
 
@@ -571,6 +608,17 @@ def backfill_copy(bundle_dir, db, *, allow_synthetic=False, now=None):
         store.DB_PATH = saved
 
 
+def repair_missing(bundle, since=None, now=None):
+    """Score exactly the persona account-days with events but no v2 ml_scores row (backend.readiness.missing_scores).
+    Returns the number of account-days scored."""
+    from backend.readiness import missing_scores
+    ensure_schema()
+    todo = [m for m in missing_scores(None, since) if 'ml' in m['missing']]
+    for m in todo:
+        rescore_day(bundle, m['account_key'], date.fromisoformat(m['day']), now, 'repair')
+    return len(todo)
+
+
 def summary(manifest, bundle_dir):
     keys = ('run_kind', 'rows', 'rows_by_provider', 'accounts', 'learning_days', 'events_after_cutoff', 'last_day_used',
             'best_validation_mse', 'validation_mse_predict_fit_mean', 'selected_epoch', 'stop_epoch', 'threshold',
@@ -590,10 +638,26 @@ def main(argv=None):
     b.add_argument('--bundle', required=True)
     b.add_argument('--db', required=True)
     b.add_argument('--allow-synthetic', action='store_true')
+    r = sub.add_parser('repair-missing')
+    r.add_argument('--bundle', required=True)
+    r.add_argument('--db', help='SQLite file instead of the configured event store')
     args = ap.parse_args(argv)
     try:
         if args.command == 'train':
             result = summary(train(args.events_db, args.out, synthetic=args.synthetic), args.out)
+        elif args.command == 'repair-missing':
+            store = _store()
+            if args.db:
+                if store._PG:
+                    raise Refusal('--db is for SQLite files; unset DATABASE_URL (use sqlite-local)')
+                store.DB_PATH = Path(args.db).resolve(strict=True)
+            try:
+                bundle = load(args.bundle)
+            except Refusal as error:
+                record_load(args.bundle, None, error)
+                raise
+            record_load(args.bundle, bundle)
+            result = {'loaded_manifest_sha256': bundle['model_sha256'], 'account_days_scored': repair_missing(bundle)}
         else:
             result = backfill_copy(args.bundle, args.db, allow_synthetic=args.allow_synthetic)
     except (Refusal, ValueError) as error:

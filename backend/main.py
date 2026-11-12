@@ -112,6 +112,12 @@ async def lifespan(app: FastAPI):
     inv_store.init_investigations_db()
     astore.init_alerts_db()
     identity_links.init_db()
+    if os.getenv('ARGUS_LIVE_AE_BUNDLE'):
+        try:  # load (and record) the comparator at start-up, not at the first event
+            from backend import live_ae
+            live_ae.configured()
+        except Exception as exc:  # noqa: BLE001 - the comparator is optional; ingest must start
+            logging.getLogger(__name__).warning("Live AE start-up load failed: %s", type(exc).__name__)
     yield
 
 
@@ -356,6 +362,36 @@ def _update_baseline(account_key: str, timestamp: str) -> None:
         logging.getLogger(__name__).warning("Baseline score update failed: %s", type(exc).__name__)
 
 
+ML_SOURCES = ('aws_cloudtrail', 'cloudflare_access')
+
+
+def _repair_scores(account_key: str, timestamp: str, source: str) -> None:
+    """Duplicate delivery: if the account-day has no baseline row (or, with a comparator configured, no v2 ML row),
+    e.g. because scoring failed on the first delivery, rescore it now. Best effort in savepoints, like Stage 9."""
+    day = baseline_scorer.myt_day(timestamp)
+    if day is None:
+        return
+    ml_wanted = source in ML_SOURCES and bool(os.getenv('ARGUS_LIVE_AE_BUNDLE'))
+    ph = evstore._PH
+    try:
+        with evstore.savepoint(), evstore._db() as con:
+            cur = evstore._cursor(con)
+            cur.execute(f'SELECT 1 FROM baseline_scores WHERE account_key={ph} AND day={ph}', (account_key, day.isoformat()))
+            has_baseline = cur.fetchone() is not None
+            has_ml = True
+            if ml_wanted:
+                cur.execute(f"SELECT 1 FROM ml_scores WHERE account_key={ph} AND day={ph} AND model_version='v2'",
+                            (account_key, day.isoformat()))
+                has_ml = cur.fetchone() is not None
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning("Score repair check failed: %s", type(exc).__name__)
+        return
+    if not has_baseline:
+        _update_baseline(account_key, timestamp)
+    if not has_ml:
+        _update_ml(account_key, timestamp)
+
+
 def _update_ml(account_key: str, timestamp: str) -> None:
     """Live autoencoder v2 comparator (backend.live_ae, L10): rescore the persona account-day (AWS role or Cloudflare
     service token) when ARGUS_LIVE_AE_BUNDLE names a bundle. Never alerts; best effort in its own savepoint; rebuild with `python -m backend.live_ae backfill`."""
@@ -388,7 +424,16 @@ async def root() -> dict[str, Any]:
         "application_mode": ARGUS_MODE,
         "ingestion_protocol": "native-receipt-v1",
         "users":   len(_mode_live_scores()) if LIVE_MODE else len(store.scores_df),
+        "scoring_ready": baseline_scorer.STATUS['scoring_ready'],
+        "scoring_reason": baseline_scorer.STATUS['reason'],
     }
+
+
+@app.get("/readiness", summary="Live-evaluation readiness (method binding, comparator, missing scores, schema)")
+def readiness_view() -> dict[str, Any]:
+    """backend.readiness.report() for the configured event store; `ok` only when every check passes."""
+    from backend import readiness
+    return readiness.report()
 
 
 @app.get(
@@ -1063,6 +1108,8 @@ def _process_ingest(body: IngestRequest, normalised_override=None) -> PipelineRe
         if cached is None:
             raise HTTPException(status_code=409, detail='Existing event has no committed pipeline receipt')
         cached['duplicate'] = True
+        if identity:
+            _repair_scores(identity['account_key'], normalised['timestamp'], normalised['source'])
         return PipelineResult(**normalised, **cached)
 
     if accounts.enabled() and identity is None:
@@ -1148,7 +1195,7 @@ def _process_ingest(body: IngestRequest, normalised_override=None) -> PipelineRe
     # -- Stage 9: Baseline risk score v1.1 for this account-day (one scoring path) --
     if identity:
         _update_baseline(identity['account_key'], normalised['timestamp'])
-        if normalised['source'] in ('aws_cloudtrail', 'cloudflare_access'):
+        if normalised['source'] in ML_SOURCES:
             _update_ml(identity['account_key'], normalised['timestamp'])
 
     result = PipelineResult(

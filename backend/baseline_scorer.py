@@ -11,6 +11,11 @@ off-hours rule. Behaviour is pinned by backend/tests/data/baseline_reference_v1_
 Method note: docs/LIVE_BASELINE_SCORE_V1.md.
 
     python -m backend.baseline_scorer --backfill [--db <sqlite copy>]   # recompute every stored account-day
+    python -m backend.baseline_scorer --repair-missing [--db <sqlite>]  # score only account-days with no row
+
+Method enforcement: at import (scorer start-up) the running method() is compared field by field with the binding
+file config/baseline_method_v1_2.json. On any difference STATUS['scoring_ready'] is False, an error is logged once and
+nothing is scored (no baseline_scores rows, no findings) until the process restarts with matching code and config.
 """
 from __future__ import annotations
 
@@ -94,6 +99,12 @@ def _sha256(path):
         return None
 
 
+SENSITIVE_SHA256 = _sha256(SENSITIVE_FILE)  # the list this process loaded (not re-read later)
+# Matches stamps that do not start with an ISO date; bound as a parameter because a literal % in a
+# parameterised query breaks psycopg2's placeholder parsing on PostgreSQL.
+NON_ISO_STAMP = '____-__-__%'
+
+
 def method():
     """The scorer's running parameters, in the shape of config/baseline_method_v1_1.json."""
     return {'version': VERSION, 'weights': WEIGHTS, 'tiers': {'high': TIER_HIGH, 'medium': TIER_MEDIUM},
@@ -107,13 +118,30 @@ def method():
             'sensitive_floor': {'min_signal_after_discount': SENSITIVE_FLOOR_SIGNAL, 'min_score': SENSITIVE_FLOOR_SCORE},
             'day': 'Asia/Kuala_Lumpur calendar day (UTC+08:00)',
             'builtin_sensitive_patterns_sha256': hashlib.sha256(json.dumps(SENSITIVE_PATTERNS).encode()).hexdigest(),
-            'sensitive_resources_sha256': _sha256(SENSITIVE_FILE),
+            'sensitive_resources_sha256': SENSITIVE_SHA256,
             'reference_vectors_sha256': _sha256(REFERENCE_FILE)}
 
 
 METHOD_SHA256 = _sha256(METHOD_FILE)  # stored with every baseline_scores row
-if METHOD_SHA256 is None:
-    _log.warning('Method binding file missing; scores are stored as unbound')
+
+
+def check_method():
+    """{'scoring_ready', 'reason', 'method_sha256'}: the binding file must equal the running method() in every field."""
+    out = {'scoring_ready': False, 'method_sha256': _sha256(METHOD_FILE)}
+    try:
+        bound = json.loads(METHOD_FILE.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as error:
+        return {**out, 'reason': f'method binding file unreadable ({type(error).__name__})'}
+    running = json.loads(json.dumps(method()))
+    differ = sorted(k for k in set(bound) | set(running) if bound.get(k) != running.get(k)) if isinstance(bound, dict) else ['(file)']
+    if differ:
+        return {**out, 'reason': 'running scorer differs from the method binding file in: ' + ', '.join(differ)}
+    return {**out, 'scoring_ready': True, 'reason': 'method binding matches the running scorer'}
+
+
+STATUS = check_method()  # once, at scorer start-up
+if not STATUS['scoring_ready']:
+    _log.error('Baseline scoring disabled: %s', STATUS['reason'])
 
 
 # --- pure scoring (no database access) -------------------------------------------------------------
@@ -274,8 +302,8 @@ def _account_rows(cur, key, lo=None, hi=None):
     ph = _store()._PH
     sql, args = f'SELECT timestamp,source,action,resource FROM events WHERE account_key={ph}', [key]
     if lo is not None:
-        sql += f" AND (timestamp >= {ph} AND timestamp < {ph} OR timestamp NOT LIKE '____-__-__%')"
-        args += [lo.isoformat(), hi.isoformat()]
+        sql += f' AND (timestamp >= {ph} AND timestamp < {ph} OR timestamp NOT LIKE {ph})'
+        args += [lo.isoformat(), hi.isoformat(), NON_ISO_STAMP]
     cur.execute(sql + ' ORDER BY id', args)
     return [(r['timestamp'], r['source'], r['action'], r['resource']) for r in _store()._rows(cur)]
 
@@ -370,11 +398,12 @@ def _rescore(cur, key, days, targets, now, mode):
     return results
 
 
-def on_event(account_key, timestamp, now=None):
+def on_event(account_key, timestamp, now=None, mode='ingest'):
     """Ingest hook: recompute the event's account-day plus any later stored day of this account whose 28-day
-    history now includes it (late arrival). Returns the event day's result, or None (no key / bad timestamp)."""
+    history now includes it (late arrival). Returns the event day's result, or None (no key / bad timestamp /
+    method binding mismatch: nothing written)."""
     day = myt_day(timestamp)
-    if not account_key or day is None:
+    if not account_key or day is None or not STATUS['scoring_ready']:
         return None
     now = now or datetime.now(timezone.utc)
     store = _store()
@@ -385,13 +414,15 @@ def on_event(account_key, timestamp, now=None):
         later = sorted(date.fromisoformat(r['day']) for r in store._rows(cur))
         last = later[-1] if later else day
         days = group_days(_account_rows(cur, account_key, day - timedelta(days=WINDOW_DAYS + 2), last + timedelta(days=2)))
-        results = _rescore(cur, account_key, days, [d for d in [day, *later] if d in days], now, 'ingest')
+        results = _rescore(cur, account_key, days, [d for d in [day, *later] if d in days], now, mode)
     return results[0] if results and results[0]['day'] == day.isoformat() else None
 
 
 def backfill(now=None):
     """Recompute every stored account-day; drop score rows whose day has no events left and auto-resolve their
-    untouched Open findings. Returns counts by tier."""
+    untouched Open findings. Returns counts by tier ({} and nothing changed when the method binding mismatches)."""
+    if not STATUS['scoring_ready']:
+        return {}
     now = now or datetime.now(timezone.utc)
     store = _store()
     counts = Counter()
@@ -426,10 +457,22 @@ def latest_by_account():
         return {r['account_key']: {'day': r['day'], 'score': r['score'], 'tier': r['tier']} for r in store._rows(cur)}
 
 
+def repair_missing(since=None, now=None):
+    """Score exactly the account-days that have events but no baseline_scores row (backend.readiness.missing_scores).
+    Returns the number of account-days scored."""
+    from backend.readiness import missing_scores
+    todo = [m for m in missing_scores(None, since) if 'baseline' in m['missing']]
+    for m in todo:
+        on_event(m['account_key'], m['timestamp'], now, 'repair')
+    return len(todo)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--backfill', action='store_true', required=True)
-    ap.add_argument('--db', help='SQLite file to backfill instead of the configured event store (e.g. a workspace copy)')
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--backfill', action='store_true')
+    mode.add_argument('--repair-missing', action='store_true')
+    ap.add_argument('--db', help='SQLite file to use instead of the configured event store (e.g. a workspace copy)')
     args = ap.parse_args(argv)
     from pathlib import Path
     from backend import alert_store, event_store
@@ -439,8 +482,13 @@ def main(argv=None):
         event_store.DB_PATH = Path(args.db).resolve(strict=True)
     event_store.init_db()
     alert_store.init_alerts_db()
+    print(f'method binding sha256: {METHOD_SHA256 or "missing"}; {STATUS["reason"]}')
+    if not STATUS['scoring_ready']:
+        raise SystemExit('baseline scoring refused: method binding mismatch; nothing written')
+    if args.repair_missing:
+        print(f'repair done; account-days scored: {repair_missing()}')
+        return
     counts = backfill()
-    print(f'method binding sha256: {METHOD_SHA256 or "UNBOUND (config/baseline_method_v1_1.json missing)"}')
     print('backfill done; account-days by tier:', ', '.join(f'{t}={counts.get(t, 0)}' for t in ('High', 'Medium', 'Low', 'Learning')))
 
 

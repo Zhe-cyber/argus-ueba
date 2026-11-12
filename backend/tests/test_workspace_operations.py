@@ -81,6 +81,8 @@ def test_marked_preview_routes_do_not_require_live_backend(db,monkeypatch,tmp_pa
         sign_in(client,tmp_path/'auth'/'users.json')
         assert client.get('/workspace/connections').json()['mode']=='snapshot_unavailable'
         assert client.get('/workspace/overview').json()['active_cases']==0
+        ready=client.get('/workspace/readiness').json()  # L14: Connections shows the missing-score count
+        assert ready['method']['scoring_ready'] is True and isinstance(ready['missing_scores']['total'],int)
         assert client.get('/ingest').status_code==404
 
 

@@ -37,12 +37,21 @@ returned a full page and older records may have been missed. `minutes_since_last
    set `personas.enabled`, `personas.cloudflare.state_dir` and `tokens_valid_until_utc` (renewed tokens).
 2. `python scripts/ops_collect.py check --config data/live/ops/ops.json` - must print
    `machine_lab_app_collected: true` if Cloudflare personas are on.
-3. After 17 Nov 00:00 MYT: `scripts/retire_pilot_tasks.ps1` (dry run), then `-Apply`.
-4. Only if `live_state_dir` is a new folder: `python scripts/ops_collect.py init --config ... --from <pilot events.db>`
-   and point the workspace mirror at the new store.
-5. `scripts/install_ops_tasks.ps1 -Config data/live/ops/ops.json` (dry run), then `-Apply`;
-   `Start-ScheduledTask -TaskName Argus-Ops-Backend`.
-6. After a few ticks read `data/live/ops/ops-status.json`.
+3. **Retire.** After 17 Nov 00:00 MYT: `scripts/retire_pilot_tasks.ps1` (dry run), then `-Apply`.
+4. **Wait for drain.** Disabling lets a running pilot tick finish. Do not continue until `Argus-Pilot-Collect` is
+   Disabled (not Running) and no process runs `local_pilot.py ... tick` or `collect_live` (the dry run of step 6
+   prints the current state; `scripts/ops_cutover_check.py` decides).
+5. **Final snapshot / init.** Only now take the final copy of the pilot store: only if `live_state_dir` is a new
+   folder, `python scripts/ops_collect.py init --config ... --from <pilot events.db>` and point the workspace mirror
+   at the new store. (A snapshot taken before the drain can miss the last tick's events.)
+6. **Install.** `scripts/install_ops_tasks.ps1 -Config data/live/ops/ops.json` (dry run), then `-Apply`;
+   `Start-ScheduledTask -TaskName Argus-Ops-Backend`. `-Apply` re-checks the drain itself, waits up to 10 minutes
+   (every 15 s) and refuses if the old collection is still alive: two collectors would split the SQS queue.
+7. Before the first evaluation check: `python -m backend.readiness --db <live_state_dir>/events.db` must print READY
+   (exit 0). It reports the method binding, the comparator manifest actually loaded, account-days without a score
+   (repair: `python -m backend.baseline_scorer --repair-missing --db <db>`, `python -m backend.live_ae repair-missing
+   --bundle <pinned bundle> --db <db>`), schema columns and events from 13 Nov.
+8. After a few ticks read `data/live/ops/ops-status.json`.
 
 These tasks are the interim scheduler; `install_supervisor_task.ps1` removes them when the supervisor
 takes over (one scheduler only).
