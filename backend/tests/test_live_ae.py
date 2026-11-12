@@ -261,3 +261,40 @@ def test_v1_table_gains_v2_columns(tmp_path):
         store.DB_PATH = saved
     with sqlite3.connect(db) as con:
         assert con.execute('SELECT model_version, no_resource_today FROM ml_scores').fetchone() == ('v1', None)
+
+
+def test_secondary_rule_on_all_pre_freeze_days(trained):
+    db, _, out = trained
+    ordered = [float(v) for v in range(1, 41)]  # n 40 -> k 2: value at index 37 (38.0), flagged only if strictly greater
+    rule = empirical_threshold(list(reversed(ordered)))
+    assert rule['threshold'] == 38.0 and rule['normal_alerts'] == 2
+    bundle = live_ae.load(out, allow_synthetic=True)
+    rows, _ = live_ae.dataset(db)
+    scores = [s for s, _ in live_ae.reconstruction(bundle['model'], bundle['scaler'], [r['features'] for r in rows])]
+    got = live_ae.secondary_report(db, bundle)
+    assert got['n'] == len(rows) and got['k'] == len(rows) // 20
+    assert got['secondary_threshold'] == sorted(scores)[len(scores) - len(scores) // 20 - 1]
+    assert got['above_secondary'] == sum(s > got['secondary_threshold'] for s in scores) <= got['k']
+    assert {r['split'] for r in rows} == {'fit', 'validation', 'calibration'} and got['last_day_used'] <= '2026-11-12'
+    assert sum(p['days'] for p in got['by_provider'].values()) == got['n']
+
+
+@pytest.mark.parametrize('body', [{}, {'secondary_threshold': 1}, {'secondary_threshold': '0.5'},
+                                  {'secondary_threshold': None}, {'secondary_threshold': True}])
+def test_config_without_finite_secondary_is_refused(tmp_path, monkeypatch, body, trained):
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps({'expected_manifest_sha256': live_ae.EXPECTED_MANIFEST_SHA256, **body}))
+    with pytest.raises(live_ae.Refusal, match='secondary_threshold'):
+        live_ae.secondary_threshold(pin)
+    monkeypatch.setattr(live_ae, 'PIN_FILE', pin)
+    with pytest.raises(live_ae.Refusal, match='secondary_threshold'):
+        live_ae.load(trained[2], allow_synthetic=True)
+    pin.write_text('{"secondary_threshold": NaN}')
+    with pytest.raises(live_ae.Refusal):
+        live_ae.secondary_threshold(pin)
+
+
+def test_pin_declares_the_secondary_operating_point():
+    pin = json.loads(live_ae.PIN_FILE.read_text(encoding='utf-8'))
+    assert live_ae.secondary_threshold() == pin['secondary_threshold'] == 0.5090951323509216
+    assert '104' in pin['secondary_basis'] and pin['secondary_computed_at']

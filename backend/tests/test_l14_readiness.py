@@ -248,3 +248,39 @@ def test_readiness_command(live, comparator, capsys):
     with pytest.raises(SystemExit) as stop:
         readiness.main(['--db', db])
     assert stop.value.code == 1 and 'ml 7' in capsys.readouterr().out
+
+
+# --- 7. secondary operating point (L7a section 1, declared 13 Nov 2026) --------------------------------------
+
+def test_flagged_secondary_stored_and_recomputed_on_repair(live, comparator, capsys):
+    for body in persona_stream():
+        live.post('/ingest', json=body)
+    second = live_ae.secondary_threshold()
+    with sqlite3.connect(event_store.DB_PATH) as con:
+        stored = con.execute("SELECT day, score, flagged_secondary FROM ml_scores WHERE score IS NOT NULL").fetchall()
+        assert stored and all(f == int(s > second) for _, s, f in stored)
+        con.execute('UPDATE ml_scores SET flagged_secondary = NULL')
+    assert readiness.secondary()['unflagged'] == len(stored) and readiness.report()['ok'] is False
+    live_ae.main(['repair-missing', '--bundle', str(comparator), '--db', str(event_store.DB_PATH)])
+    out = json.loads(capsys.readouterr().out)
+    assert out['account_days_scored'] == 0 and out['secondary_threshold'] == second
+    with sqlite3.connect(event_store.DB_PATH) as con:
+        again = con.execute("SELECT day, score, flagged_secondary FROM ml_scores WHERE score IS NOT NULL").fetchall()
+    assert again == stored and readiness.secondary()['unflagged'] == 0  # scores unchanged, flags back
+
+
+def test_readiness_fails_without_secondary_threshold(live, comparator, capsys, monkeypatch, tmp_path):
+    for body in [*persona_stream(), persona_event('nov', '2026-11-13T02:00:00Z')]:
+        live.post('/ingest', json=body)
+    db = str(event_store.DB_PATH)
+    with pytest.raises(SystemExit) as stop:
+        readiness.main(['--db', db])
+    out = capsys.readouterr().out
+    assert stop.value.code == 0 and f'secondary threshold: {live_ae.secondary_threshold()}' in out
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps({'expected_manifest_sha256': live_ae.EXPECTED_MANIFEST_SHA256}))
+    monkeypatch.setattr(live_ae, 'PIN_FILE', pin)
+    with pytest.raises(SystemExit) as stop:
+        readiness.main(['--db', db])
+    out = capsys.readouterr().out
+    assert stop.value.code == 1 and 'secondary threshold: ABSENT' in out and out.strip().endswith('NOT READY')

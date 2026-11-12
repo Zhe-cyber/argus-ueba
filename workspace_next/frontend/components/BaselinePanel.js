@@ -27,7 +27,8 @@ export function MlScoreRow({ account, day }) {
   if (!m) return null
   return <div className="border-t pt-2 text-sm" data-testid="ml-score-row" aria-label="ML anomaly score">
     <p className="text-xs text-slate-500">ML anomaly score (autoencoder v2)<Info label="About the ML anomaly score">Unsupervised model for the lab persona accounts (AWS roles and Cloudflare service tokens), trained on their normal days up to 12 Nov; compares each day with that account’s own history; shown for comparison; does not raise alerts.</Info></p>
-    {m.status === 'scored' ? <p><span className="font-semibold">{m.score.toFixed(3)}</span> · <span className={m.flagged ? 'text-rose-700' : 'text-emerald-700'}>{m.range} the model’s normal range</span>{m.top_features.length > 0 && <span className="text-xs text-slate-500"> · driven by {m.top_features.map(f => `${f.label} ${Math.round(f.share * 100)}%`).join(', ')}</span>}</p>
+    {m.status === 'scored' ? <><p><span className="font-semibold">{m.score.toFixed(3)}</span> · <span className={m.flagged ? 'text-rose-700' : 'text-emerald-700'}>{m.range} the model’s normal range</span>{m.top_features.length > 0 && <span className="text-xs text-slate-500"> · driven by {m.top_features.map(f => `${f.label} ${Math.round(f.share * 100)}%`).join(', ')}</span>}</p>
+      {m.flagged_secondary != null && <p className="text-xs text-slate-500" data-testid="ml-score-secondary">above the model’s normal range at the 5% setting: {m.flagged_secondary ? 'yes' : 'no'}</p>}</>
       : <p className="text-xs text-slate-500">{m.status === 'unavailable' ? 'ML score unavailable.' : m.status === 'not_applicable' ? 'Not applicable: ' + m.reason : 'Not scored: ' + m.reason}</p>}
   </div>
 }

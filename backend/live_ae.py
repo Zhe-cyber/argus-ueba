@@ -32,6 +32,12 @@ Storage: ml_scores (backend/event_store.py), model_version 'v2'. Written by the 
     python -m backend.live_ae train --events-db <events.db, opened read-only> --out <fresh bundle dir> [--synthetic]
     python -m backend.live_ae backfill --bundle <bundle dir> --db <marked sqlite workspace copy> [--allow-synthetic]
     python -m backend.live_ae repair-missing --bundle <bundle dir> [--db <sqlite>]   # only account-days with no row
+    python -m backend.live_ae secondary-threshold --db <events.db, read-only> [--bundle <bundle dir>]
+
+Secondary operating point (L7a section 1, declared 13 Nov 2026 before any scenario): secondary_threshold in
+config/live_ae_v2.json = empirical_threshold over the v2 scores of all scorable persona account-days up to 12 Nov
+MYT (fit + validation + calibration). flagged_secondary = score strictly greater. Reported beside `flagged`; never
+alerts. The primary threshold (bundle manifest) stays the declared main comparator.
 
 Pinned comparator: config/live_ae_v2.json names the one bundle (manifest sha256) the live evaluation may use. load()
 refuses any other real bundle, so the comparator is then not_evaluated and nothing is scored with another model.
@@ -106,6 +112,17 @@ _CF_PERSONA = re.compile(r'/workloads/(persona-0[1-6])/')
 _COLUMNS = 'timestamp,source,action,resource,metadata,source_account_id,account_kind'
 PIN_FILE = ROOT / 'config' / 'live_ae_v2.json'
 EXPECTED_MANIFEST_SHA256 = json.loads(PIN_FILE.read_text(encoding='utf-8'))['expected_manifest_sha256']
+
+
+def secondary_threshold(path=None):
+    """The declared secondary operating point from the pin file; refuses a missing or non-finite float value."""
+    try:
+        value = json.loads(Path(path or PIN_FILE).read_text(encoding='utf-8')).get('secondary_threshold')
+    except (OSError, ValueError, AttributeError) as error:
+        raise Refusal(f'Pin file unreadable ({type(error).__name__})') from error
+    if not isinstance(value, float) or not math.isfinite(value):
+        raise Refusal('secondary_threshold missing or not a finite float in config/live_ae_v2.json')
+    return value
 LOADED_FILE = 'live-ae-loaded.json'
 
 
@@ -372,6 +389,11 @@ def train(events_db, out_dir, now=None, *, synthetic=False):
 
 
 def load(directory, *, allow_synthetic=False):
+    """Verified v2 bundle plus the declared secondary threshold (refused when the pin file lacks it)."""
+    return {**_bundle(directory, allow_synthetic=allow_synthetic), 'secondary_threshold': secondary_threshold()}
+
+
+def _bundle(directory, *, allow_synthetic=False):
     """Verified v2 bundle: refuses another profile or feature contract, changed artifacts, a synthetic bundle, or a real
     bundle (run_kind controlled_lab) whose manifest sha256 is not the pinned one. Synthetic test bundles load only with
     allow_synthetic and are never pinned."""
@@ -421,7 +443,8 @@ def _score(bundle, account_key, found, days, day):
         return {**out, 'status': 'not_scored',
                 'reason': f'Learning: {len(bs.prior_days(days, day))} of {bs.MIN_HISTORY} days of history.'}
     (score, shares), = reconstruction(bundle['model'], bundle['scaler'], [values['features']])
-    return {**out, 'status': 'scored', 'score': score, 'flagged': score > bundle['threshold'], 'shares': shares,
+    return {**out, 'status': 'scored', 'score': score, 'flagged': score > bundle['threshold'],
+            'flagged_secondary': score > bundle['secondary_threshold'], 'shares': shares,
             'features': values['features'], 'no_resource_today': values['no_resource_today']}
 
 
@@ -437,9 +460,11 @@ def score_day(bundle, account_key, day, events):
 def describe(row):
     """Plain-words view of a stored v2 ml_scores row (workspace)."""
     shares = json.loads(row['shares_json'] or '{}')
+    second = row['flagged_secondary'] if 'flagged_secondary' in row.keys() else None  # copy not yet migrated
     top = sorted(shares.items(), key=lambda kv: -kv[1])[:3]
     return {'status': 'scored' if row['score'] is not None else 'not_scored', 'day': row['day'], 'score': row['score'],
             'flagged': None if row['flagged'] is None else bool(row['flagged']), 'threshold': row['threshold'],
+            'flagged_secondary': None if second is None else bool(second),
             'range': None if row['score'] is None else ('above' if row['flagged'] else 'below'),
             'top_features': [{'feature': f, 'label': LABELS[f], 'share': s} for f, s in top],
             'features': json.loads(row['features_json'] or '{}'), 'reason': row['note'],
@@ -464,17 +489,18 @@ def _upsert(cur, r, now, mode):
     ph = _store()._PH
     no_resource = r.get('no_resource_today')
     cur.execute(f'''INSERT INTO ml_scores (account_key,day,score,flagged,threshold,shares_json,features_json,
-        excluded_events,note,model_sha256,scored_mode,computed_at,model_version,no_resource_today)
-        VALUES ({','.join([ph] * 14)})
+        excluded_events,note,model_sha256,scored_mode,computed_at,model_version,no_resource_today,flagged_secondary)
+        VALUES ({','.join([ph] * 15)})
         ON CONFLICT (account_key,day) DO UPDATE SET score=excluded.score,flagged=excluded.flagged,
         threshold=excluded.threshold,shares_json=excluded.shares_json,features_json=excluded.features_json,
         excluded_events=excluded.excluded_events,note=excluded.note,model_sha256=excluded.model_sha256,
         scored_mode=excluded.scored_mode,computed_at=excluded.computed_at,model_version=excluded.model_version,
-        no_resource_today=excluded.no_resource_today''',
+        no_resource_today=excluded.no_resource_today,flagged_secondary=excluded.flagged_secondary''',
                 (r['account_key'], r['day'], r.get('score'), None if 'flagged' not in r else int(r['flagged']),
                  r['threshold'], json.dumps(r.get('shares', {})), json.dumps(r.get('features', {})), 0, r.get('reason'),
                  r['model_sha256'], mode, now.isoformat(), MODEL_VERSION,
-                 None if no_resource is None else int(no_resource)))
+                 None if no_resource is None else int(no_resource),
+                 None if 'flagged_secondary' not in r else int(r['flagged_secondary'])))
 
 
 def rescore_day(bundle, account_key, day, now=None, mode='ingest'):
@@ -609,14 +635,35 @@ def backfill_copy(bundle_dir, db, *, allow_synthetic=False, now=None):
 
 
 def repair_missing(bundle, since=None, now=None):
-    """Score exactly the persona account-days with events but no v2 ml_scores row (backend.readiness.missing_scores).
-    Returns the number of account-days scored."""
+    """Score exactly the persona account-days with events but no v2 ml_scores row (backend.readiness.missing_scores),
+    then recompute flagged_secondary on every stored v2 score (scores unchanged). Returns the number of account-days
+    scored."""
     from backend.readiness import missing_scores
     ensure_schema()
     todo = [m for m in missing_scores(None, since) if 'ml' in m['missing']]
     for m in todo:
         rescore_day(bundle, m['account_key'], date.fromisoformat(m['day']), now, 'repair')
+    store = _store()
+    with store._db() as con:
+        store._cursor(con).execute(
+            f"UPDATE ml_scores SET flagged_secondary = CASE WHEN score > {store._PH} THEN 1 ELSE 0 END "
+            "WHERE model_version='v2' AND score IS NOT NULL", (bundle['secondary_threshold'],))
     return len(todo)
+
+
+def secondary_report(events_db, bundle):
+    """The secondary operating point: empirical_threshold over the v2 scores of every scorable persona account-day
+    <= 12 Nov MYT (dataset(), read-only, all three splits), with counts above it and above the primary."""
+    rows, _ = dataset(events_db)
+    scores = [s for s, _ in reconstruction(bundle['model'], bundle['scaler'], [r['features'] for r in rows])]
+    rule = empirical_threshold(scores)
+    value, primary = rule['threshold'], bundle['threshold']
+    by = {p: {'days': sum(r['provider'] == p for r in rows),
+              'above_secondary': sum(r['provider'] == p and s > value for r, s in zip(rows, scores)),
+              'above_primary': sum(r['provider'] == p and s > primary for r, s in zip(rows, scores))} for p in PROVIDERS}
+    return {'n': len(scores), 'k': len(scores) // 20, 'secondary_threshold': value, 'above_secondary': rule['normal_alerts'],
+            'primary_threshold': primary, 'above_primary': sum(s > primary for s in scores), 'by_provider': by,
+            'last_day_used': max(r['day'] for r in rows), 'loaded_manifest_sha256': bundle['model_sha256']}
 
 
 def summary(manifest, bundle_dir):
@@ -641,9 +688,20 @@ def main(argv=None):
     r = sub.add_parser('repair-missing')
     r.add_argument('--bundle', required=True)
     r.add_argument('--db', help='SQLite file instead of the configured event store')
+    s = sub.add_parser('secondary-threshold')
+    s.add_argument('--db', required=True, help='pilot events DB, opened read-only; days after 12 Nov MYT dropped')
+    s.add_argument('--bundle', default=os.getenv('ARGUS_LIVE_AE_BUNDLE'), help='pinned v2 bundle (default: ARGUS_LIVE_AE_BUNDLE)')
     args = ap.parse_args(argv)
     try:
-        if args.command == 'train':
+        if args.command == 'secondary-threshold':
+            if not args.bundle:
+                raise Refusal('--bundle or ARGUS_LIVE_AE_BUNDLE is required')
+            result = secondary_report(args.db, _bundle(args.bundle))
+            try:
+                result['config_secondary_threshold'] = secondary_threshold()
+            except Refusal as error:
+                result['config_secondary_threshold'] = f'not set ({error})'
+        elif args.command == 'train':
             result = summary(train(args.events_db, args.out, synthetic=args.synthetic), args.out)
         elif args.command == 'repair-missing':
             store = _store()
@@ -657,7 +715,8 @@ def main(argv=None):
                 record_load(args.bundle, None, error)
                 raise
             record_load(args.bundle, bundle)
-            result = {'loaded_manifest_sha256': bundle['model_sha256'], 'account_days_scored': repair_missing(bundle)}
+            result = {'loaded_manifest_sha256': bundle['model_sha256'], 'secondary_threshold': bundle['secondary_threshold'],
+                      'account_days_scored': repair_missing(bundle)}
         else:
             result = backfill_copy(args.bundle, args.db, allow_synthetic=args.allow_synthetic)
     except (Refusal, ValueError) as error:

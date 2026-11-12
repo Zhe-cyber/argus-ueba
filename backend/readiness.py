@@ -5,7 +5,8 @@
 Checks: (1) the baseline method binding file equals the running scorer (baseline_scorer.STATUS); (2) the comparator
 loaded by the running deployment (live-ae-loaded.json next to the database, written by backend.live_ae) is the pinned
 manifest; (3) no account-day with events lacks its baseline score (and, for lab persona accounts, its v2 ML score);
-(4) the score tables have their columns; (5) events dated 13 Nov 2026 MYT or later exist (collection is live).
+(4) the score tables have their columns; (5) events dated 13 Nov 2026 MYT or later exist (collection is live);
+(6) the declared secondary threshold is in config/live_ae_v2.json and every stored v2 score has its flagged_secondary.
 Read-only: it never migrates or scores. Repair: `python -m backend.baseline_scorer --repair-missing --db <db>` and
 `python -m backend.live_ae repair-missing --bundle <pinned bundle> --db <db>`.
 """
@@ -26,7 +27,7 @@ REQUIRED_COLUMNS = {
                'resource', 'metadata'),
     'baseline_scores': ('account_key', 'day', 'score', 'tier', 'scored_mode', 'method_sha256'),
     'ml_scores': ('account_key', 'day', 'score', 'flagged', 'threshold', 'model_sha256', 'model_version',
-                  'no_resource_today'),
+                  'no_resource_today', 'flagged_secondary'),
 }
 
 
@@ -114,6 +115,22 @@ def comparator(db=None):
             'ok': state.get('comparator') == 'loaded' and loaded == live_ae.EXPECTED_MANIFEST_SHA256}
 
 
+def secondary(db=None):
+    """{'threshold': declared secondary threshold or None, 'reason', 'unflagged': stored v2 scores without flagged_secondary}."""
+    try:
+        out = {'threshold': live_ae.secondary_threshold(), 'reason': None}
+    except live_ae.Refusal as error:
+        out = {'threshold': None, 'reason': str(error)}
+    with _on(db), store._db() as con:
+        cur = store._cursor(con)
+        unflagged = 0
+        if 'flagged_secondary' in _columns(cur, 'ml_scores'):
+            cur.execute("SELECT COUNT(*) AS n FROM ml_scores WHERE model_version='v2' AND score IS NOT NULL "
+                        "AND flagged_secondary IS NULL")
+            unflagged = store._rows(cur)[0]['n']
+    return {**out, 'unflagged': unflagged}
+
+
 def events_since(db=None, start=EVALUATION_START):
     """Number of events dated `start` (MYT) or later."""
     with _on(db), store._db() as con:
@@ -128,9 +145,10 @@ def report(db=None):
     out = {'method': dict(bs.STATUS), 'comparator': comparator(db),
            'missing_scores': {'total': len(missing), 'baseline': sum('baseline' in m['missing'] for m in missing),
                               'ml': sum('ml' in m['missing'] for m in missing)},
-           'schema_missing_columns': schema(db), 'events_from_13_nov_myt': events_since(db)}
+           'schema_missing_columns': schema(db), 'events_from_13_nov_myt': events_since(db), 'secondary': secondary(db)}
     out['ok'] = bool(out['method']['scoring_ready'] and out['comparator']['ok'] and not missing
-                     and not out['schema_missing_columns'] and out['events_from_13_nov_myt'] > 0)
+                     and not out['schema_missing_columns'] and out['events_from_13_nov_myt'] > 0
+                     and out['secondary']['threshold'] is not None and not out['secondary']['unflagged'])
     return out
 
 
@@ -143,6 +161,9 @@ def main(argv=None):
     print(f"method binding: {'ok' if m['scoring_ready'] else 'NOT OK'} (sha256 {m['method_sha256']}); {m['reason']}")
     print(f"comparator: {c.get('comparator')}; loaded manifest sha256 {c.get('loaded_manifest_sha256')} == expected "
           f"{c['expected_manifest_sha256']}: {yes[c['ok']]}" + (f"; {c['reason']}" if c.get('reason') else ''))
+    sec = r['secondary']
+    print(f"secondary threshold: {sec['threshold'] if sec['threshold'] is not None else 'ABSENT (' + sec['reason'] + ')'}"
+          f"; stored v2 scores without flagged_secondary: {sec['unflagged']}")
     print(f"missing scores: {n['total']} account-days (baseline {n['baseline']}, ml {n['ml']})")
     s = r['schema_missing_columns']
     print('schema columns: ' + ('all present' if not s else 'MISSING ' + ', '.join(f'{t}.{col}' for t, cols in s.items() for col in cols)))

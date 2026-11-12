@@ -107,7 +107,8 @@ _DDL_BASELINE_SCORES = """
 # service token) and MYT day. A comparator shown beside the baseline score; it never raises alerts. score/flagged
 # are NULL when the day is not scored (reason in note, e.g. Learning). shares_json: each feature's share of the
 # squared reconstruction error; model_sha256: the bundle manifest's sha256; model_version: 'v2' (rows written by
-# the historical v1 code default to 'v1'); no_resource_today: 1 when the day had no resource (new-resource share 0).
+# the historical v1 code default to 'v1'); no_resource_today: 1 when the day had no resource (new-resource share 0);
+# flagged_secondary: score above the declared secondary threshold (config/live_ae_v2.json, L7a; never alerts).
 _DDL_ML_SCORES = """
     CREATE TABLE IF NOT EXISTS ml_scores (
         account_key     TEXT    NOT NULL,
@@ -124,6 +125,7 @@ _DDL_ML_SCORES = """
         computed_at     TEXT    NOT NULL,
         model_version   TEXT    NOT NULL DEFAULT 'v1',
         no_resource_today INTEGER,
+        flagged_secondary INTEGER,
         UNIQUE (account_key, day)
     )
 """
@@ -315,7 +317,7 @@ def init_db() -> None:
 def ensure_ml_scores(cur) -> None:
     """ml_scores, plus the v2 columns on a table created by the v1 code (idempotent)."""
     cur.execute(_DDL_ML_SCORES)
-    added = {'model_version': "TEXT NOT NULL DEFAULT 'v1'", 'no_resource_today': 'INTEGER'}
+    added = {'model_version': "TEXT NOT NULL DEFAULT 'v1'", 'no_resource_today': 'INTEGER', 'flagged_secondary': 'INTEGER'}
     if _PG:
         for name, definition in added.items():
             cur.execute(f'ALTER TABLE ml_scores ADD COLUMN IF NOT EXISTS {name} {definition}')

@@ -37,16 +37,22 @@ imports only). No commit/push. Pilot checkouts read-only. No cloud calls.
      output; fit-only standardisation (zero variance → scale 1); CPU, seed 42, deterministic, one thread; full-batch
      Adam lr 0.001, weight decay 0.001, grad-norm clip 5; up to 2000 epochs; earliest minimum validation MSE (strict);
      patience 200. Threshold = `live_daily_method.empirical_threshold` on calibration scores (strictly greater flags).
+     Secondary operating point (added 13 Nov 2026 before any scenario, L7a §1/§5; no retraining): the same rule over
+     the frozen bundle's scores of all 104 pre-freeze scorable persona days; `secondary-threshold --db <events.db>`
+     computes it (read-only); stored in `config/live_ae_v2.json` (`secondary_threshold`, `secondary_basis`,
+     `secondary_computed_at`); `load` refuses a pin file whose value is missing or not a finite float.
      Bundle: weights, scaler, manifest (rows per split and provider, best validation MSE and the predict-the-fit-mean
      validation MSE, selected/stop epoch, threshold, artifact and source hashes, feature-contract hash).
    - `load` refuses another profile, feature contract or method, changed artifacts and synthetic bundles.
 2. Storage: `ml_scores` (backend schema, SQLite and PostgreSQL) unique on `(account_key, day)`, with
-   `model_version` ('v2'; v1-era rows default 'v1') and `no_resource_today`; `event_store.ensure_ml_scores` adds the
-   columns to a v1-era table. Learning days are stored with a NULL score and the reason.
+   `model_version` ('v2'; v1-era rows default 'v1'), `no_resource_today` and `flagged_secondary` (score > secondary
+   threshold); `event_store.ensure_ml_scores` adds the columns to an older table; `repair-missing` recomputes
+   `flagged_secondary` on every stored v2 score (scores unchanged). Readiness prints the secondary threshold and fails
+   when it is absent or a stored v2 score lacks its flag. Learning days are stored with a NULL score and the reason.
 3. Scoring trigger: backfill command; ingest hook for AWS and Cloudflare events and the mirror pass (best effort,
    never blocking ingest); a late event also rescores the account's later stored days inside its 28-day window.
-4. Workspace: "ML anomaly score (autoencoder v2)" row on the account panel and finding dialog (v2 rows only); Method
-   & limits section updated.
+4. Workspace: "ML anomaly score (autoencoder v2)" row on the account panel and finding dialog (v2 rows only), with a
+   quiet second line "above the model's normal range at the 5% setting: yes/no"; Method & limits section updated.
 5. Real training: `scripts/train_live_ae.ps1` (read-only source; fresh `data\live\live-ae\bundle-v2-<stamp>`;
    optional `-DemoDb` backfill of a marked copy). Python refuses before 12 Nov MYT has closed. Run once on
    13 Nov 01:06 MYT; numbers in L7a §3.
