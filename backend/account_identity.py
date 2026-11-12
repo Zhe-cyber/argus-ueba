@@ -67,6 +67,20 @@ def identify(event):
             user_id = meta.get('user_id')
             if isinstance(user_id, str) and user_id.strip():
                 principal, basis = user_id, 'cloudflare_user_id'
+    elif source == 'azure_ad':
+        # Entra: the immutable object id, never the UPN (renamable) or the display name.
+        def guid(v):
+            return (isinstance(v, str) and re.fullmatch(r'[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', v)
+                    is not None and v.strip('0-') != '')
+        if guid(meta.get('userId')):
+            principal, kind, basis = meta['userId'].lower(), 'user', 'entra_user_object_id'
+            label = str(meta.get('userDisplayName') or label)
+        elif not str(meta.get('userId') or '').strip('0-') and (guid(meta.get('servicePrincipalId')) or guid(meta.get('appId'))):
+            # only when no user is present (zero/empty userId): a user sign-in must never key on its app
+            sp = guid(meta.get('servicePrincipalId'))
+            principal = (meta['servicePrincipalId'] if sp else meta['appId']).lower()
+            kind, basis = 'service_principal', ('entra_service_principal_id' if sp else 'entra_app_id')
+            label = str(meta.get('appDisplayName') or meta.get('servicePrincipalName') or label)
     if not principal or not basis:
         return None
     value = ['source-principal-v1', source, namespace, owner, kind, principal]
