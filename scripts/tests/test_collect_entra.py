@@ -2,6 +2,7 @@
 import copy
 from datetime import datetime, timedelta, timezone
 import json
+import sys
 from pathlib import Path
 import sqlite3
 
@@ -191,7 +192,12 @@ def test_config_validation(tmp_path):
         with pytest.raises(CollectionError):
             load(**bad)
     example = collect_entra.ROOT / 'config' / 'entra.example.json'
-    assert collect_entra.load_config(example)['tenant_id'] == '00000000-0000-0000-0000-000000000000'
+    template = json.loads(example.read_text(encoding='utf-8'))
+    if sys.platform != 'win32':  # the template's C:/ paths are Windows paths; on a POSIX CI host point them outside the repo
+        template.update(client_secret_file=str(tmp_path / 'secret.txt'), state_file=str(tmp_path / 'state.json'))
+    copy = tmp_path / 'example-copy.json'
+    copy.write_text(json.dumps(template))
+    assert collect_entra.load_config(copy)['tenant_id'] == '00000000-0000-0000-0000-000000000000'
 
 
 # --- end to end: 7 synthetic days for one user -> ingest -> baseline scorer ------------------------

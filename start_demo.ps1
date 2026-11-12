@@ -1,18 +1,23 @@
-# Starts the Argus demo (API 8017, UI 3013, live mirror). Safe to run again: skips what is already up.
+# Starts the Argus demo from this worktree (API 8017, UI 3013, live mirror). Safe to run again: skips what is already up.
 # Usage:  powershell -ExecutionPolicy Bypass -File start_demo.ps1 [-Rehearsal]
+# -Rehearsal also starts the simulated-scenario site (API 8018, UI 3014; no mirror).
 # Read-only towards the live collection: the mirror opens the source database with mode=ro.
+# Sign-in: the owner creates users in <site root>\auth\users.json (python -m backend.auth add-user ...); the session key is created beside it.
 param([switch]$Rehearsal)
 $ErrorActionPreference = 'Stop'
 $wt     = $PSScriptRoot
 $py     = 'C:\Users\yyzhe\OneDrive\Documents\fyp-ueba\.venv\Scripts\python.exe'
 $node   = (Get-Command node).Source
 $source = 'C:\Users\yyzhe\.codex\worktrees\argus-cloud-live\fyp-ueba\data\live\connected\events.db'
+$bundle = 'C:\Users\yyzhe\argus-worktrees\l10-live-ae\data\live\live-ae\bundle-v2-20261113T010640'   # pinned v2 comparator, read-only
+$data   = 'C:\Users\yyzhe\argus-worktrees\l1-live-baseline\data\live'
 
 function Listening($port) { [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) }
 
 function Start-Site($root, $apiPort, $uiPort) {
+    $env:DATABASE_URL = 'sqlite-local'
+    $env:ARGUS_LIVE_AE_BUNDLE = $bundle
     if (-not (Listening $apiPort)) {
-        $env:DATABASE_URL = 'sqlite-local'
         $env:ARGUS_WORKSPACE_COPY_DB = "$root\preview.db"
         $env:ARGUS_WORKSPACE_UI_ORIGIN = "http://127.0.0.1:$uiPort"
         Start-Process -FilePath $py -WorkingDirectory $wt -WindowStyle Hidden `
@@ -28,18 +33,19 @@ function Start-Site($root, $apiPort, $uiPort) {
     } else { "UI   $uiPort already running" }
 }
 
-$preview = "$wt\data\live\live-v1-preview"
+$preview = "$data\live-v1-preview"
 Start-Site $preview 8017 3013
 
 $mirror = Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.CommandLine -match 'workspace_next\.live_mirror' }
 if (-not $mirror) {
     $env:DATABASE_URL = 'sqlite-local'
+    $env:ARGUS_LIVE_AE_BUNDLE = $bundle
     Start-Process -FilePath $py -WorkingDirectory $wt -WindowStyle Hidden `
         -ArgumentList @('-m','workspace_next.live_mirror','--source',$source,'--dest',"$preview\preview.db",'--interval','60') `
         -RedirectStandardOutput "$preview\mirror.stdout.log" -RedirectStandardError "$preview\mirror.stderr.log"
     "Mirror started (every 60 s)"
 } else { "Mirror already running" }
 
-if ($Rehearsal) { Start-Site "$wt\data\live\live-v1-rehearsal" 8018 3014 }
+if ($Rehearsal) { Start-Site "$data\live-v1-rehearsal" 8018 3014 }
 
 "Open http://127.0.0.1:3013" + $(if ($Rehearsal) { '  and  http://127.0.0.1:3014 (simulated scenario)' })

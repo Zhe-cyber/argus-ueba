@@ -3,7 +3,7 @@ Synthetic events only."""
 from datetime import date
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import sqlite3
 
@@ -178,7 +178,7 @@ def test_repair_commands_score_exactly_the_missing_days(live, comparator, capsys
 def test_pin_is_the_preregistered_manifest():
     pin = json.loads(live_ae.PIN_FILE.read_text(encoding='utf-8'))
     assert pin['expected_manifest_sha256'] == 'd41e86a92cc24e6db706b161caef780a10d54f5f7c82592bcd7da6f2d7a2ffc0'
-    assert pin['bundle'] == 'bundle-v2-20261113T010640' == REAL_BUNDLE.name
+    assert pin['bundle'] == 'bundle-v2-20261113T010640' == PureWindowsPath(str(REAL_BUNDLE)).name  # Windows path, also on Linux CI
 
 
 def test_right_hash_loads_and_other_bundle_is_refused(tmp_path, monkeypatch, live):
