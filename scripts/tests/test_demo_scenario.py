@@ -15,7 +15,7 @@ from scripts import demo_scenario_live as live
 from scripts import demo_scenario_sim as sim
 
 MYT = timezone(timedelta(hours=8))
-AFTER = datetime(2026, 11, 16, 9, tzinfo=MYT)
+AFTER = datetime(2026, 11, 16, 21, tzinfo=MYT)  # L8: inside S1's 21:00-22:00 MYT window (was 09:00 before windows existed)
 ACCOUNT = '123456789012'
 RUNNER_ARN = f'arn:aws:iam::{ACCOUNT}:user/argus-lab/argus-ueba-actors-runner'
 ARGS = ['--live', '--confirm', 'persona-02']
@@ -23,8 +23,9 @@ ARGS = ['--live', '--confirm', 'persona-02']
 
 class FakeSession:
     """Real botocore clients wrapped in Stubbers; the test queues what each one should receive."""
-    def __init__(self, identity_arn=RUNNER_ARN, s3_errors=None):
+    def __init__(self, identity_arn=RUNNER_ARN, s3_errors=None, scenario='S1'):
         self.stubs, self.s3_errors, self.identity_arn = {}, s3_errors or {}, identity_arn
+        self.plan = live.SCENARIOS[scenario]
 
     def client(self, service, config=None, **kw):
         c = boto3.session.Session(aws_access_key_id='x', aws_secret_access_key='y', region_name='us-east-1').client(
@@ -40,11 +41,11 @@ class FakeSession:
         if self.identity_arn == RUNNER_ARN:
             st.add_response('assume_role', {'Credentials': {'AccessKeyId': 'A' * 16, 'SecretAccessKey': 'b' * 16, 'SessionToken': 'c' * 16,
                                                            'Expiration': datetime(2026, 11, 16, tzinfo=timezone.utc)}},
-                            {'RoleArn': f'arn:aws:iam::{ACCOUNT}:role/argus-lab/argus-ueba-actors-persona-02',
-                             'RoleSessionName': 'argus-demo-persona-02', 'DurationSeconds': 900})
+                            {'RoleArn': f'arn:aws:iam::{ACCOUNT}:role/argus-lab/argus-ueba-actors-{self.plan["persona"]}',
+                             'RoleSessionName': f'argus-demo-{self.plan["persona"]}', 'DurationSeconds': 900})
 
     def _s3(self, st):
-        for i, (n, op, sym) in enumerate(live.AWS_CALLS):
+        for i, (n, op, sym) in enumerate(live.calls(self.plan)):
             bucket = f'argus-ueba-actors-{ACCOUNT}-{sym}'
             params = {'Bucket': bucket, 'ExpectedBucketOwner': ACCOUNT}
             if op == 'GetObject':
@@ -64,6 +65,7 @@ def run(tmp_path, argv=ARGS, session=None, clock_now=AFTER, **kw):
     rc = live.main(argv, clock=lambda: clock_now, sleep=sleeps.append, session_factory=lambda profile: session,
                    out_dir=tmp_path, **kw)
     ledgers = sorted(tmp_path.glob('run-*.json'))
+    assert all(p.name.startswith('run-S') for p in ledgers)
     return rc, sleeps, (json.loads(ledgers[0].read_text()) if ledgers else None), session
 
 
@@ -78,10 +80,10 @@ def test_dry_run_makes_zero_calls(capsys):
     assert live.main(['--cloudflare'], session_factory=no_session, cf_loader=no_session, http=no_session) == 0
 
 
-def test_refuses_before_16_nov(capsys):
-    rc = live.main(ARGS, clock=lambda: datetime(2026, 11, 15, 23, 59, tzinfo=MYT), session_factory=no_session,
+def test_refuses_before_14_nov(capsys):  # L8: earliest run moved from 16 to 14 Nov (V3 study closed)
+    rc = live.main(ARGS, clock=lambda: datetime(2026, 11, 13, 23, 59, tzinfo=MYT), session_factory=no_session,
                    cf_loader=no_session, http=no_session)
-    assert rc != 0 and 'study is still open' in capsys.readouterr().err
+    assert rc != 0 and 'too early' in capsys.readouterr().err
 
 
 def test_refuses_without_confirm(capsys):
@@ -159,6 +161,89 @@ def test_cloudflare_loader_failure_is_reported_not_fatal(tmp_path):
     assert rc == 0 and ledger['cloudflare'] == 'not started: FileNotFoundError'
 
 
+# ---- L8: four scenarios (L7 section 2) ------------------------------------------------------------
+
+def test_scenario_plans_match_the_rules():
+    s = live.SCENARIOS
+    assert [s[k]['persona'] for k in ('S1', 'S2', 'S3', 'S4')] == ['persona-02', 'persona-05', 'persona-04', 'persona-06']
+    assert len(live.calls(s['S1'])) == 35 and live.cap(s['S1']) == 40 and s['S1']['cloudflare']
+    assert [(op, sym) for _, op, sym in live.calls(s['S2'])] == [('GetObject', 'p05')] * 3 + [('GetObject', 'p04')] * 2
+    assert live.calls(s['S3']) == [(1, 'GetObject', 'confidential')] and live.cap(s['S3']) == 1
+    assert live.calls(s['S4']) == [(1, 'GetObject', 'p06')] * 30 and live.cap(s['S4']) == 30
+    assert not any(s[k]['cloudflare'] for k in ('S2', 'S3', 'S4'))
+
+
+@pytest.mark.parametrize('scenario', ['S1', 'S2', 'S3', 'S4'])
+def test_every_dry_run_exits_zero_without_calls(scenario, capsys):
+    assert live.main(['--scenario', scenario], session_factory=no_session, cf_loader=no_session, http=no_session) == 0
+    assert f'Scenario {scenario}' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('scenario,persona', [('S1', 'persona-02'), ('S2', 'persona-05'), ('S3', 'persona-04'), ('S4', 'persona-06')])
+def test_live_before_14_nov_refuses_every_scenario(scenario, persona, capsys):
+    rc = live.main(['--scenario', scenario, '--live', '--confirm', persona], clock=lambda: datetime(2026, 11, 12, 21, 5, tzinfo=MYT),
+                   session_factory=no_session, cf_loader=no_session, http=no_session)
+    assert rc != 0 and 'too early' in capsys.readouterr().err
+
+
+def test_14_nov_evening_allowed_and_same_persona_same_day_refused(tmp_path, capsys):
+    day14 = datetime(2026, 11, 14, 21, 0, tzinfo=MYT)
+    assert run(tmp_path, clock_now=day14)[0] == 0
+    rc = live.main(ARGS, clock=lambda: datetime(2026, 11, 14, 21, 30, tzinfo=MYT), session_factory=no_session, out_dir=tmp_path)
+    assert rc == 2 and 'already exists for this Malaysian day' in capsys.readouterr().err
+    assert len(list(tmp_path.glob('run-*.json'))) == 1
+
+
+def test_different_persona_same_day_allowed(tmp_path):
+    day = datetime(2026, 11, 14, 10, 30, tzinfo=MYT)
+    rc, _, ledger, _ = run(tmp_path, argv=['--scenario', 'S3', '--live', '--confirm', 'persona-04'],
+                           session=FakeSession(scenario='S3'), clock_now=day)
+    assert rc == 0 and ledger['persona'] == 'persona-04'
+    assert run(tmp_path, clock_now=datetime(2026, 11, 14, 21, 0, tzinfo=MYT))[0] == 0  # S1, persona-02, same day
+    assert live.ran_today(tmp_path, 'persona-02', day) and not live.ran_today(tmp_path, 'persona-05', day)
+    assert not live.ran_today(tmp_path, 'persona-04', datetime(2026, 11, 15, 10, 30, tzinfo=MYT))
+
+
+@pytest.mark.parametrize('scenario,persona,bad,good', [
+    ('S1', 'persona-02', datetime(2026, 11, 16, 20, 59, tzinfo=MYT), datetime(2026, 11, 16, 21, 0, tzinfo=MYT)),
+    ('S2', 'persona-05', datetime(2026, 11, 16, 21, 55, tzinfo=MYT), datetime(2026, 11, 16, 21, 10, tzinfo=MYT)),
+    ('S3', 'persona-04', datetime(2026, 11, 16, 17, 0, tzinfo=MYT), datetime(2026, 11, 16, 10, 0, tzinfo=MYT)),
+    ('S4', 'persona-06', datetime(2026, 11, 16, 9, 59, tzinfo=MYT), datetime(2026, 11, 16, 16, 58, tzinfo=MYT)),
+])
+def test_time_windows(scenario, persona, bad, good, capsys):
+    plan = live.SCENARIOS[scenario]
+    assert not live.in_window(plan, False, bad) and live.in_window(plan, False, good)
+    rc = live.main(['--scenario', scenario, '--live', '--confirm', persona], clock=lambda: bad, session_factory=no_session)
+    assert rc == 2 and 'must run entirely within' in capsys.readouterr().err
+
+
+def test_s3_s4_refuse_evening_and_s1_s2_refuse_office_hours():
+    office, evening = datetime(2026, 11, 17, 14, tzinfo=MYT), datetime(2026, 11, 17, 21, 10, tzinfo=MYT)
+    assert not live.in_window(live.SCENARIOS['S3'], False, evening) and not live.in_window(live.SCENARIOS['S4'], False, evening)
+    assert not live.in_window(live.SCENARIOS['S1'], False, office) and not live.in_window(live.SCENARIOS['S2'], False, office)
+
+
+def test_cloudflare_is_s1_only(capsys):
+    assert live.main(['--scenario', 'S2', '--cloudflare'], session_factory=no_session) == 2
+    assert 'S1 only' in capsys.readouterr().err
+
+
+def test_s2_live_run_with_stubs(tmp_path):
+    rc, sleeps, ledger, session = run(tmp_path, argv=['--scenario', 'S2', '--live', '--confirm', 'persona-05'],
+                                      session=FakeSession(scenario='S2'), clock_now=datetime(2026, 11, 17, 21, 5, tzinfo=MYT))
+    assert rc == 0 and ledger['scenario'] == 'S2' and ledger['persona'] == 'persona-05'
+    assert len(ledger['calls']) == 5 and sleeps == [120] * 4
+    session.stubs['s3'].assert_no_pending_responses()
+    assert not re.search(r'\d{12}', json.dumps(ledger))
+
+
+def test_s4_cap_enforced(tmp_path, monkeypatch):
+    monkeypatch.setitem(live.SCENARIOS['S4'], 'max_s3', 3)
+    rc, _, ledger, _ = run(tmp_path, argv=['--scenario', 'S4', '--live', '--confirm', 'persona-06'],
+                           session=FakeSession(scenario='S4'), clock_now=datetime(2026, 11, 18, 11, tzinfo=MYT))
+    assert rc == 1 and len(ledger['calls']) == 3 and ledger['aborted'] == 'S3 call cap reached'
+
+
 # ---- simulated rehearsal ---------------------------------------------------------------------------
 
 def _tpl(source, resource, kind):
@@ -179,13 +264,28 @@ def test_sim_rows_shape_counts_and_window():
     assert count('GetObject', 'confidential') == 12 and all(count('GetObject', s) == 6 for s in ('p04', 'p05', 'p06'))
     assert all(count('GetBucketLocation', s) == 1 for s in ('confidential', 'p04', 'p05', 'p06')) and count('ListObjectsV2', 'confidential') == 1
     assert all(r['event_id'].startswith('sim-') for r in rows) and len({r['event_id'] for r in rows}) == 43
-    assert json.loads([r for r in aws if r['action'] == 'ListObjectsV2'][0]['metadata']) == {'simulated': True, 'scenario': 'L4', 'errorCode': 'AccessDenied'}
-    assert json.loads(cf[0]['metadata']) == {'simulated': True, 'scenario': 'L4'}
+    # L8: scenario label is now the L7 scenario id (was 'L4')
+    assert json.loads([r for r in aws if r['action'] == 'ListObjectsV2'][0]['metadata']) == {'simulated': True, 'scenario': 'S1', 'errorCode': 'AccessDenied'}
+    assert json.loads(cf[0]['metadata']) == {'simulated': True, 'scenario': 'S1'}
     assert cf[0]['resource'].endswith('/workloads/persona-02/demo-1')
     for r in rows:
         t = datetime.strptime(r['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(MYT)
         assert t.date() == day and (21, 5) <= (t.hour, t.minute) <= (21, 25)
         assert r['account_key'].startswith('k-') and r['account_basis'] == 'b'
+
+
+@pytest.mark.parametrize('scenario,persona,n,window', [('S2', 'persona-05', 5, ((21, 5), (21, 45))),
+                                                        ('S3', 'persona-04', 1, ((14, 0), (14, 0))),
+                                                        ('S4', 'persona-06', 30, ((14, 0), (14, 1)))])
+def test_sim_rows_for_s2_s4(scenario, persona, n, window):
+    day = sim.closed_day(datetime(2026, 11, 20, 10, tzinfo=MYT))
+    rows = sim.build_rows(_tpl('aws_cloudtrail', f'argus-ueba-actors-123456789012-p0{persona[-1]}', 'role'), None, day, scenario=scenario)
+    assert len(rows) == n and all(r['source'] == 'aws_cloudtrail' and r['action'] == 'GetObject' for r in rows)
+    assert {r['resource'].rsplit('-', 1)[1] for r in rows} == {sym for _, _, sym in live.calls(live.SCENARIOS[scenario])}
+    for r in rows:
+        t = datetime.strptime(r['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(MYT)
+        assert t.date() == day and window[0] <= (t.hour, t.minute) <= window[1]
+        assert json.loads(r['metadata']) == {'simulated': True, 'scenario': scenario}
 
 
 def test_sim_prepare_refuses_unmarked_and_copies_marked(tmp_path):
