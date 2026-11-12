@@ -1,0 +1,47 @@
+{
+  "schema": "argus_ops_v1",
+  "_note": "Tracked TEMPLATE, no secrets. Copy to data/live/ops/ops.json (git-ignored), fill the identifiers there and pass --config. Relative paths resolve against the checkout root.",
+  "backend_url": "http://127.0.0.1:8020",
+  "live_state_dir": "data/live/ops/connected",
+  "status_dir": "data/live/ops",
+  "collect_start_local": "2026-11-17",
+  "protected_paths": [],
+  "intervals_minutes": {"aws": 5, "github": 30, "cloudflare": 30},
+  "providers": {
+    "aws": {"enabled": true, "account_id": "", "queue_url": "", "profile": "argus-collector", "batches": 5},
+    "github": {"enabled": true, "repos": [], "gh_path": ""},
+    "cloudflare": {"enabled": true, "account_id": "", "app_ids": []}
+  },
+  "personas": {
+    "enabled": false,
+    "start_local": "2026-11-16",
+    "ledger_dir": "data/live/ops/persona-ledger",
+    "stack": "argus-ueba-actors",
+    "aws_profile": "argus-simulator",
+    "cloudflare": {"enabled": false, "state_dir": "", "tokens_valid_until_utc": null}
+  },
+  "supervisor": {
+    "python": "",
+    "node": "",
+    "workspace_dir": "data/live/ops/workspace",
+    "frontend_dir": "",
+    "workspace_api_port": 8021,
+    "web_ui_port": 3016,
+    "mirror_interval_seconds": 60,
+    "collect_interval_seconds": 300,
+    "persona_interval_seconds": 60
+  },
+  "auth": {
+    "users_file": "data/live/ops/auth/users.json",
+    "secret_file": "data/live/ops/auth/session.key",
+    "log_file": "data/live/ops/auth/auth.log"
+  },
+  "notify": {
+    "sender": "outbox",
+    "interval_seconds": 60,
+    "outbox_file": "data/live/ops/notify-outbox.jsonl",
+    "credential_file": "",
+    "telegram_chat_id": "",
+    "email": {"host": "", "port": 587, "from": "", "to": ""}
+  }
+}
