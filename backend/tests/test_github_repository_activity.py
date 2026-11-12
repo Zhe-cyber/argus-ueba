@@ -52,7 +52,7 @@ def test_activity_endpoint_receipts_retry_conflicts_and_no_fake_scores(live_clie
     changed=body();changed['event']['after']='b'*40
     assert live_client.post(url,json=changed).status_code==409
     users=live_client.get('/users').json()['users'];assert len(users)==1
-    assert users[0]['risk_level']=='Unknown'
+    assert users[0]['risk_level']=='Learning'  # L8: baseline tier (one active day), AE stays unscored
     events=live_client.get('/users/'+users[0]['user']+'/events').json()
     assert len(events)==1 and events[0]['resource']=='owner/toy'
 

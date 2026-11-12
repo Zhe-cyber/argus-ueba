@@ -1,11 +1,15 @@
-"""Baseline risk score v1: signals, tiers, MYT day boundary, finding context. Temp SQLite only."""
+"""Baseline risk score v1: signals, tiers, MYT day boundary, finding context. Temp SQLite only.
+
+L8: scores are computed by the backend scorer and read from `baseline_scores`, so make_db() now runs the backend
+backfill on the temp DB after inserting rows (the same call the workspace makes for a never-scored copy)."""
 from datetime import date, datetime, timedelta, timezone
 import sqlite3
 
 import pytest
 
 from backend import alert_store, event_store as events
-from workspace_next import baseline_score as bs, case_store, queries
+from backend import baseline_scorer
+from workspace_next import baseline_score as bs, case_store, live_mirror, queries
 
 DAY = date(2026, 10, 10)  # scored day (MYT)
 
@@ -17,6 +21,7 @@ def make_db(path, rows):
                     'account_kind TEXT, timestamp TEXT, source TEXT, action TEXT, resource TEXT)')
         con.executemany("INSERT INTO events (account_key,account_label,account_kind,timestamp,source,action,resource) "
                         "VALUES (?,?,'role',?,?,?,?)", [(r[0], r[0], *r[1:]) for r in rows])
+    live_mirror.backfill_copy(path)
     return path
 
 
@@ -142,6 +147,7 @@ def test_finding_context_carries_baseline(monkeypatch, tmp_path):
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                 ('acct', at, 'aws_cloudtrail', 'Read', 'toy', '', '{}', at, f'n{i}', 'ns', f'd{i}',
                  'acct', 'acct', 'role', 'native'))
+    baseline_scorer.backfill()
     alert_store.create_alert('acct', 'rarity_spike', 'High', 'Rule facts')
     row = queries.findings(category='all')['findings'][0]
     assert row['baseline']['tier'] in ('Low', 'Medium', 'High') and 'score' in row['baseline']

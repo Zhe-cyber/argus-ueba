@@ -11,7 +11,7 @@ from workspace_next import case_store
 from workspace_next.case_api import router
 from workspace_next import operations
 from workspace_next import diagnostic_receipts
-from workspace_next import baseline_alerts, baseline_score, live_mirror, workload_groups
+from workspace_next import baseline_score, live_mirror, workload_groups
 
 
 class RetainDiagnostic(BaseModel):
@@ -40,7 +40,7 @@ def create_app():
         raise RuntimeError('Invalid workspace copy marker')
     store.DB_PATH=path
     case_store.init_db()
-    baseline_alerts.sync(path)  # makes baseline findings available even before the mirror runs
+    live_mirror.prepare_copy(path)  # backend backfill once if this copy was never scored; adopts pre-L8 baseline findings
     app=FastAPI(title='Argus workspace — isolated copy')
     app.state.diagnostic_receipt_config = None
     app.state.experimental_diagnostics_approved = False
@@ -67,6 +67,13 @@ def create_app():
     @app.get('/workspace/baseline')
     def baseline(account: str, days: int = Query(14, ge=1, le=60)):
         return baseline_score.account_days(path, account, days)
+
+    @app.get('/workspace/method')
+    def method():
+        from backend import baseline_scorer as scorer
+        return {'version': scorer.VERSION, 'method_sha256': scorer.METHOD_SHA256,
+                'sensitive': {'built_in': list(scorer.SENSITIVE_PATTERNS), 'deployment': scorer.SENSITIVE_LIST,
+                              'deployment_file_loaded': bool(scorer.SENSITIVE_LIST)}}
 
     @app.get('/workspace/baseline/summary')
     def baseline_summary(day: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$')):

@@ -80,6 +80,29 @@ _DDL_CLOUD_SHAP = """
     )
 """
 
+# Baseline risk score v1.1, one row per (account, MYT day); written by backend.baseline_scorer only.
+# scored_mode: 'ingest' (computed as events arrived) or 'backfill' (recomputed); method_sha256: the
+# config/baseline_method_v1_1.json binding the row was computed under.
+_DDL_BASELINE_SCORES = """
+    CREATE TABLE IF NOT EXISTS baseline_scores (
+        account_key  TEXT    NOT NULL,
+        day          TEXT    NOT NULL,
+        score        INTEGER,
+        tier         TEXT    NOT NULL,
+        signals_json TEXT    NOT NULL DEFAULT '{}',
+        facts_json   TEXT    NOT NULL DEFAULT '[]',
+        history_days INTEGER NOT NULL,
+        events_today INTEGER NOT NULL,
+        partial      INTEGER NOT NULL DEFAULT 0,
+        rho_action   REAL,
+        rho_resource REAL,
+        computed_at  TEXT    NOT NULL,
+        scored_mode  TEXT    NOT NULL,
+        method_sha256 TEXT,
+        UNIQUE (account_key, day)
+    )
+"""
+
 # Aggregate function for comma-separated distinct values
 _GROUP_CONCAT = "STRING_AGG(DISTINCT source, ',')" if _PG else "GROUP_CONCAT(DISTINCT source)"
 
@@ -260,6 +283,7 @@ def init_db() -> None:
         cur.execute(_DDL_LIVE_SCORES)
         cur.execute(_DDL_CLOUD_SHAP)
         cur.execute('CREATE INDEX IF NOT EXISTS idx_ev_account_key ON events(account_key)')
+        cur.execute(_DDL_BASELINE_SCORES)
 
 
 # ---------------------------------------------------------------------------

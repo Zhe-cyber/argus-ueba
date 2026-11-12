@@ -64,6 +64,15 @@ def init_alerts_db() -> None:
         cur.execute("CREATE INDEX IF NOT EXISTS idx_al_user   ON alerts(user_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_al_status ON alerts(status)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_al_ts     ON alerts(created_at)")
+        # Baseline findings carry their MYT account-day; one per (alert_type, user_id, day). Other alerts keep
+        # day NULL, and NULLs are distinct in a unique index on both SQLite and PostgreSQL, so they never collide.
+        if _PG:
+            cur.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS day TEXT")
+        else:
+            cur.execute("PRAGMA table_info(alerts)")
+            if 'day' not in {row['name'] for row in _rows(cur)}:
+                cur.execute("ALTER TABLE alerts ADD COLUMN day TEXT")
+        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_al_type_user_day ON alerts(alert_type, user_id, day)")
 
 
 # ---------------------------------------------------------------------------

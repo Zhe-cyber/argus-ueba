@@ -6,9 +6,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend import alert_store, event_store as events
-from workspace_next import baseline_alerts as ba, case_store as cases
+from workspace_next import case_store as cases
 from workspace_next.case_api import router
-from backend.tests.test_baseline_alerts import put, history_rows
+from backend.tests.test_baseline_alerts import put, history_rows, sync, base_id
 
 
 @pytest.fixture
@@ -17,11 +17,11 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(events, 'DB_PATH', tmp_path / 'events.db')
     events.init_db(); alert_store.init_alerts_db(); cases.init_db()
     put(history_rows() + [('a', '2026-10-10T02:00:00Z', 'Read', 'secretsmanager/prod-key')] * 4)
-    ba.sync(events.DB_PATH)
+    sync()
     rule = alert_store.create_alert('a', 'rarity_spike', 'High', 'rule alert', {})['id']
     app = FastAPI(); app.include_router(router)
     with TestClient(app) as c:
-        yield c, rule, ba.ID_OFFSET + 1
+        yield c, rule, base_id(events.DB_PATH)
 
 
 def post(c, fid, **over):
@@ -53,4 +53,4 @@ def test_validation_messages(env, over, text):
 
 def test_unknown_finding_is_404(env):
     c, _, _ = env
-    assert post(c, 999).status_code == 404 and post(c, ba.ID_OFFSET + 99).status_code == 404
+    assert post(c, 999).status_code == 404 and post(c, 1_000_099).status_code == 404

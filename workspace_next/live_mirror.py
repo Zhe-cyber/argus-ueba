@@ -2,13 +2,18 @@
 
     python -m workspace_next.live_mirror --source <live events.db> --dest <preview root>/preview.db [--interval 60] [--once]
 
-The source is opened read-only (?mode=ro). Only new `events` and `alerts` rows are added to the copy
-(INSERT OR IGNORE by primary key), so analyst edits always win. analyst_*, identity_* and the other
-workspace_* tables are not touched, except the baseline-alert sync that this pass runs afterwards.
+The source is opened read-only (?mode=ro). Only new `events` and `alerts` rows are added to the copy, so
+analyst edits always win. analyst_*, identity_* and workspace_* tables are not touched.
+
+Baseline scores: the copy is scored by the BACKEND scorer (backend.baseline_scorer.on_event, the same call the
+ingest service makes), applied to the account-days of the events this pass copied. Source alerts of type
+baseline_risk are not copied: the copy holds its own, derived by that same function from the same events.
+Because the copy creates baseline findings itself, copied source alerts get copy-local ids and are matched by
+`alerts.mirror_source_id` (a copy-only column), so a source alert id can never collide with a copy finding.
 Also holds the read-only /workspace/live-feed view model.
 """
 import argparse
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -19,8 +24,8 @@ import sys
 import time
 from unittest import mock
 
-from backend import collector_status
-from workspace_next import baseline_alerts, baseline_score as bs, operations, system_accounts
+from backend import baseline_scorer, collector_status, event_store as store
+from workspace_next import baseline_score as bs, operations, system_accounts
 
 MYT = bs.MYT
 # Study guard: until GUARD_END the copy must hold nothing from GUARD_START onward (one constant, tested).
@@ -86,23 +91,121 @@ def snapshot(root, now=None):
     os.replace(tmp, out)
 
 
+@contextmanager
+def _on_copy(dest):
+    """Point the backend event store at the SQLite copy for one call (never PostgreSQL)."""
+    if store._PG:
+        raise SystemExit('Refusing to run: the workspace copy is SQLite only; set DATABASE_URL=sqlite-local')
+    saved = store.DB_PATH
+    store.DB_PATH = Path(dest)
+    try:
+        yield
+    finally:
+        store.DB_PATH = saved
+
+
+def backfill_copy(dest, now=None):
+    """`python -m backend.baseline_scorer --backfill` on a copy: recompute every stored account-day."""
+    with _on_copy(dest):
+        baseline_scorer.ensure_schema()
+        return baseline_scorer.backfill(now)
+
+
+LEGACY = 'workspace_baseline_alerts'  # pre-L8 copy-only baseline findings (ids exposed as 1_000_000 + rowid)
+
+
+def adopt_legacy(dest):
+    """One-off: carry analyst decisions from the pre-L8 copy-only table onto the backend's baseline findings
+    (matched by account and day), repoint case links and audit rows to the new ids, then rename the old table."""
+    with closing(sqlite3.connect(str(dest), timeout=15)) as con, con:
+        con.row_factory = sqlite3.Row
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if LEGACY not in tables:
+            return None
+        moved = orphaned = 0
+        for old in con.execute(f'SELECT * FROM {LEGACY}').fetchall():
+            new = con.execute('SELECT id,details FROM alerts WHERE alert_type=? AND user_id=? AND day=?',
+                              (bs.ALERT_TYPE, old['account_key'], old['day'])).fetchone()
+            if new is None:
+                orphaned += 1
+                continue
+            details = json.loads(old['details'] or '{}')
+            if details.get('analyst_touched') or (old['status'] != 'Open' and not details.get('auto_resolved')):
+                kept = json.loads(new['details'] or '{}')
+                kept.pop('auto_resolved', None)
+                kept['analyst_touched'] = True
+                con.execute('UPDATE alerts SET status=?,resolved_at=?,details=? WHERE id=?',
+                            (old['status'], old['resolved_at'], json.dumps(kept), new['id']))
+            old_id = 1_000_000 + old['id']
+            if 'analyst_case_links' in tables:
+                con.execute("UPDATE analyst_case_links SET target=? WHERE kind='finding' AND target=?", (str(new['id']), str(old_id)))
+            if 'workspace_finding_audit' in tables:
+                con.execute('UPDATE workspace_finding_audit SET finding_id=? WHERE finding_id=?', (new['id'], old_id))
+            moved += 1
+        con.execute(f'ALTER TABLE {LEGACY} RENAME TO {LEGACY}_pre_l8')
+    return {'moved': moved, 'orphaned': orphaned}
+
+
+def prepare_copy(dest):
+    """Workspace start-up: score a never-scored copy once with the backend backfill, then adopt legacy findings."""
+    with closing(sqlite3.connect(f'file:{Path(dest).resolve().as_posix()}?mode=ro', uri=True)) as con:
+        scored = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='baseline_scores'").fetchone()
+    result = {'backfill': None if scored else backfill_copy(dest)}
+    result['legacy'] = adopt_legacy(dest)
+    return result
+
+
+def _copy_alerts(src, dst, now):
+    """New non-baseline source alerts, inserted with copy-local ids; matched by mirror_source_id."""
+    cols = [r[1] for r in dst.execute('PRAGMA table_info(alerts)')]
+    if 'mirror_source_id' not in cols:
+        dst.execute('ALTER TABLE alerts ADD COLUMN mirror_source_id INTEGER')
+        # rows copied before this column existed kept their source id as their own id
+        dst.execute('UPDATE alerts SET mirror_source_id=id WHERE alert_type!=?', (bs.ALERT_TYPE,))
+    have = {r[0] for r in dst.execute('SELECT mirror_source_id FROM alerts WHERE mirror_source_id IS NOT NULL')}
+    src_cols = {r[1] for r in src.execute('PRAGMA table_info(alerts)')}
+    cols = [c for c in cols if c in src_cols and c not in ('id', 'day', 'mirror_source_id')]
+    quoted = ','.join(f'"{c}"' for c in cols)
+    rows = [r for r in src.execute(f'SELECT id,{quoted} FROM alerts WHERE alert_type!=? ORDER BY id', (bs.ALERT_TYPE,))
+            if r[0] not in have and not blocked(r[1 + cols.index('created_at')], now)]
+    dst.executemany(f'INSERT INTO alerts ({quoted},mirror_source_id) VALUES ({",".join("?" * (len(cols) + 1))})',
+                    [(*r[1:], r[0]) for r in rows])
+    return rows
+
+
+def _rescore(dest, events, cols, now):
+    """Backend per-account-day recompute for the account-days this pass copied."""
+    key_i, ts_i = cols.index('account_key'), cols.index('timestamp')
+    todo = {}
+    for r in events:
+        day = baseline_scorer.myt_day(r[ts_i])
+        if r[key_i] and day:
+            todo.setdefault((r[key_i], day), r[ts_i])
+    with _on_copy(dest):
+        baseline_scorer.ensure_schema()
+        for (key, _), ts in sorted(todo.items()):
+            baseline_scorer.on_event(key, ts, now)
+    return len(todo)
+
+
 def run_pass(source, dest, now=None, tick_snapshot=True):
     """One mirror pass. Returns the status dict, or None when skipped (source busy). Never deletes anything."""
     now = now or datetime.now(timezone.utc)
     source, dest = Path(source).resolve(), Path(dest).resolve()
     if source == dest or not _marker_ok(dest):
         raise SystemExit('Refusing to run: dest must be a marked workspace copy (workspace-copy.json with not_live: true)')
+    if store._PG:
+        raise SystemExit('Refusing to run: the workspace copy is SQLite only; set DATABASE_URL=sqlite-local')
     try:
         with closing(sqlite3.connect(f'file:{source.as_posix()}?mode=ro', uri=True, timeout=3)) as src, \
                 closing(sqlite3.connect(str(dest), timeout=15)) as dst:
             src.execute('BEGIN')  # one short read transaction
             ev_q, ev_cols, events = _new_rows(src, dst, 'events', 'id', lambda r: not blocked(r['timestamp'], now))
-            al_q, al_cols, alerts = _new_rows(src, dst, 'alerts', 'id', lambda r: not blocked(r['created_at'], now))
             latest = [r[0] for r in src.execute('SELECT timestamp FROM events ORDER BY id DESC LIMIT 200')]
-            src.rollback()
             with dst:
                 dst.executemany(f'INSERT OR IGNORE INTO events ({ev_q}) VALUES ({",".join("?" * len(ev_cols))})', events)
-                dst.executemany(f'INSERT OR IGNORE INTO alerts ({al_q}) VALUES ({",".join("?" * len(al_cols))})', alerts)
+                alerts = _copy_alerts(src, dst, now)
+            src.rollback()
     except sqlite3.OperationalError as error:
         print(f'[mirror] pass skipped: {type(error).__name__}', file=sys.stderr)
         return None
@@ -110,10 +213,10 @@ def run_pass(source, dest, now=None, tick_snapshot=True):
     for value in latest:
         try: stamps.append(bs._stamp(value))
         except (ValueError, TypeError): pass
-    base = baseline_alerts.sync(dest, now)
+    rescored = _rescore(dest, events, ev_cols, now)
     status = {'last_pass_utc': now.isoformat(), 'events_added': len(events), 'alerts_added': len(alerts),
               'source_latest_event_utc': max(stamps).astimezone(timezone.utc).isoformat() if stamps else None,
-              'guard_active': guard_active(now), 'baseline_alerts': base}
+              'guard_active': guard_active(now), 'account_days_rescored': rescored}
     _write_json(dest.parent / STATUS_FILE, status)
     if tick_snapshot:
         try: snapshot(dest.parent, now)

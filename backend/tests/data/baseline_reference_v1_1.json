@@ -1,0 +1,9514 @@
+{
+ "version": "baseline v1.1",
+ "generated": "2026-11-12",
+ "cases": [
+  {
+   "name": "learning_no_history",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 0,
+    "events_today": 3,
+    "partial": false,
+    "score": null,
+    "tier": "Learning",
+    "signals": {},
+    "facts": [
+     "0 of 5 days of history"
+    ]
+   }
+  },
+  {
+   "name": "learning_four_days",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 4,
+    "events_today": 4,
+    "partial": false,
+    "score": null,
+    "tier": "Learning",
+    "signals": {},
+    "facts": [
+     "4 of 5 days of history"
+    ]
+   }
+  },
+  {
+   "name": "exactly_five_days_scored",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 5,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "quiet_normal_low",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "one_new_action",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: PutObject"
+    ]
+   }
+  },
+  {
+   "name": "two_new_actions",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 25,
+    "tier": "Low",
+    "signals": {
+     "new_action": 1.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "2 action kind(s) never seen in the last 28 days: DeleteObject, PutObject"
+    ]
+   }
+  },
+  {
+   "name": "one_new_resource",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p02"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: lab-p02"
+    ]
+   }
+  },
+  {
+   "name": "five_new_resources_more_suffix",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p02"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p03"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p04"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p05"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p06"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 5,
+    "partial": false,
+    "score": 27,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 1.0,
+     "unusual_hours": 0.0,
+     "volume": 0.107,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "5 resource(s) never seen in the last 28 days: lab-p02, lab-p03, lab-p04, +2 more",
+     "5 events today; median active day is 4 (1.2x)"
+    ]
+   }
+  },
+  {
+   "name": "no_resource_today_unavailable",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": null,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: ListBuckets"
+    ]
+   }
+  },
+  {
+   "name": "mixed_empty_and_resource_today",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "ListBuckets",
+     ""
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: ListBuckets"
+    ]
+   }
+  },
+  {
+   "name": "unusual_hours_all_outside",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T19:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T19:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T19:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T19:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "unusual_hours_quarter_outside",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T19:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 10,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.5,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "25% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "usual_widening_lower_edge",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T01:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T01:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T01:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T01:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "usual_widening_upper_edge",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "two_hours_off_is_outside",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T04:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T04:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T04:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T04:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "midnight_wrap_history_23_today_00",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "midnight_wrap_history_00_today_23",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-18T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T16:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T15:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "core_hour_below_five_percent_not_usual",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T07:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T07:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T07:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T07:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T07:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "volume_8x",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 32,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 1.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "32 events today; median active day is 4 (8.0x)"
+    ]
+   }
+  },
+  {
+   "name": "volume_2x",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 8,
+    "partial": false,
+    "score": 5,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.333,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "8 events today; median active day is 4 (2.0x)"
+    ]
+   }
+  },
+  {
+   "name": "volume_drop_zero",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "volume_even_median",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 28,
+    "partial": false,
+    "score": 10,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.667,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "28 events today; median active day is 7 (4.0x)"
+    ]
+   }
+  },
+  {
+   "name": "sensitive_new_builtin",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "secretsmanager/prod-key"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 30,
+    "tier": "Medium",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 1.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: secretsmanager/prod-key",
+     "1 sensitive resource(s) not seen before: secretsmanager/prod-key"
+    ]
+   }
+  },
+  {
+   "name": "sensitive_seen_before_is_zero",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "secretsmanager/prod-key"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "secretsmanager/prod-key"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.333,
+    "facts": []
+   }
+  },
+  {
+   "name": "sensitive_list_confidential_bucket",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [
+    "confidential"
+   ],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-confidential"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 30,
+    "tier": "Medium",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 1.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: lab-confidential",
+     "1 sensitive resource(s) not seen before: lab-confidential"
+    ]
+   }
+  },
+  {
+   "name": "confidential_github_repo_builtin_only",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/confidential-notes"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: org/confidential-notes"
+    ]
+   }
+  },
+  {
+   "name": "novelty_discount_actions_crawler",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "Act1",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "Act2",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "Act3",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "Act4",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "Act5",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "Act6",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "Act7",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "NewAct",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 7,
+    "events_today": 1,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 1.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: NewAct",
+     "This account showed new actions on 4 of 4 recent active days, so novelty is discounted."
+    ]
+   }
+  },
+  {
+   "name": "novelty_discount_resources_crawler",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-1"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-2"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-3"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-4"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-5"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-6"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-7"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-new"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-new2"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 7,
+    "events_today": 2,
+    "partial": false,
+    "score": 5,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.333,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 1.0,
+    "facts": [
+     "2 resource(s) never seen in the last 28 days: tbl-new, tbl-new2",
+     "This account showed new resources on 4 of 4 recent active days, so novelty is discounted.",
+     "2 events today; median active day is 1 (2.0x)"
+    ]
+   }
+  },
+  {
+   "name": "novelty_rate_half",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "Act1",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "Act3",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "Act5",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "Act7",
+     "lab-p01"
+    ],
+    [
+     "2026-10-12T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 8,
+    "events_today": 1,
+    "partial": false,
+    "score": 6,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.24,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.6,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: PutObject",
+     "This account showed new actions on 3 of 5 recent active days, so novelty is discounted."
+    ]
+   }
+  },
+  {
+   "name": "novelty_rate_below_quarter_no_fact",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-12T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-12T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-12T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-12T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "Rare",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 8,
+    "events_today": 1,
+    "partial": false,
+    "score": 12,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.48,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.2,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: PutObject"
+    ]
+   }
+  },
+  {
+   "name": "sensitive_with_resource_discount",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-1"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-2"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-3"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-4"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-5"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-6"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "tbl-7"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "kms/key-1"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 7,
+    "events_today": 1,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 1.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: kms/key-1",
+     "This account showed new resources on 4 of 4 recent active days, so novelty is discounted.",
+     "1 sensitive resource(s) not seen before: kms/key-1"
+    ]
+   }
+  },
+  {
+   "name": "myt_boundary_1630_utc_next_day",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:30:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:30:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:30:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T16:30:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "myt_boundary_1559_utc_same_day",
+   "day": "2026-10-19",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-13T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:59:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:59:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:59:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T15:59:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-19",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "window_28_days_included",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-09-22T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 5,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "window_29_days_excluded",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-09-21T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "OldAct",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 4,
+    "events_today": 4,
+    "partial": false,
+    "score": null,
+    "tier": "Learning",
+    "signals": {},
+    "facts": [
+     "4 of 5 days of history"
+    ]
+   }
+  },
+  {
+   "name": "unparseable_and_naive_timestamps_skipped",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "not-a-time",
+     "aws_cloudtrail",
+     "Weird",
+     "x"
+    ],
+    [
+     "2026-10-20T10:00:00",
+     "aws_cloudtrail",
+     "Naive",
+     "y"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "offset_and_fraction_timestamps",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T10:15:30.123+08:00",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T10:15:30.123+08:00",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T10:15:30.123+08:00",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T10:15:30.123+08:00",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "mixed_sources_action_identity",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "cloudflare_access",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: GetObject"
+    ]
+   }
+  },
+  {
+   "name": "request_parameter_blob_names",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "{\"bucketName\": \"lab-p09\", \"key\": \"k\"}"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: bucketName"
+    ]
+   }
+  },
+  {
+   "name": "twelve_digit_masked_in_facts",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "arn:aws:s3:::lab-123456789012-p09"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: arn:aws:s3:::lab-<account>-p09"
+    ]
+   }
+  },
+  {
+   "name": "long_name_cut_at_60",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 15,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    ]
+   }
+  },
+  {
+   "name": "high_combination",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-confidential-x"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "aws_cloudtrail",
+     "DeleteObject",
+     "iam/role"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 24,
+    "partial": false,
+    "score": 98,
+    "tier": "High",
+    "signals": {
+     "new_action": 1.0,
+     "new_resource": 1.0,
+     "unusual_hours": 1.0,
+     "volume": 0.862,
+     "sensitive_new": 1.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "2 action kind(s) never seen in the last 28 days: DeleteObject, PutObject",
+     "2 resource(s) never seen in the last 28 days: iam/role, lab-confidential-x",
+     "100% of today's events fall outside this account's usual hours (MYT)",
+     "24 events today; median active day is 4 (6.0x)",
+     "1 sensitive resource(s) not seen before: iam/role"
+    ]
+   }
+  },
+  {
+   "name": "medium_combination",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "PutObject",
+     "lab-p02"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 3,
+    "partial": false,
+    "score": 30,
+    "tier": "Medium",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": 0.6,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: PutObject",
+     "1 resource(s) never seen in the last 28 days: lab-p02"
+    ]
+   }
+  },
+  {
+   "name": "sparse_history_with_gaps",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-11T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-11T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-05T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-05T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-09-23T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-09-23T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 5,
+    "events_today": 2,
+    "partial": false,
+    "score": 0,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 0.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": []
+   }
+  },
+  {
+   "name": "today_spans_two_hours_partly_outside",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T03:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T06:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ],
+    [
+     "2026-10-20T06:00:00Z",
+     "aws_cloudtrail",
+     "GetObject",
+     "lab-p01"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 4,
+    "partial": false,
+    "score": 20,
+    "tier": "Low",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "50% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "github_account_scored",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "github_events",
+     "PushEvent",
+     "org/app"
+    ],
+    [
+     "2026-10-20T14:00:00Z",
+     "github_events",
+     "CreateEvent",
+     "org/app"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 1,
+    "partial": false,
+    "score": 35,
+    "tier": "Medium",
+    "signals": {
+     "new_action": 0.6,
+     "new_resource": 0.0,
+     "unusual_hours": 1.0,
+     "volume": 0.0,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 action kind(s) never seen in the last 28 days: CreateEvent",
+     "100% of today's events fall outside this account's usual hours (MYT)"
+    ]
+   }
+  },
+  {
+   "name": "cloudflare_token_scored",
+   "day": "2026-10-20",
+   "extra_sensitive_regex": [],
+   "rows": [
+    [
+     "2026-10-19T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-19T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-18T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-17T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-16T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-15T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-14T02:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/a"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ],
+    [
+     "2026-10-20T13:00:00Z",
+     "cloudflare_access",
+     "GET",
+     "host/workloads/persona-02/demo-1"
+    ]
+   ],
+   "expected": {
+    "day": "2026-10-20",
+    "history_days": 6,
+    "events_today": 8,
+    "partial": false,
+    "score": 40,
+    "tier": "Medium",
+    "signals": {
+     "new_action": 0.0,
+     "new_resource": 0.6,
+     "unusual_hours": 1.0,
+     "volume": 0.333,
+     "sensitive_new": 0.0
+    },
+    "rho_action": 0.0,
+    "rho_resource": 0.0,
+    "facts": [
+     "1 resource(s) never seen in the last 28 days: host/workloads/persona-02/demo-1",
+     "100% of today's events fall outside this account's usual hours (MYT)",
+     "8 events today; median active day is 4 (2.0x)"
+    ]
+   }
+  }
+ ]
+}

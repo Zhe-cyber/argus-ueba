@@ -1,4 +1,5 @@
-import { Frame } from '@/components/WorkspaceUI'
+import { useEffect, useState } from 'react'
+import { Frame, request } from '@/components/WorkspaceUI'
 
 const SIGNALS = [['New action', '0.25', 'An action (per source) not seen in the account’s recent history.'], ['New resource', '0.25', 'A resource not seen before; skipped when the account touched none that day.'], ['Unusual hours', '0.20', 'Share of the day’s events outside the account’s usual hours (usual hour ±1 h, Malaysia time).'], ['Volume', '0.15', 'Events today against the account’s median day; 8× or more counts fully.'], ['Sensitive and new', '0.15', 'A new resource whose name matches a sensitive pattern (identity, keys, admin).']]
 const LIMITS = [
@@ -12,6 +13,20 @@ const LIMITS = [
   'A case keeps the finding as it was when linked. Account activity added to a case is related context, not proof of attribution.'
 ]
 
+function SensitivePatterns() {
+  const [m, setM] = useState(null)
+  useEffect(() => { let on = true; request('/workspace/method').then(v => { if (on) setM(v) }).catch(() => { if (on) setM({ error: true }) }); return () => { on = false } }, [])
+  if (!m) return <p>Loading the active patterns…</p>
+  if (m.error) return <p>The active pattern list is unavailable.</p>
+  const deployed = Object.entries(m.sensitive.deployment || {}).filter(([, globs]) => globs.length)
+  return <>
+    <p>A resource counts as sensitive when its name contains a built-in pattern, or when it matches a pattern in this deployment’s list for that provider (<code>*</code> matches anything).{m.sensitive.deployment_file_loaded ? '' : ' The deployment list could not be read, so only the built-in patterns are active.'}</p>
+    {deployed.length > 0 && <ul className="list-disc pl-5">{deployed.map(([provider, globs]) => <li key={provider}><b>{provider}</b>: {globs.map(g => <code key={g} className="mr-2">{g}</code>)}</li>)}</ul>}
+    <p className="text-xs text-slate-500">Built-in: {m.sensitive.built_in.map(p => <code key={p} className="mr-2">{p}</code>)}</p>
+    <p className="text-xs text-slate-500">Method {m.version}{m.method_sha256 ? ` · binding ${m.method_sha256.slice(0, 12)}` : ''}</p>
+  </>
+}
+
 export default function About() {
   return <Frame title="Method & limits"><div className="max-w-3xl space-y-6 text-sm text-slate-700 leading-relaxed">
     <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">How the risk score works</h2>
@@ -19,6 +34,7 @@ export default function About() {
       <table className="w-full text-left"><thead><tr><th className="py-1 pr-3">Signal</th><th className="py-1 pr-3">Weight</th><th className="py-1">What it looks at</th></tr></thead><tbody>{SIGNALS.map(([name, weight, text]) => <tr key={name} className="border-t align-top"><td className="py-1 pr-3 font-medium">{name}</td><td className="py-1 pr-3">{weight}</td><td className="py-1">{text}</td></tr>)}</tbody></table>
       <p>The score is the weighted average of the signals that apply. An account that regularly does new things has its novelty signals discounted, so routine variety does not look alarming.</p>
       <p><b>Tiers:</b> 60 and above is High, 30–59 Medium, below 30 Low. Each account-day scored Medium or High becomes a finding in the work queue.</p></section>
+    <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">Sensitive resources</h2><SensitivePatterns /></section>
     <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">Where the data comes from</h2>
       <p>Argus collects audit events from AWS CloudTrail, GitHub and Cloudflare Access, and refreshes this workspace about once a minute. The header shows <b>Live</b> while data is recent and the time of the last update otherwise. Accounts that belong to monitoring or provider plumbing are labelled infrastructure and ranked below workloads. Workload groups combine the accounts of one lab workload across providers (highest member score, plus 10 when two sources each score 30 or more).</p></section>
     <section className="bg-white rounded-xl border p-5 space-y-3"><h2 className="font-semibold text-base text-slate-900">What “provider-confirmed” means</h2>

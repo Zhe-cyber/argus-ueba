@@ -47,6 +47,7 @@ def groups(db, groups_path, day=None):
     day = datetime.strptime(day, '%Y-%m-%d').date() if day else bs.latest_day(db)
     out, unknown, personas = [], [], _persona_labels()
     declared = system_accounts.declared(db)
+    scores = dict(bs._scores(db, 'WHERE day=?', (day.isoformat(),))) if day else {}  # stored backend scores
     for g in _read(groups_path):
         members, facts = [], []
         for key in g['members']:
@@ -54,7 +55,7 @@ def groups(db, groups_path, day=None):
             if a is None:
                 unknown.append({'group': g['group'], 'account_key': key})  # reported, never fatal
                 continue
-            r = bs.score_day(a['days'], day) if day in a['days'] else {'score': None, 'tier': 'No activity', 'facts': []}
+            r = scores.get(key) or {'score': None, 'tier': 'No activity', 'facts': []}
             members.append({'account_key': key, 'account_label': a['label'], 'source': a['source'],
                             'score': r['score'], 'tier': r['tier'], 'day': day.isoformat() if day else None,
                             'infrastructure': system_accounts.is_infrastructure(a['label'], a['kind'], a['source'], declared)})

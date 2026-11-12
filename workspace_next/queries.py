@@ -10,7 +10,7 @@ from backend import alert_store, event_store as store
 from workspace_next import case_store as cases
 from workspace_next.finding_context import context,object_value
 
-from workspace_next import baseline_score, baseline_alerts
+from workspace_next import baseline_score
 SCAN_LIMIT = 10000
 ORIGINS = {'rarity_spike':'rule','anomalous_behavior':'rule',
            'ae_critical':'model','new_user':'observation','baseline_risk':'baseline'}
@@ -58,7 +58,7 @@ def page(rows,limit,before):
 def _baseline(row):
     """Baseline {score,tier} for the finding's account on its MYT day (event time when known, else created_at)."""
     try:
-        if row['alert_type']==baseline_alerts.ALERT_TYPE: day=datetime.strptime(row['details']['day'],'%Y-%m-%d').date()
+        if row['alert_type']==baseline_score.ALERT_TYPE: day=datetime.strptime(row['details']['day'],'%Y-%m-%d').date()
         else: day=stamp(row.get('rule_event_time_utc') or row['created_at']).astimezone(baseline_score.MYT).date()
         return baseline_score.lookup(store.DB_PATH,row['user_id'],day)
     except (OSError,ValueError,KeyError,TypeError,sqlite3.Error): return {'tier':'Learning'}
@@ -83,11 +83,7 @@ def findings(limit=50,before=None,category='security',status='Open',provider=Non
     with store._db() as con:
         cur=store._cursor(con)
         cur.execute(f'SELECT * FROM alerts{where} ORDER BY id DESC LIMIT {store._PH}',(*values,SCAN_LIMIT+1))
-        raw=store._rows(cur)
-        try:
-            cur.execute(f'SELECT * FROM workspace_baseline_alerts{where} ORDER BY id DESC LIMIT {store._PH}',(*values,SCAN_LIMIT+1))
-            raw+=[baseline_alerts.as_alert(r) for r in store._rows(cur)]
-        except sqlite3.OperationalError: pass  # table appears on first baseline sync
+        raw=store._rows(cur)  # rule and baseline findings (alert_type='baseline_risk', written by the backend scorer)
         cur.execute('SELECT case_id,target FROM analyst_case_links WHERE kind=\'finding\'')
         linked={}
         for item in store._rows(cur): linked.setdefault(item['target'],[]).append(item['case_id'])
@@ -128,11 +124,9 @@ def findings(limit=50,before=None,category='security',status='Open',provider=Non
 def finding(finding_id):
     with store._db() as con:
         cur=store._cursor(con)
-        row=baseline_alerts.get(cur,finding_id,store._PH)
-        if row is None:
-            cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}',(finding_id,))
-            row=cur.fetchone()
-        if row is None or (finding_id>=baseline_alerts.ID_OFFSET and row['alert_type']!=baseline_alerts.ALERT_TYPE): raise cases.CaseNotFound('Finding not found')
+        cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}',(finding_id,))
+        row=cur.fetchone()
+        if row is None: raise cases.CaseNotFound('Finding not found')
         row=dict(row); row['details']=_json(row['details'])
         row['origin']=ORIGINS.get(row['alert_type'],'unverified')
         row['trigger_evidence']='baseline_account_day' if row['origin']=='baseline' else 'not_bound_legacy_signal'
@@ -204,19 +198,16 @@ def set_status(finding_id,status,analyst,reason):
     with store.transaction():
         with store._db() as con:
             cur=store._cursor(con)
-            baseline_alerts.ensure(cur)
-            if finding_id>=baseline_alerts.ID_OFFSET:
-                row=baseline_alerts.get(cur,finding_id,store._PH)
-                if row is None: raise cases.CaseNotFound('Finding not found')
+            cur.execute(cases.AUDIT_DDL)
+            cur.execute(f'SELECT status,alert_type,details FROM alerts WHERE id={store._PH}',(finding_id,))
+            row=cur.fetchone()
+            if row is None: raise cases.CaseNotFound('Finding not found')
+            row=dict(row)
+            alert_store.update_status(finding_id,status)  # shares this transaction's connection
+            if row['alert_type']==baseline_score.ALERT_TYPE:
+                # the backend scorer never overrides an analyst; it only auto-resolves untouched Open findings
                 details=_json(row['details']); details.pop('auto_resolved',None); details['analyst_touched']=True
-                cur.execute(f'UPDATE workspace_baseline_alerts SET status={store._PH},resolved_at={store._PH},details={store._PH} WHERE id={store._PH}',
-                            (status,now if terminal else None,json.dumps(details),finding_id-baseline_alerts.ID_OFFSET))
-            else:
-                cur.execute(f'SELECT status FROM alerts WHERE id={store._PH}',(finding_id,))
-                row=cur.fetchone()
-                if row is None: raise cases.CaseNotFound('Finding not found')
-                row=dict(row)
-                alert_store.update_status(finding_id,status)  # shares this transaction's connection
+                cur.execute(f'UPDATE alerts SET details={store._PH} WHERE id={store._PH}',(json.dumps(details),finding_id))
             cur.execute(f'INSERT INTO workspace_finding_audit (finding_id,old_status,new_status,analyst,reason,at_utc) VALUES ({",".join([store._PH]*6)})',
                         (finding_id,row['status'],status,analyst,reason,now))
     return {'id':finding_id,'status':status,'resolved_at':now if terminal else None,'previous_status':row['status']}

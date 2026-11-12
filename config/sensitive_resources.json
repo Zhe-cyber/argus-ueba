@@ -1,0 +1,1 @@
+{"version": 1, "providers": {"aws_cloudtrail": ["*-confidential", "*confidential*"], "github_events": [], "cloudflare_access": []}}

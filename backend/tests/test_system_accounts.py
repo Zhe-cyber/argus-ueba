@@ -5,8 +5,8 @@ import sqlite3
 import pytest
 
 from backend import alert_store, event_store as events
-from backend.tests.test_baseline_alerts import put
-from workspace_next import baseline_alerts as ba, case_store as cases, live_mirror as lm, queries, system_accounts as sa
+from backend.tests.test_baseline_alerts import put, sync
+from workspace_next import case_store as cases, live_mirror as lm, queries, system_accounts as sa
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def test_infrastructure_high_is_not_review_first_and_sorts_last(db, tmp_path):
     with sqlite3.connect(db) as con:
         con.execute("UPDATE events SET account_label='declared-collector' WHERE account_key='infra'")
         con.execute("UPDATE events SET account_label='workload-a' WHERE account_key='work'")
-    ba.sync(db)
+    sync()
     out = queries.findings(status='All')
     base = [r for r in out['findings'] if r['origin'] == 'baseline']
     by = {r['user_id']: r for r in base}
@@ -61,7 +61,7 @@ def test_service_rule_needs_no_file(db):
         + [('s', '2026-10-10T02:00:00Z', 'Delete', 'secretsmanager/prod-key')] * 60)
     with sqlite3.connect(db) as con:
         con.execute("UPDATE events SET account_label='x.amazonaws.com', account_kind='service'")
-    ba.sync(db)
+    sync()
     row = [r for r in queries.findings(status='All')['findings'] if r['origin'] == 'baseline'][0]
     assert row['infrastructure'] and row['triage'] == 'infrastructure_context'
 

@@ -12,7 +12,8 @@ from uuid import uuid4
 import pytest
 
 
-def test_postgres_atomic_ingestion():
+def _run_isolated(code, extra_env=None):
+    """Run `code` in a subprocess against a fresh schema of the guarded local test database, then drop it."""
     url = os.environ.get('ARGUS_TEST_PG_URL')
     if not url:
         pytest.skip('Set ARGUS_TEST_PG_URL for an isolated local PostgreSQL integration run')
@@ -31,7 +32,63 @@ def test_postgres_atomic_ingestion():
         query = dict(parse_qsl(parsed.query))
         query['options'] = '-csearch_path=' + schema
         isolated_url = urlunsplit(parsed._replace(query=urlencode(query)))
-        code = r'''
+        environment = dict(os.environ, DATABASE_URL=isolated_url, ARGUS_MODE='live', DEMO_MODE='false', **(extra_env or {}))
+        result = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[2],
+                                env=environment, capture_output=True, text=True, timeout=90)
+        assert result.returncode == 0, result.stdout + result.stderr
+    finally:
+        # This schema was created above in the guarded local test database only.
+        with con.cursor() as cur:
+            cur.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
+        con.close()
+
+
+def test_postgres_baseline_scores_and_unique_guard():
+    """L8: baseline_scores upsert, the alerts (alert_type,user_id,day) guard and the ingest hook on PostgreSQL."""
+    _run_isolated(r'''
+from fastapi.testclient import TestClient
+import psycopg2
+from backend import baseline_scorer as scorer, event_store as db, main
+assert db._PG is True
+main.cloud_ae_scorer.score_user=lambda *args: None
+def ev(n, when, bucket='lab-p01'):
+    return {'source':'aws_cloudtrail','source_account_id':'123456789012','event':{'eventID':f'pg-{n}','eventTime':when,
+        'eventName':'GetObject','requestParameters':{'bucketName':bucket},
+        'userIdentity':{'type':'IAMUser','userName':'pg-user','principalId':'AIDAPGTEST','accountId':'123456789012'}}}
+with TestClient(main.app) as client:
+    db.init_db(); scorer.ensure_schema(); scorer.ensure_schema()  # idempotent migrations
+    for d in range(10, 17):
+        for i in range(3):
+            assert client.post('/ingest', json=ev(f'{d}{i}', f'2026-10-{d:02d}T02:0{i}:00Z')).status_code == 200
+    for i in range(6):
+        assert client.post('/ingest', json=ev(f's{i}', f'2026-10-17T13:0{i}:00Z', f'secret-{i}')).status_code == 200
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n, MIN(scored_mode) AS m FROM baseline_scores")
+        row = cur.fetchone(); assert row['n'] == 8 and row['m'] == 'ingest', row
+        cur.execute("SELECT user_id, severity FROM alerts WHERE alert_type='baseline_risk' AND day='2026-10-17'")
+        found = cur.fetchall(); assert len(found) == 1 and found[0]['severity'] in ('Medium', 'High'), found
+        key = found[0]['user_id']
+    try:
+        with db._db() as con:
+            db._cursor(con).execute("INSERT INTO alerts (user_id,alert_type,severity,title,created_at,day) "
+                                    "VALUES (%s,'baseline_risk','High','dup','x','2026-10-17')", (key,))
+        raise AssertionError('unique guard missing')
+    except psycopg2.IntegrityError:
+        pass
+    from backend import alert_store
+    alert_store.create_alert(key, 'rarity_spike', 'High', 'a', {}); alert_store.create_alert(key, 'rarity_spike', 'High', 'b', {})
+    before = scorer.backfill()
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n FROM baseline_scores WHERE scored_mode='backfill'")
+        assert cur.fetchone()['n'] == 8
+print('Postgres baseline table, upsert, unique guard and backfill passed')
+''', {'ARGUS_ACCOUNT_KEYS': 'source-principal-v1'})
+
+
+def test_postgres_atomic_ingestion():
+    _run_isolated(r'''
 from concurrent.futures import ThreadPoolExecutor
 from fastapi.testclient import TestClient
 from backend import event_store as db, main
@@ -81,13 +138,4 @@ def insert(_):
 with ThreadPoolExecutor(max_workers=4) as pool:
     assert list(pool.map(insert,range(8))).count(True)==1
 print('Postgres migration, receipts, null scores, rollback, alert savepoints and concurrent inserts passed')
-'''
-        environment = dict(os.environ, DATABASE_URL=isolated_url, ARGUS_MODE='live', DEMO_MODE='false')
-        result = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[2],
-                                env=environment, capture_output=True, text=True, timeout=90)
-        assert result.returncode == 0, result.stdout + result.stderr
-    finally:
-        # This schema was created above in the guarded local test database only.
-        with con.cursor() as cur:
-            cur.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
-        con.close()
+''')

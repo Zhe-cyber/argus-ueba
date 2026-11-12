@@ -10,8 +10,8 @@ Flags
 1. first_time_action   True if this (user, action) pair has never been seen
                        in the event store before this event.
 2. new_ip              True if this source IP has never appeared for this user.
-3. off_hours           True if the event timestamp falls outside Mon–Fri 07:00–19:00
-                       UTC (conservative window; catches true after-hours use).
+3. off_hours           True if the event falls outside the deployment's business hours
+                       (settings below; default Mon–Fri 08:00–18:00 Asia/Kuala_Lumpur).
 4. high_volume         True if the user has produced more than VOLUME_THRESHOLD
                        events in the past VOLUME_WINDOW_HOURS hours.
 5. sensitive_resource  True if the resource path / ARN / object name matches
@@ -32,9 +32,12 @@ Usage
 """
 from __future__ import annotations
 
+import logging
+import os
 import re
 from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -44,15 +47,59 @@ from typing import Any
 VOLUME_THRESHOLD: int = 50
 VOLUME_WINDOW_HOURS: int = 1
 
-# Off-hours definition (UTC): flag events outside Mon–Fri 07:00–19:00.
-# NOTE: this window (07–19) is intentionally WIDER than the AE feature
-# window in feature_extractor.py (_BIZ_START=7, _BIZ_END=18). The AE window
-# must stay frozen to match the trained model's feature semantics; the
-# rarity flag is a conservative analyst-facing signal and tolerates the
-# extra hour. Both are replaced by learned per-user active-hours profiles
-# in FYP2 (plan item #4).
-OFF_HOURS_START: int = 7   # inclusive
-OFF_HOURS_END: int = 19    # exclusive (so 19:00 is off-hours)
+# Business hours (L8 WP2): deployment settings for the rule-based off_hours flag and the
+# "outside business hours" finding (anomalous_behavior in backend/main.py). Defaults are the SME's
+# Malaysian office week:
+#   ARGUS_BUSINESS_TZ=Asia/Kuala_Lumpur  ARGUS_BUSINESS_DAYS=Mon-Fri  ARGUS_BUSINESS_HOURS=08:00-18:00
+# HOURS may wrap midnight (e.g. 22:00-06:00); the weekday checked is the local day of the event.
+# TWO WINDOWS BY DESIGN: the AE feature window in feature_extractor.py (_BIZ_START=7, _BIZ_END=18,
+# on the timestamp's own clock) is FROZEN with the trained model's 71-dim feature contract and is
+# NOT read from these settings. This rule window is analyst-facing and configurable. Neither feeds
+# the baseline risk score: its unusual_hours signal uses each account's own usual hours.
+# (Before L8 this flag used Mon–Fri 07:00–19:00 UTC.)
+_DAY_NAMES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+_DEFAULT_BUSINESS = ('Asia/Kuala_Lumpur', 'Mon-Fri', '08:00-18:00')
+
+
+def parse_business_hours(tz: str, days: str, hours: str):
+    """(ZoneInfo, {weekday ints}, (start_minute, end_minute)); raises ValueError when malformed."""
+    try:
+        zone = ZoneInfo(tz.strip())
+    except Exception as exc:  # ZoneInfoNotFoundError, ValueError
+        raise ValueError('unknown time zone') from exc
+    allowed = set()
+    for part in days.lower().replace(' ', '').split(','):
+        lo, _, hi = part.partition('-')
+        a, b = _DAY_NAMES.index(lo[:3]), _DAY_NAMES.index((hi or lo)[:3])
+        allowed |= {(a + i) % 7 for i in range((b - a) % 7 + 1)}
+    m = re.fullmatch(r'(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})', hours.strip())
+    if not m:
+        raise ValueError('hours must look like 08:00-18:00')
+    h1, m1, h2, m2 = map(int, m.groups())
+    if not (h1 < 24 and h2 <= 24 and m1 < 60 and m2 < 60) or (h1, m1) == (h2, m2):
+        raise ValueError('hours out of range')
+    return zone, allowed, (h1 * 60 + m1, h2 * 60 + m2)
+
+
+def _business_settings():
+    raw = tuple(os.getenv(k, d) for k, d in zip(('ARGUS_BUSINESS_TZ', 'ARGUS_BUSINESS_DAYS', 'ARGUS_BUSINESS_HOURS'),
+                                                 _DEFAULT_BUSINESS))
+    try:
+        return parse_business_hours(*raw)
+    except ValueError as exc:
+        logging.getLogger(__name__).warning('Business-hours settings invalid (%s); using %s', exc, _DEFAULT_BUSINESS)
+        return parse_business_hours(*_DEFAULT_BUSINESS)
+
+
+BUSINESS_TZ, BUSINESS_DAYS, BUSINESS_MINUTES = _business_settings()  # read once at start
+
+
+def within_business_hours(dt: datetime) -> bool:
+    """True when an aware datetime falls inside the configured business days and hours (local clock)."""
+    local = dt.astimezone(BUSINESS_TZ)
+    minute, (start, end) = local.hour * 60 + local.minute, BUSINESS_MINUTES
+    inside = start <= minute < end if start < end else (minute >= start or minute < end)
+    return inside and local.weekday() in BUSINESS_DAYS
 
 # Regex patterns for sensitive resources (case-insensitive match on the
 # resource field of the normalised event).  Covers AWS, Azure, GCP, and
@@ -222,7 +269,7 @@ def _flag_new_ip(
 
 def _flag_off_hours(ts_raw: str) -> bool:
     """
-    True if the event falls outside Mon–Fri 07:00–19:00 UTC.
+    True if the event falls outside the configured business hours (see BUSINESS_* above).
 
     Accepts ISO-8601 timestamps (with or without timezone).
     Returns False on parse failure so ingestion never crashes.
@@ -245,18 +292,10 @@ def _flag_off_hours(ts_raw: str) -> bool:
             else:
                 return False
 
-        # Normalise to UTC
+        # Naive timestamps are taken as UTC (provider audit logs are UTC)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            dt = dt.astimezone(timezone.utc)
-
-        # Weekend (Mon=0 … Sun=6)
-        if dt.weekday() >= 5:
-            return True
-
-        # Outside 07:00–19:00 UTC
-        return not (OFF_HOURS_START <= dt.hour < OFF_HOURS_END)
+        return not within_business_hours(dt)
 
     except Exception:
         return False

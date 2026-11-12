@@ -51,7 +51,9 @@ def test_pass_copies_new_rows_second_pass_adds_none_and_source_untouched(pair):
     first = lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
     assert first['events_added'] == 28 and first['guard_active'] is True
     assert count(dest, 'SELECT COUNT(*) FROM events') == 28
-    assert count(dest, 'SELECT COUNT(*) FROM workspace_baseline_alerts') == 1  # sync ran
+    assert first['account_days_rescored'] == 7  # backend scorer ran on the copied account-days
+    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE alert_type='baseline_risk'") == 1
+    assert count(dest, 'SELECT COUNT(*) FROM baseline_scores') == 7
     second = lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
     assert second['events_added'] == 0 and second['alerts_added'] == 0
     assert digest(source) == before
@@ -85,13 +87,41 @@ def test_existing_copy_rows_and_analyst_state_are_never_overwritten(pair):
         con.execute("INSERT INTO alerts (id,user_id,alert_type,severity,title,created_at) VALUES (5,'a','new_user','Low','t','2026-10-01T00:00:00Z')")
     lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
     with sqlite3.connect(dest) as con:
-        con.execute("UPDATE alerts SET status='Resolved' WHERE id=5")
-        con.execute("UPDATE workspace_baseline_alerts SET status='False Positive'")
+        con.execute("UPDATE alerts SET status='Resolved' WHERE mirror_source_id=5")
+        con.execute("UPDATE alerts SET status='False Positive' WHERE alert_type='baseline_risk'")
     with sqlite3.connect(source) as con:
         con.execute("UPDATE alerts SET status='Open',title='changed' WHERE id=5")
     lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
-    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE id=5 AND status='Resolved' AND title='t'") == 1
-    assert count(dest, "SELECT COUNT(*) FROM workspace_baseline_alerts WHERE status='False Positive'") == 1
+    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE mirror_source_id=5 AND status='Resolved' AND title='t'") == 1
+    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE alert_type='baseline_risk' AND status='False Positive'") == 1
+
+
+def test_source_alert_ids_never_collide_with_copy_findings_and_source_baseline_rows_are_not_copied(pair):
+    source, dest = pair
+    lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)  # the copy's own baseline finding takes id 1
+    with sqlite3.connect(source) as con:
+        con.execute("INSERT INTO alerts (id,user_id,alert_type,severity,title,created_at) VALUES (1,'a','rarity_spike','High','r','2026-10-01T00:00:00Z')")
+        con.execute("INSERT INTO alerts (id,user_id,alert_type,severity,title,created_at,day) VALUES (2,'a','baseline_risk','High','b','2026-10-01T00:00:00Z','2026-10-10')")
+    assert lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)['alerts_added'] == 1
+    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE mirror_source_id=1 AND alert_type='rarity_spike'") == 1
+    assert count(dest, "SELECT COUNT(*) FROM alerts WHERE alert_type='baseline_risk'") == 1
+    assert lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)['alerts_added'] == 0
+
+
+def test_legacy_copy_findings_are_adopted(pair):
+    source, dest = pair
+    lm.run_pass(source, dest, BEFORE_GUARD, tick_snapshot=False)
+    new_id = count(dest, "SELECT id FROM alerts WHERE alert_type='baseline_risk'")
+    with sqlite3.connect(dest) as con:
+        con.execute('''CREATE TABLE workspace_baseline_alerts (id INTEGER PRIMARY KEY, user_id TEXT, alert_type TEXT, severity TEXT,
+            title TEXT, details TEXT, status TEXT, created_at TEXT, resolved_at TEXT, account_key TEXT, day TEXT)''')
+        con.execute("INSERT INTO workspace_baseline_alerts VALUES (3,'a','baseline_risk','High','t','{}','False Positive','x','y','a','2026-10-10')")
+        con.execute(cases.AUDIT_DDL)
+        con.execute("INSERT INTO workspace_finding_audit (finding_id,old_status,new_status,analyst,reason,at_utc) VALUES (1000003,'Open','False Positive','me','r','t')")
+    assert lm.adopt_legacy(dest) == {'moved': 1, 'orphaned': 0}
+    assert count(dest, f"SELECT status FROM alerts WHERE id={new_id}") == 'False Positive'
+    assert count(dest, 'SELECT finding_id FROM workspace_finding_audit') == new_id
+    assert lm.adopt_legacy(dest) is None  # renamed; runs once
 
 
 def test_refuses_unmarked_or_live_dest(pair, tmp_path):

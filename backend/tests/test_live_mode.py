@@ -45,7 +45,7 @@ def test_empty_live_startup_without_benchmark_files(live_client):
     stats = live_client.get('/stats').json()
     assert stats['total_users'] == 0
     assert stats['insiders'] is None
-    assert stats['high_threshold'] == main.LIVE_HIGH_THRESHOLD
+    assert stats['high_threshold'] == main.BASELINE_HIGH  # L8: live risk is the baseline score tier
     assert live_client.get('/users').json()['users'] == []
 
 
@@ -72,20 +72,21 @@ def test_cloud_ingest_to_list_detail_stats_and_investigation(live_client):
     user = listing['users'][0]
     assert user['data_source'] == 'cloud'
     assert user['is_insider'] is None and user['scenario'] is None
-    assert user['risk_level'] == 'High'
+    # L8: risk is the baseline tier; without source-scoped account keys there is no baseline (Unknown),
+    # and the AE value stays a separate diagnostic field.
+    assert user['risk_level'] == 'Unknown' and user['ae_score'] == 0.85 and user['baseline_score'] is None
     detail = live_client.get('/users/cloud-alice')
     assert detail.status_code == 200
     assert detail.json()['ae_score'] == 0.85
     stats = live_client.get('/stats').json()
-    assert stats['total_users'] == stats['high_risk'] == 1
+    assert stats['total_users'] == stats['unscored_users'] == 1 and stats['high_risk'] == 0
     assert live_client.get('/').json()['users'] == 1
     assert live_client.get('/users?source=cert').json()['total'] == 0
     assert live_client.get('/users?q=missing').json()['total'] == 0
     assert live_client.get('/users?risk=Low').json()['total'] == 0
     assert live_client.get('/users/cloud-alice/events').json()[0]['source'] == 'aws_cloudtrail'
     queued = live_client.post('/investigations/bulk').json()
-    assert queued['created'] == queued['total_high_risk'] == 1
-    assert live_client.post('/investigations/bulk').json()['skipped'] == 1
+    assert queued['created'] == queued['total_high_risk'] == 0
 
 
 def test_unavailable_model_is_unknown_not_low(live_client, monkeypatch):

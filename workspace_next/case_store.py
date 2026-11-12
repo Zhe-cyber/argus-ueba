@@ -9,12 +9,17 @@ import json
 from uuid import uuid4, uuid5, NAMESPACE_URL
 
 from backend import event_store as store
-from workspace_next import baseline_alerts
 
 STATUSES = {'New', 'In progress', 'Closed'}
 RESOLUTIONS = {'Security incident confirmed', 'Expected or authorized activity',
                'Detection false positive', 'Insufficient evidence'}
 PRIORITIES = {'Low', 'Medium', 'High', 'Critical'}
+
+
+# Analyst dispositions of findings (rule or baseline), written by queries.set_status.
+AUDIT_DDL = '''CREATE TABLE IF NOT EXISTS workspace_finding_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id INTEGER NOT NULL, old_status TEXT,
+    new_status TEXT NOT NULL, analyst TEXT NOT NULL, reason TEXT NOT NULL, at_utc TEXT NOT NULL)'''
 
 
 class CaseConflict(ValueError):
@@ -62,6 +67,7 @@ def init_db():
                 request_key TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
                 case_id TEXT NOT NULL REFERENCES analyst_cases(id), response_json TEXT NOT NULL)''',
             'CREATE INDEX IF NOT EXISTS idx_case_updated ON analyst_cases(updated_at,id)',
+            AUDIT_DDL,
         ]:
             cur.execute(ddl)
 
@@ -284,10 +290,8 @@ def link(case_id, expected_version, actor, request_key, kind, target, reason):
         elif kind == 'finding':
             if not target.isdecimal():
                 raise ValueError('Invalid finding id')
-            found = baseline_alerts.get(cur, int(target), store._PH)
-            if found is None:
-                cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}', (int(target),))
-                found = cur.fetchone()
+            cur.execute(f'SELECT * FROM alerts WHERE id={store._PH}', (int(target),))
+            found = cur.fetchone()
             if found is None:
                 raise CaseNotFound('Finding not found')
             snapshot = dict(found)

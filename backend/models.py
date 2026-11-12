@@ -84,7 +84,10 @@ class UserSummary(BaseModel):
     source_account_id: Optional[str] = None
     account_kind: Optional[str] = None
     ae_score: Optional[float]
-    risk_level: str = Field(..., description="High, Medium, Low, or Unknown when scoring is unavailable")
+    risk_level: str = Field(..., description="High, Medium, Low, or Unknown when scoring is unavailable. "
+                            "Live mode: the baseline risk score tier of the latest scored day (or Learning)")
+    baseline_score: Optional[int] = Field(None, description="Live mode: baseline risk score v1.1 (0-100) of baseline_day")
+    baseline_day: Optional[str] = Field(None, description="Live mode: MYT day of baseline_score")
     is_insider: Optional[int] = Field(..., ge=0, le=1, description="Benchmark ground truth; null for live accounts")
     scenario: Optional[int] = Field(..., ge=0, le=3, description="CERT scenario; null for live accounts")
     data_source: str = Field("cert", description="'cert' or 'cloud'")
@@ -93,7 +96,7 @@ class UserSummary(BaseModel):
     @field_validator("risk_level")
     @classmethod
     def risk_level_must_be_valid(cls, v: str) -> str:
-        allowed = {"High", "Medium", "Low", "Unknown"}
+        allowed = {"High", "Medium", "Low", "Unknown", "Learning"}
         if v not in allowed:
             raise ValueError(f"risk_level must be one of {allowed}, got {v!r}")
         return v
@@ -201,10 +204,10 @@ class Stats(BaseModel):
     medium_risk:      int   = Field(..., ge=0, description="Users at Medium risk level")
     low_risk:         int   = Field(..., ge=0, description="Users at Low risk level")
     insiders:         Optional[int] = Field(..., ge=0, description="Benchmark ground-truth count; null in live mode")
-    high_threshold:   float = Field(..., description="AE cutoff for High risk in the active mode")
-    medium_threshold: float = Field(..., description="AE cutoff for Medium risk in the active mode")
+    high_threshold:   float = Field(..., description="Cutoff for High risk in the active mode (live: baseline score 60)")
+    medium_threshold: float = Field(..., description="Cutoff for Medium risk in the active mode (live: baseline score 30)")
     application_mode: str = Field('benchmark', description="live, benchmark or demo")
-    unscored_users: int = Field(0, ge=0, description="Accounts without an available AE score")
+    unscored_users: int = Field(0, ge=0, description="Live: accounts without a baseline score (Learning or Unknown)")
     scoring_status: Optional[CloudScoringStatus] = None
 
 

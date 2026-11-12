@@ -33,6 +33,7 @@ from backend import identity_links
 from backend import ai_suggest
 from backend import event_store as evstore
 from backend import alert_store as astore
+from backend import baseline_scorer
 from backend import feature_extractor as fex
 from backend.ae_scorer import ae_scorer, cloud_ae_scorer, CLOUD_SOURCES
 from backend.models import (
@@ -84,6 +85,19 @@ def _live_risk_tier(ae_live: float | None) -> str:
     if ae_live >= LIVE_MEDIUM_THRESHOLD:
         return "Medium"
     return "Low"
+
+
+# Live mode: the risk shown for an account is the baseline risk score v1.1 tier of its latest scored
+# MYT day (backend.baseline_scorer). The AE value stays a separate diagnostic field (ae_score).
+BASELINE_HIGH, BASELINE_MEDIUM = 60, 30
+
+
+def _user_risk(user_id: str, ae_live: float | None, baseline: dict) -> tuple[str, dict | None]:
+    """(risk_level, baseline row or None). Outside live mode the legacy AE tier is unchanged."""
+    if not LIVE_MODE:
+        return _live_risk_tier(ae_live), None
+    row = baseline.get(user_id)
+    return (row['tier'], row) if row else ('Unknown', None)
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +345,17 @@ def _maybe_alert(
         )
 
 
+def _update_baseline(account_key: str, timestamp: str) -> None:
+    """Recompute the event's account-day score and baseline finding (backend.baseline_scorer.on_event).
+    Best effort inside its own savepoint, like alerts: a scoring failure never blocks collection; the
+    stored scores can always be rebuilt with `python -m backend.baseline_scorer --backfill`."""
+    try:
+        with evstore.savepoint():
+            baseline_scorer.on_event(account_key, timestamp)
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning("Baseline score update failed: %s", type(exc).__name__)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -378,7 +403,7 @@ async def list_users(
 
     allowed_risks = {'High', 'Medium', 'Low'}
     if LIVE_MODE:
-        allowed_risks.add('Unknown')
+        allowed_risks |= {'Unknown', 'Learning'}
     if risk is not None and risk not in allowed_risks:
         raise HTTPException(
             status_code=400,
@@ -411,13 +436,14 @@ async def list_users(
         # Map each event-store user -> their first/primary source (aws_cloudtrail,
         # azure_ad, github_events, …) so the dashboard can show WHICH source.
         src_map = _cloud_source_map()
+        baseline = baseline_scorer.latest_by_account() if LIVE_MODE else {}
         for row in _mode_live_scores():
             uid = str(row["user_id"])
             if uid in parquet_ids:
                 continue  # already represented in CERT parquet
             value = row.get('ae_live')
             ae_live = float(value) if value is not None else (None if LIVE_MODE else 0.0)
-            rl = _live_risk_tier(ae_live)
+            rl, base = _user_risk(uid, ae_live, baseline)
             if risk is not None and rl != risk:
                 continue
             combined.append(UserSummary(
@@ -428,6 +454,8 @@ async def list_users(
                 account_kind=directory.get(uid, {}).get('account_kind'),
                 ae_score=round(ae_live, 6) if ae_live is not None else None,
                 risk_level=rl,
+                baseline_score=base['score'] if base else None,
+                baseline_day=base['day'] if base else None,
                 is_insider=None if LIVE_MODE else 0,
                 scenario=None if LIVE_MODE else 0,
                 data_source="cloud",
@@ -444,8 +472,8 @@ async def list_users(
     # cloud High >= 0.7), so a raw-score sort interleaves the two incompatible
     # scales. Sorting by tier surfaces all High entities together — which is
     # what an analyst wants — and keeps the badges monotonic down the list.
-    _RISK_RANK = {"High": 0, "Medium": 1, "Unknown": 2, "Low": 3}
-    combined.sort(key=lambda u: (_RISK_RANK.get(u.risk_level, 4), -(u.ae_score or 0)))
+    _RISK_RANK = {"High": 0, "Medium": 1, "Learning": 2, "Unknown": 2, "Low": 3}
+    combined.sort(key=lambda u: (_RISK_RANK.get(u.risk_level, 4), -(u.baseline_score or 0), -(u.ae_score or 0)))
     total = len(combined)
     page  = combined[offset: offset + limit]
 
@@ -549,8 +577,7 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
         if not LIVE_MODE:
             ae_live = ae_live or 0.0
 
-    # Determine risk tier from AE score
-    risk_level = _live_risk_tier(ae_live)
+    risk_level, base = _user_risk(user_id, ae_live, baseline_scorer.latest_by_account() if LIVE_MODE else {})
 
     identity_info = evstore.account_directory().get(user_id, {}) if accounts.enabled() else {}
     return UserDetail(
@@ -564,6 +591,8 @@ def _event_store_user_detail(user_id: str) -> UserDetail | None:
         scoring_status=cloud_ae_scorer.readiness() if LIVE_MODE else None,
         ae_score=round(ae_live, 6) if ae_live is not None else None,
         risk_level=risk_level,
+        baseline_score=base['score'] if base else None,
+        baseline_day=base['day'] if base else None,
         is_insider=None if LIVE_MODE else 0,
         scenario=None if LIVE_MODE else 0,
         data_source="cloud",
@@ -679,13 +708,14 @@ async def get_stats() -> Stats:
 
     if LIVE_MODE:
         scores = _mode_live_scores()
-        tiers = [_live_risk_tier(row.get('ae_live')) for row in scores]
+        baseline = baseline_scorer.latest_by_account()
+        tiers = [_user_risk(str(row['user_id']), row.get('ae_live'), baseline)[0] for row in scores]
         return Stats(
             total_users=len(scores), high_risk=tiers.count('High'),
             medium_risk=tiers.count('Medium'), low_risk=tiers.count('Low'),
-            insiders=None, high_threshold=LIVE_HIGH_THRESHOLD,
-            medium_threshold=LIVE_MEDIUM_THRESHOLD, application_mode=ARGUS_MODE,
-            unscored_users=tiers.count('Unknown'),
+            insiders=None, high_threshold=BASELINE_HIGH,
+            medium_threshold=BASELINE_MEDIUM, application_mode=ARGUS_MODE,
+            unscored_users=tiers.count('Unknown') + tiers.count('Learning'),
             scoring_status=cloud_ae_scorer.readiness(),
         )
 
@@ -743,10 +773,11 @@ async def bulk_import_high_risk() -> dict:
     _guard_loaded()
 
     if LIVE_MODE:
-        rows = [row for row in _mode_live_scores()
-                if _live_risk_tier(row.get('ae_live')) == 'High']
-        result = {'users': [{'user_id': row['user_id'], 'ae_score': row['ae_live']}
-                            for row in rows], 'total': len(rows)}
+        baseline = baseline_scorer.latest_by_account()
+        rows = [(row, _user_risk(str(row['user_id']), row.get('ae_live'), baseline)) for row in _mode_live_scores()]
+        rows = [(row, base) for row, (rl, base) in rows if rl == 'High']
+        result = {'users': [{'user_id': row['user_id'], 'baseline_score': base['score'], 'baseline_day': base['day']}
+                            for row, base in rows], 'total': len(rows)}
     else:
         result = store.get_users(risk="High", limit=10_000)
     created, skipped = [], []
@@ -754,8 +785,9 @@ async def bulk_import_high_risk() -> dict:
     for row in result["users"]:
         uid = str(row["user_id"])
         if inv_store.get(uid) is None:
-            inv_store.upsert(uid, "Pending", "System",
-                             f"Auto-imported: High-risk user (ae_score={row['ae_score']:.4f})")
+            note = (f"baseline score {row['baseline_score']} on {row['baseline_day']}" if LIVE_MODE
+                    else f"ae_score={row['ae_score']:.4f}")
+            inv_store.upsert(uid, "Pending", "System", f"Auto-imported: High-risk user ({note})")
             created.append(uid)
         else:
             skipped.append(uid)
@@ -1099,6 +1131,10 @@ def _process_ingest(body: IngestRequest, normalised_override=None) -> PipelineRe
             {"action": normalised["action"], "resource": normalised["resource"],
              "timestamp": normalised["timestamp"]},
         )
+
+    # -- Stage 9: Baseline risk score v1.1 for this account-day (one scoring path) --
+    if identity:
+        _update_baseline(identity['account_key'], normalised['timestamp'])
 
     result = PipelineResult(
         **normalised,

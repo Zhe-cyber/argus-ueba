@@ -138,11 +138,7 @@ def overview(snapshot_path=None):
     with store._db() as con:
         cur=store._cursor(con)
         cur.execute("SELECT alert_type,COUNT(*) AS n FROM alerts WHERE status='Open' GROUP BY alert_type")
-        counts={row['alert_type']:row['n'] for row in store._rows(cur)}
-        try:
-            cur.execute("SELECT COUNT(*) AS n FROM workspace_baseline_alerts WHERE status='Open'")
-            counts['baseline_risk']=dict(cur.fetchone())['n']
-        except sqlite3.OperationalError: pass  # table appears on first baseline sync
+        counts={row['alert_type']:row['n'] for row in store._rows(cur)}  # baseline_risk findings are alerts rows
         cur.execute("SELECT COUNT(*) AS n FROM analyst_cases WHERE status!='Closed'")
         active=dict(cur.fetchone())['n']
         cur.execute("SELECT id,title,owner,status,priority FROM analyst_cases WHERE status!='Closed' ORDER BY updated_at DESC,id DESC LIMIT 3")
