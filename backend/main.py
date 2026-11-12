@@ -148,7 +148,7 @@ def monitoring_overview() -> dict:
     for row in alerts:
         kind = row['alert_type']
         origin = ('rule' if kind in {'rarity_spike', 'anomalous_behavior'} else
-                  'observation' if kind == 'new_user' else
+                  'observation' if kind in {'new_user', 'behaviour_drift', 'source_drift'} else
                   'model' if kind == 'ae_critical' else 'unverified')
         origins[origin] += int(row['count'])
     return {'generated_at': datetime.now(timezone.utc).isoformat(),

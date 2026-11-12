@@ -148,7 +148,7 @@ def overview(snapshot_path=None):
     checks=connections(snapshot_path)
     issues=sum(any(row[kind]['status'] in {'attention','stale'} for kind in ['collector','workload']) for row in checks['sources'])
     return {'open_security_findings':sum(counts.get(kind,0) for kind in ['rarity_spike','anomalous_behavior','ae_critical','baseline_risk']),
-            'open_observations':counts.get('new_user',0),'active_cases':active,
+            'open_observations':sum(counts.get(k,0) for k in ['new_user','behaviour_drift','source_drift']),'active_cases':active,
             'sources_needing_review_at_capture':issues,'operations_captured_at':checks['captured_at'],
             'recent_cases':recent,'recent_findings':[r for r in findings(limit=500,learning='exclude')['findings'] if not r['infrastructure']][:5],
             'scoring':'not_enabled_in_workspace_preview','mode':'isolated_copy'}
