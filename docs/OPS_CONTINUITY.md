@@ -56,6 +56,21 @@ returned a full page and older records may have been missed. `minutes_since_last
 These tasks are the interim scheduler; `install_supervisor_task.ps1` removes them when the supervisor
 takes over (one scheduler only).
 
+## Tick history (evidence for the live-evaluation coverage rule)
+
+`ops-status.json` holds only the latest tick. Every ops collector pass also appends to
+`<status_dir>/ticks/<MYT date>-ticks.jsonl` (append-only, never rewritten; nothing is written before
+`collect_start_local`). Two kinds of line, no identifiers, message text or error text:
+
+- per fetch attempt: `{at_utc, provider, ok, received, inserted, possibly_truncated, error_kind}`
+  (`possibly_truncated` = a full page; condition 3);
+- one combined line per pass, same shape as the pilot's `<date>-ticks.jsonl`:
+  `{at_utc, ok, phases: {aws|github|cloudflare: {ok, state}}}` (not-due providers carry their last outcome;
+  condition 1).
+
+Persona calls are not duplicated here: the persona ledger (`personas.ledger_dir`) is the record of claimed and
+verified calls and is passed to the report as `--ledger`.
+
 ## Supervisor (Part C) and notifications (Part D)
 
 `scripts/argus_supervisor.py --config <ops.json>` is the single scheduler once installed

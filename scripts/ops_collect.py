@@ -32,6 +32,7 @@ STATUS_NAME = 'ops-status.json'
 PERSONA_FIRST_DAY = '2026-11-16'
 PAGE = 100  # GitHub and Cloudflare fetchers read one bounded page (last 24 h, at most 100 records)
 PROVIDERS = ('aws', 'github', 'cloudflare')
+TICKS_DIR = 'ticks'
 
 
 def now_utc():
@@ -132,6 +133,15 @@ def run_cloudflare(cfg, backend):
 RUNNERS = {'aws': run_aws, 'github': run_github, 'cloudflare': run_cloudflare}
 
 
+def append_tick(status_dir, now, line):
+    """Append-only tick history (<status_dir>/ticks/<MYT date>-ticks.jsonl); counts, flags and error kind only."""
+    folder = Path(status_dir) / TICKS_DIR
+    folder.mkdir(parents=True, exist_ok=True)
+    day = now.astimezone(MY).date().isoformat()
+    with (folder / f'{day}-ticks.jsonl').open('a', encoding='utf-8') as out:
+        out.write(json.dumps({'at_utc': now.isoformat(), **line}, allow_nan=False) + '\n')
+
+
 def tick(cfg, now=None, runners=None, backend_factory=collect_live.LocalBackend):
     """One bounded pass. Returns and writes the status document."""
     now = now or now_utc()
@@ -182,6 +192,10 @@ def tick(cfg, now=None, runners=None, backend_factory=collect_live.LocalBackend)
         elif last.get('last_ok_utc'):
             entry['last_ok_utc'] = last['last_ok_utc']
         doc['providers'][name] = entry
+        append_tick(status_dir, now, {'provider': name, 'ok': bool(entry['ok']), 'received': entry.get('received', 0),
+                                      'inserted': entry.get('inserted', 0),
+                                      'possibly_truncated': bool(entry.get('possibly_truncated', False)),
+                                      'error_kind': entry.get('error_kind')})
     for entry in doc['providers'].values():
         if entry.get('last_ok_utc'):
             entry['minutes_since_last_ok'] = round((now - datetime.fromisoformat(entry['last_ok_utc'])).total_seconds() / 60, 1)
@@ -192,6 +206,10 @@ def tick(cfg, now=None, runners=None, backend_factory=collect_live.LocalBackend)
         doc['personas'] = None
     ran = [p for p in doc['providers'].values() if p.get('state') == 'ran']
     doc['status'] = 'completed' if all(p['ok'] for p in ran) else 'partial_failure'
+    # combined line, same shape as the pilot's: not-due providers carry their last outcome, disabled ones are omitted
+    phases = {n: {'ok': bool(e.get('ok')), 'state': e.get('state')} for n, e in doc['providers'].items()
+              if e.get('state') in ('ran', 'not_due')}
+    append_tick(status_dir, now, {'ok': all(p['ok'] for p in phases.values()), 'phases': phases})
     atomic_json(status_dir / STATUS_NAME, doc)
     return doc
 

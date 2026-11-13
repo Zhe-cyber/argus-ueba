@@ -309,3 +309,40 @@ def test_machine_ingest_interface_is_not_behind_sign_in(live_client):
     receipt = live_client.post('/ingest', json={**cloud_event(), 'source_account_id': ACCOUNT})
     assert receipt.status_code == 200 and receipt.json()['duplicate'] is False
     assert live_client.post('/ingest', json={**cloud_event(), 'source_account_id': ACCOUNT}).json()['duplicate'] is True
+
+
+def _lines(tmp_path, day):
+    path = tmp_path / 'ops' / 'ticks' / f'{day}-ticks.jsonl'
+    return path, [json.loads(x) for x in path.read_text(encoding='utf-8').splitlines()]
+
+
+def test_tick_history_is_appended_across_runs_and_flags_truncation(tmp_path, monkeypatch):
+    cfg = make_config(tmp_path)
+    monkeypatch.setattr(collect_live, 'collect_github', lambda args, backend: counts(received=100, inserted=4))
+    monkeypatch.setattr(collect_live, 'collect_cloudflare', lambda args, backend: counts(received=7))
+
+    def boom(*a):
+        raise RuntimeError(f'secret detail {ACCOUNT} a@b.co')
+    runners = {**ops_collect.RUNNERS, 'aws': boom}
+    ops_collect.tick(cfg, NOW, runners, ReadyBackend)
+    path, first = _lines(tmp_path, '2026-11-17')
+    raw = path.read_text(encoding='utf-8')
+    ops_collect.tick(cfg, NOW + timedelta(minutes=5), runners, ReadyBackend)  # github/cloudflare not due
+    path, second = _lines(tmp_path, '2026-11-17')
+    assert second[:len(first)] == first and len(second) > len(first)  # appended, never rewritten
+    assert path.read_text(encoding='utf-8').startswith(raw)
+    by = {x['provider']: x for x in first if 'provider' in x}
+    assert by['github']['possibly_truncated'] is True and by['github']['inserted'] == 4
+    assert by['cloudflare']['possibly_truncated'] is False
+    assert by['aws']['ok'] is False and by['aws']['error_kind'] == 'RuntimeError'
+    combined = [x for x in first if 'phases' in x]
+    assert len(combined) == 1 and combined[0]['ok'] is False
+    assert set(combined[0]['phases']) == {'aws', 'github', 'cloudflare'}
+    text = json.dumps(second)
+    assert 'secret detail' not in text and not re.search(r'\d{12}|@', text)
+
+
+def test_no_tick_history_before_collection_starts(tmp_path):
+    cfg = make_config(tmp_path, collect_start_local='2026-11-18')
+    ops_collect.tick(cfg, NOW, {}, ReadyBackend)
+    assert not (tmp_path / 'ops' / 'ticks').exists()
