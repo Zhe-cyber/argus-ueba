@@ -59,6 +59,16 @@ AWS_EVENT = {
     "eventID": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 }
 
+
+def test_aws_request_context_survives_normalization_for_audit_correlation():
+    event = {**AWS_EVENT, 'requestID': 'provider-request-1', 'eventCategory': 'Data', 'readOnly': True}
+    result = normalize(event, SOURCE_AWS)
+    assert result['metadata']['requestID'] == 'provider-request-1'
+    assert result['metadata']['eventCategory'] == 'Data'
+    assert result['metadata']['readOnly'] is True
+    from backend.cloud_feature_extractor import aggregate_window
+    assert aggregate_window([result]) == aggregate_window([normalize(AWS_EVENT, SOURCE_AWS)])
+
 AZURE_EVENT = {
     "id": "b3d4e5f6-7890-abcd-ef12-345678901234",
     "createdDateTime": "2024-03-15T09:11:22Z",

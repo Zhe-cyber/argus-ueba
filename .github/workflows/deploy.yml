@@ -1,6 +1,7 @@
 name: Deploy
 
 on:
+  pull_request:
   push:
     branches: [master]
   workflow_dispatch:   # allow manual trigger from GitHub UI
@@ -10,6 +11,19 @@ jobs:
   test:
     name: Run backend tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: argus_ingest_test
+          POSTGRES_PASSWORD: argus-test-only
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -20,15 +34,62 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --quiet fastapi uvicorn[standard] pandas pyarrow \
+          pip install --quiet fastapi==0.136.1 starlette==1.0.1 uvicorn[standard] pandas pyarrow matplotlib \
             fastparquet python-dotenv python-multipart scikit-learn \
-            joblib psycopg2-binary ijson pytest httpx
+            joblib psycopg2-binary ijson pytest httpx boto3 requests cryptography tzdata
+          pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch==2.12.0
 
       - name: Run tests
-        run: pytest backend/tests/ -v --tb=short
+        # The deselected test compares log1p floats exactly; Linux libm differs in the last bit.
+        # It is hash-pinned W33 training source (TRAINING_SOURCES), so it is not edited; it passes on Windows.
+        run: >-
+          python -m pytest backend/tests/ scripts/tests/ -v --tb=short
+          --deselect scripts/tests/test_clue_v2_training.py::test_transform_logs_only_the_four_count_columns
         env:
           DEMO_MODE: "true"
           DATABASE_URL: "sqlite-local"
+
+      - name: Test atomic ingestion against isolated PostgreSQL
+        run: python -m pytest scripts/tests/test_postgres_ingest.py -v --tb=short
+        env:
+          DATABASE_URL: "sqlite-local"
+          ARGUS_TEST_PG_URL: "postgresql://postgres:argus-test-only@127.0.0.1:55432/argus_ingest_test"
+
+  cloud-training:
+    name: Verify offline cloud training
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned CPU training environment
+        run: |
+          pip install --quiet -r scripts/requirements-cloud-training.txt pytest boto3 fastapi
+          pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch==2.12.0
+      - name: Verify audited export and training isolation
+        run: python -m pytest scripts/tests/test_verified_cloud_training.py scripts/tests/test_clue_training.py scripts/tests/test_clue_candidate_review.py scripts/tests/test_clue_replay_export.py scripts/tests/test_personal_baseline.py scripts/tests/test_account_familiarity.py scripts/tests/test_cloud_ae_shadow.py scripts/tests/test_live_daily_training.py -v --tb=short
+        env:
+          DATABASE_URL: "sqlite-local"
+
+  frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Test Cloudflare authentication target
+        run: node --test scripts/tests/cloudflare-demo.test.mjs
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
 
   # ── Backend → Hugging Face Spaces ────────────────────────────────────────
   # NOTE: Model files (*.pt, *.pkl, *.parquet, *.csv) are gitignored and
@@ -44,7 +105,7 @@ jobs:
   deploy-backend:
     name: Push backend to HuggingFace Spaces
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, frontend]
     if: github.event_name == 'workflow_dispatch'   # manual trigger only
 
     steps:

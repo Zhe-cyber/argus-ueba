@@ -58,6 +58,28 @@ Planners prune monthly: a rule that stopped earning its line gets deleted.*
    dedup is a band-aid; the durable fix is a server-side unique index on eventID. Don't ship
    the W1-B SQS consumer until that lands. *(origin: W1-A scout 2026-07-04)*
 
+13. **Native event ids are unique only WITHIN their source namespace.** A dedup/idempotency
+   index across mixed cloud sources must be scoped `(source, event_id)`, never `event_id`
+   alone — a GitHub delivery id and an Azure sign-in id can be the same string yet are
+   different events. Codex caught this on W1-B0 before merge. Corollary: rely on the DB's
+   NULL-is-distinct rule (holds on SQLite AND Postgres) to let all no-native-id rows (CERT
+   replay) coexist, rather than special-casing them in code. *(origin: W1-B0 Codex High, 2026-07-06)*
+
+14. **Never put worktrees in `%TEMP%` — Windows Storage Sense deletes them.** All four W1/W4/W6
+   worktree checkouts under `AppData\Local\Temp\argus-worktrees\` were wiped between July and
+   September; the commits survived only because worktrees share the main repo's object store.
+   Use `C:\Users\yyzhe\argus-worktrees\` (outside both OneDrive and Temp), and push branches
+   promptly — an unpushed branch is one disk event from gone. *(origin: Sep 2026 catch-up)*
+15. **The CERT benchmark artifacts (~2 MB) live on the HF Space; they were never "too large" for
+   git.** Gitignoring them caused the stale-production / broken-deploy-button tangle. Local copies
+   restored and checksum-verified 2026-10-20 — `DEMO_MODE` is no longer needed locally. R2 commits
+   them. *(origin: R2 audit 2026-10-20)*
+16. **Codex review wrapper must (a) skip data/model files and (b) track the CLI version.** R2's
+   review failed twice: the 1,000-row CSV diff was fed into the prompt, and Codex CLI v0.142.5 is
+   too old for its default model (`gpt-5.6-luna`) while `gpt-5.5` is no longer allowed on a
+   ChatGPT account. Fix: `npm i -g @openai/codex@latest`, and diff with
+   `':!data/processed' ':!ml/models'`. *(origin: R2 review 2026-10-22)*
+
 ## Retro log (finding-count per merged PR — target: trending down)
 
 | Date | PR | Claude findings | Codex findings | Lesson added? |
@@ -66,3 +88,8 @@ Planners prune monthly: a rule that stopped earning its line gets deleted.*
 | 2026-07-04 | w2-cloud-skew (local, unpushed) | 0 (planner line-review clean) | 0 — APPROVE (first automated codex run) | Yes — rules 9, 10 |
 | 2026-07-04 | w0-1-test-hardening (local, unpushed) | 0 (planner line-review clean) | skipped per §4 (tests-only) | Rule 10 resolved + upgraded to durable form |
 | 2026-07-04 | w1-a-poller-harden (local, unpushed) | 0 (scope clean; found real /ingest idempotency gap) | pending (scripts/, §4 rank 3) | Yes — rules 11, 12 + plan R10 |
+| 2026-07-06 | w1-b0-ingest-idempotency (committed, unmerged) | 0 (planner review clean) | 1 High (global→(source,id) index), fixed + re-APPROVE | Yes — rule 13; R10 resolved |
+| 2026-07-10 | w1-b1-sqs-consumer (committed, unmerged) | 0 (scope exact; fixed 5 CLI errors in the spec's AWS block) | skipped per §4 (scripts+docs; planner reviewed) | No new rule; spec-CLI errors noted below |
+| 2026-07-10 | w4-a-threshold-study (committed, unmerged) | 0 (loader/main verified untouched) | skipped per §4 (new pure module + script; no spine) | No new rule |
+| 2026-07-11 | w6-a-identity-resolution (committed, unmerged) | 1 (planner fixed r2 Medium inline — escalation ladder top rung) | 4 across 3 rounds: 2 fixed by heavy, 1 fixed by planner, 1 High arbitrated as documented limitation (per-source risk needs per-source scores → W6-C) | Ladder + arbitration both exercised; §8 arbitration precedent |
+| 2026-10-22 | r2-one-deploy (committed, unmerged) | 0 (planner: real blobs, delete scope, .dockerignore, README header) | not run (CLI too old — rule 16); not mandatory, no scoring/ingest/auth | Yes — rules 14-16; docker build+run verified: full mode, prod thresholds, uid 1000, cloud AE live, healthy |

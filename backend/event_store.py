@@ -14,14 +14,18 @@ Provides:
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import sqlite3
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Generator
+from uuid import uuid4
 
-from backend.config import BASE_DIR
+from backend.config import BASE_DIR, LIVE_MODE, LIVE_STATE_DIR
+from backend import account_identity as accounts
 
 # ---------------------------------------------------------------------------
 # Backend detection
@@ -32,7 +36,12 @@ _PG: bool    = _DB_URL.startswith(("postgresql://", "postgres://"))
 _PH: str     = "%s" if _PG else "?"   # SQL placeholder character
 
 # SQLite path (used only when _PG is False)
-DB_PATH = BASE_DIR / "data" / "events.db"
+DB_PATH = (LIVE_STATE_DIR if LIVE_MODE else BASE_DIR / 'data') / 'events.db'
+_ACTIVE_CONNECTION: ContextVar[Any] = ContextVar('event_store_connection', default=None)
+
+
+class EventConflict(ValueError):
+    """A native event key was reused with different content."""
 
 # DDL differs only in the primary-key column type
 _DDL_EVENTS = """
@@ -71,6 +80,56 @@ _DDL_CLOUD_SHAP = """
     )
 """
 
+# Baseline risk score v1.1, one row per (account, MYT day); written by backend.baseline_scorer only.
+# scored_mode: 'ingest' (computed as events arrived), 'backfill' (recomputed) or 'repair' (a missing day scored by
+# --repair-missing); method_sha256: the config/baseline_method_v1_2.json binding the row was computed under.
+_DDL_BASELINE_SCORES = """
+    CREATE TABLE IF NOT EXISTS baseline_scores (
+        account_key  TEXT    NOT NULL,
+        day          TEXT    NOT NULL,
+        score        INTEGER,
+        tier         TEXT    NOT NULL,
+        signals_json TEXT    NOT NULL DEFAULT '{}',
+        facts_json   TEXT    NOT NULL DEFAULT '[]',
+        history_days INTEGER NOT NULL,
+        events_today INTEGER NOT NULL,
+        partial      INTEGER NOT NULL DEFAULT 0,
+        rho_action   REAL,
+        rho_resource REAL,
+        computed_at  TEXT    NOT NULL,
+        scored_mode  TEXT    NOT NULL,
+        method_sha256 TEXT,
+        UNIQUE (account_key, day)
+    )
+"""
+
+# Live autoencoder (backend.live_ae, v2 since 13 Nov 2026), one row per lab persona account (AWS role or Cloudflare
+# service token) and MYT day. A comparator shown beside the baseline score; it never raises alerts. score/flagged
+# are NULL when the day is not scored (reason in note, e.g. Learning). shares_json: each feature's share of the
+# squared reconstruction error; model_sha256: the bundle manifest's sha256; model_version: 'v2' (rows written by
+# the historical v1 code default to 'v1'); no_resource_today: 1 when the day had no resource (new-resource share 0);
+# flagged_secondary: score above the declared secondary threshold (config/live_ae_v2.json, L7a; never alerts).
+_DDL_ML_SCORES = """
+    CREATE TABLE IF NOT EXISTS ml_scores (
+        account_key     TEXT    NOT NULL,
+        day             TEXT    NOT NULL,
+        score           DOUBLE PRECISION,
+        flagged         INTEGER,
+        threshold       DOUBLE PRECISION NOT NULL,
+        shares_json     TEXT    NOT NULL DEFAULT '{}',
+        features_json   TEXT    NOT NULL DEFAULT '{}',
+        excluded_events INTEGER NOT NULL DEFAULT 0,
+        note            TEXT,
+        model_sha256    TEXT    NOT NULL,
+        scored_mode     TEXT    NOT NULL,
+        computed_at     TEXT    NOT NULL,
+        model_version   TEXT    NOT NULL DEFAULT 'v1',
+        no_resource_today INTEGER,
+        flagged_secondary INTEGER,
+        UNIQUE (account_key, day)
+    )
+"""
+
 # Aggregate function for comma-separated distinct values
 _GROUP_CONCAT = "STRING_AGG(DISTINCT source, ',')" if _PG else "GROUP_CONCAT(DISTINCT source)"
 
@@ -85,6 +144,10 @@ def _db() -> Generator:
     Context manager that yields an open connection.
     Commits on clean exit, rolls back on exception, always closes.
     """
+    active = _ACTIVE_CONNECTION.get()
+    if active is not None:
+        yield active
+        return
     if _PG:
         import psycopg2
         import psycopg2.extras
@@ -124,6 +187,96 @@ def _rows(cur) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+def source_activity_summary() -> list[dict]:
+    """Observed persisted evidence, not a collector-health/completeness claim."""
+    account_column = 'account_key' if accounts.enabled() else '"user"'
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'''SELECT source, COUNT(*) AS event_count,
+            COUNT(DISTINCT {account_column}) AS account_references,
+            MAX(timestamp) AS latest_event_at, MAX(ingested_at) AS latest_ingested_at,
+            SUM(CASE WHEN ip_address IS NULL OR ip_address = '' THEN 1 ELSE 0 END) AS missing_ip_events
+            FROM events GROUP BY source ORDER BY source''')
+        return _rows(cur)
+
+
+def account_directory() -> dict[str, dict]:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute('''SELECT account_key, account_label, account_kind, account_basis,
+                       source, source_account_id FROM events WHERE id IN
+                       (SELECT MAX(id) FROM events WHERE account_key IS NOT NULL GROUP BY account_key)''')
+        return {row['account_key']: row for row in _rows(cur)}
+
+
+def legacy_account_keys(label: str) -> set:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SELECT DISTINCT account_key FROM events WHERE "user"={_PH}', (label,))
+        return {row['account_key'] for row in _rows(cur)}
+
+
+def backfill_account_keys() -> dict:
+    """Explicit additive migration; original events, receipts and digests untouched."""
+    updated = unresolved = 0
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute('SELECT id, "user", source, source_account_id, metadata FROM events WHERE account_key IS NULL ORDER BY id')
+        for row in _rows(cur):
+            identity = accounts.identify(row)
+            if identity is None:
+                unresolved += 1
+                continue
+            cur.execute(f'''UPDATE events SET account_key={_PH}, account_label={_PH},
+                account_kind={_PH}, account_basis={_PH} WHERE id={_PH} AND account_key IS NULL''',
+                (identity['account_key'], identity['account_label'], identity['account_kind'], identity['account_basis'], row['id']))
+            updated += cur.rowcount
+    return {'updated': updated, 'unattributed': unresolved}
+
+
+@contextmanager
+def transaction():
+    """Share one connection/commit across event, scores, alerts and receipt."""
+    if _ACTIVE_CONNECTION.get() is not None:
+        yield
+        return
+    with _db() as con:
+        if not _PG:
+            con.execute('BEGIN IMMEDIATE')
+        token = _ACTIVE_CONNECTION.set(con)
+        try:
+            yield
+        finally:
+            _ACTIVE_CONNECTION.reset(token)
+
+
+def lock_user(user_id: str) -> None:
+    """Serialize same-user scoring across Postgres workers within a transaction."""
+    if _PG:
+        if _ACTIVE_CONNECTION.get() is None:
+            raise RuntimeError('User locks require an ingestion transaction')
+        key = int.from_bytes(hashlib.sha256(user_id.encode()).digest()[:8], 'big', signed=True)
+        with _db() as con:
+            _cursor(con).execute('SELECT pg_advisory_xact_lock(%s)', (key,))
+
+
+@contextmanager
+def savepoint():
+    """Allow a best-effort operation to fail without aborting its transaction."""
+    name = 'argus_' + uuid4().hex
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SAVEPOINT {name}')
+        try:
+            yield
+        except Exception:
+            cur.execute(f'ROLLBACK TO SAVEPOINT {name}')
+            cur.execute(f'RELEASE SAVEPOINT {name}')
+            raise
+        else:
+            cur.execute(f'RELEASE SAVEPOINT {name}')
+
+
 # ---------------------------------------------------------------------------
 # Schema init (called once at startup)
 # ---------------------------------------------------------------------------
@@ -133,25 +286,72 @@ def init_db() -> None:
     with _db() as con:
         cur = _cursor(con)
         cur.execute(_DDL_EVENTS)
+        columns = {
+            'event_id': 'TEXT',
+            'source_account_id': "TEXT NOT NULL DEFAULT ''",
+            'payload_digest': 'TEXT',
+            'pipeline_result': 'TEXT',
+            'account_key': 'TEXT', 'account_label': 'TEXT',
+            'account_kind': 'TEXT', 'account_basis': 'TEXT',
+        }
+        if _PG:
+            for name, definition in columns.items():
+                cur.execute(f'ALTER TABLE events ADD COLUMN IF NOT EXISTS {name} {definition}')
+        else:
+            cur.execute('PRAGMA table_info(events)')
+            existing = {row['name'] for row in _rows(cur)}
+            for name, definition in columns.items():
+                if name not in existing:
+                    cur.execute(f'ALTER TABLE events ADD COLUMN {name} {definition}')
+        cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_ev_native_key '
+                    'ON events(source, source_account_id, event_id)')
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_user ON events(\"user\")")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_ts   ON events(ingested_at)")
         cur.execute(_DDL_LIVE_SCORES)
         cur.execute(_DDL_CLOUD_SHAP)
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_ev_account_key ON events(account_key)')
+        cur.execute(_DDL_BASELINE_SCORES)
+        ensure_ml_scores(cur)
+
+
+def ensure_ml_scores(cur) -> None:
+    """ml_scores, plus the v2 columns on a table created by the v1 code (idempotent)."""
+    cur.execute(_DDL_ML_SCORES)
+    added = {'model_version': "TEXT NOT NULL DEFAULT 'v1'", 'no_resource_today': 'INTEGER', 'flagged_secondary': 'INTEGER'}
+    if _PG:
+        for name, definition in added.items():
+            cur.execute(f'ALTER TABLE ml_scores ADD COLUMN IF NOT EXISTS {name} {definition}')
+        return
+    cur.execute('PRAGMA table_info(ml_scores)')
+    existing = {row['name'] for row in _rows(cur)}
+    for name, definition in added.items():
+        if name not in existing:
+            cur.execute(f'ALTER TABLE ml_scores ADD COLUMN {name} {definition}')
 
 
 # ---------------------------------------------------------------------------
 # Write
 # ---------------------------------------------------------------------------
 
-def insert_event(event: dict[str, Any]) -> None:
-    """Persist one normalized event."""
+def _native_key(event: dict) -> tuple:
+    return (event['source'], event.get('source_account_id', ''), event.get('event_id'))
+
+
+def insert_event(event: dict[str, Any]) -> bool:
+    """Insert once per native key; ID-less replay rows are always independent."""
+    event_id = event.get('event_id')
+    identity = accounts.identify(event) or {}
+    digest = hashlib.sha256(json.dumps(event.get('raw', event), sort_keys=True,
+                                      separators=(',', ':')).encode()).hexdigest() if event_id else None
     with _db() as con:
         cur = _cursor(con)
         cur.execute(
             f"""
             INSERT INTO events
-                ("user", timestamp, source, action, resource, ip_address, metadata, ingested_at)
-            VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH})
+                ("user", timestamp, source, action, resource, ip_address, metadata, ingested_at,
+                 event_id, source_account_id, payload_digest, account_key, account_label, account_kind, account_basis)
+            VALUES ({', '.join([_PH] * 15)})
+            ON CONFLICT (source, source_account_id, event_id) DO NOTHING
             """,
             (
                 str(event.get("user", "")),
@@ -162,13 +362,52 @@ def insert_event(event: dict[str, Any]) -> None:
                 str(event.get("ip_address", "")),
                 json.dumps(event.get("metadata", {})),
                 datetime.now(timezone.utc).isoformat(),
+                event_id,
+                event.get('source_account_id', ''),
+                digest,
+                identity.get('account_key'), identity.get('account_label'),
+                identity.get('account_kind'), identity.get('account_basis'),
             ),
         )
+        inserted = cur.rowcount == 1
+        if not inserted:
+            cur.execute(f'SELECT payload_digest FROM events WHERE source={_PH} '
+                        f'AND source_account_id={_PH} AND event_id={_PH}', _native_key(event))
+            if dict(cur.fetchone())['payload_digest'] != digest:
+                raise EventConflict('Native event key already exists with different content')
+        return inserted
+
+
+def get_ingest_result(event: dict) -> dict | None:
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'SELECT pipeline_result FROM events WHERE source={_PH} '
+                    f'AND source_account_id={_PH} AND event_id={_PH}', _native_key(event))
+        row = cur.fetchone()
+    value = dict(row)['pipeline_result'] if row else None
+    return json.loads(value) if value else None
+
+
+def save_ingest_result(event: dict, result: dict) -> None:
+    """Persist only derived pipeline output, not raw provider payloads."""
+    if event.get('event_id') is None:
+        return
+    with _db() as con:
+        cur = _cursor(con)
+        cur.execute(f'UPDATE events SET pipeline_result={_PH} WHERE source={_PH} '
+                    f'AND source_account_id={_PH} AND event_id={_PH}',
+                    (json.dumps(result), *_native_key(event)))
+        if cur.rowcount != 1:
+            raise RuntimeError('Ingestion receipt did not match exactly one event')
 
 
 # ---------------------------------------------------------------------------
 # Read
 # ---------------------------------------------------------------------------
+
+def _identity_column(user_id):
+    return 'account_key' if accounts.is_key(user_id) else '"user"'
+
 
 def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
     """Return the most recent *limit* events for *user_id*, newest first.
@@ -182,7 +421,7 @@ def get_user_events(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
             f"""
             SELECT id, "user", timestamp, source, action, resource, ip_address, ingested_at
             FROM events
-            WHERE "user" = {_PH}
+            WHERE {_identity_column(user_id)} = {_PH}
             ORDER BY ingested_at DESC
             LIMIT {_PH}
             """,
@@ -202,7 +441,7 @@ def get_user_events_full(user_id: str, limit: int = 500) -> list[dict[str, Any]]
         cur.execute(
             f"""
             SELECT * FROM events
-            WHERE "user" = {_PH}
+            WHERE {_identity_column(user_id)} = {_PH}
             ORDER BY ingested_at DESC
             LIMIT {_PH}
             """,
@@ -227,7 +466,7 @@ def get_user_events_window(user_id: str, hours: int = 24) -> list[dict[str, Any]
         cur.execute(
             f"""
             SELECT * FROM events
-            WHERE "user" = {_PH} AND ingested_at >= {_PH}
+            WHERE {_identity_column(user_id)} = {_PH} AND ingested_at >= {_PH}
             ORDER BY ingested_at DESC
             """,
             (str(user_id), since),
@@ -240,7 +479,7 @@ def get_total_event_count(user_id: str) -> int:
     with _db() as con:
         cur = _cursor(con)
         cur.execute(
-            f'SELECT COUNT(*) AS cnt FROM events WHERE "user" = {_PH}',
+            f'SELECT COUNT(*) AS cnt FROM events WHERE {_identity_column(user_id)} = {_PH}',
             (str(user_id),),
         )
         row = cur.fetchone()
@@ -253,7 +492,7 @@ def delete_event_store_user(user_id: str) -> int:
     """Delete a single user's events and live score. Returns events removed."""
     with _db() as con:
         cur = _cursor(con)
-        cur.execute(f'DELETE FROM events WHERE "user" = {_PH}', (str(user_id),))
+        cur.execute(f'DELETE FROM events WHERE {_identity_column(user_id)} = {_PH}', (str(user_id),))
         removed = cur.rowcount or 0
         cur.execute(f'DELETE FROM live_scores WHERE user_id = {_PH}', (str(user_id),))
         con.commit()
@@ -286,20 +525,13 @@ def list_event_store_users() -> list[dict[str, Any]]:
       - sources     : comma-separated distinct sources (e.g. 'aws_cloudtrail,azure_ad')
       - last_seen   : ISO timestamp of the most recent ingestion
     """
+    key = 'account_key' if accounts.enabled() else '"user"'
+    condition = 'WHERE account_key IS NOT NULL' if accounts.enabled() else ''
     with _db() as con:
         cur = _cursor(con)
-        cur.execute(
-            f"""
-            SELECT
-                "user",
-                COUNT(*)                       AS event_count,
-                {_GROUP_CONCAT}                AS sources,
-                MAX(ingested_at)               AS last_seen
-            FROM events
-            GROUP BY "user"
-            ORDER BY event_count DESC
-            """
-        )
+        cur.execute(f"""SELECT {key} AS "user", COUNT(*) AS event_count,
+                    {_GROUP_CONCAT} AS sources, MAX(ingested_at) AS last_seen
+                    FROM events {condition} GROUP BY {key} ORDER BY event_count DESC""")
         return _rows(cur)
 
 
@@ -309,7 +541,7 @@ def list_event_store_users() -> list[dict[str, Any]]:
 
 def upsert_live_score(
     user_id: str,
-    ae_live: float,
+    ae_live: float | None,
     rule_live: float,
     rarity: float,
     event_count: int,
@@ -334,7 +566,7 @@ def upsert_live_score(
                 event_count = EXCLUDED.event_count,
                 updated_at  = EXCLUDED.updated_at
             """,
-            (str(user_id), float(ae_live), float(rule_live),
+            (str(user_id), float(ae_live) if ae_live is not None else None, float(rule_live),
              float(rarity), int(event_count), now),
         )
 

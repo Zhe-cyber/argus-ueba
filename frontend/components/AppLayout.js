@@ -28,7 +28,7 @@ const NAV = [
   },
   {
     href: '/alerts',
-    label: 'Alerts',
+    label: 'Alert review',
     exact: false,
     badge: true,
     icon: (
@@ -36,6 +36,10 @@ const NAV = [
         <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
       </svg>
     ),
+  },
+  {
+    href: '/identities', label: 'Identities', exact: false,
+    icon: <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0112 0v3M16 4a3 3 0 010 6M18 14a5 5 0 013 4v3"/></svg>,
   },
   {
     href: '/investigations',
@@ -50,22 +54,7 @@ const NAV = [
       </svg>
     ),
   },
-  {
-    href: '/demo',
-    label: 'Demo Lab',
-    exact: false,
-    icon: (
-      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" clipRule="evenodd"
-          d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4
-             4C.817 14.769 2.156 18 4.828 18h10.343c2.673 0
-             4.012-3.231 2.122-5.121l-4-4A1 1 0 0113 8.172V4.414l.707-.707A1
-             1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027
-             1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.563-.187a1.993
-             1.993 0 00-.114-.035l1.063-1.063A3 3 0 009 8.172z" />
-      </svg>
-    ),
-  },
+
 ]
 
 // ---------------------------------------------------------------------------
@@ -75,6 +64,17 @@ const NAV = [
 export default function AppLayout({ children }) {
   const router = useRouter()
   const [openAlerts, setOpenAlerts] = useState(0)
+  const [applicationMode, setApplicationMode] = useState(null)
+  const isReplay = router.pathname === '/clue'
+
+  useEffect(() => {
+    let active = true
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    fetch(`${API}/stats`).then(r => r.ok ? r.json() : null).then(data => {
+      if (active && data) setApplicationMode(data.application_mode)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   const pollAlerts = useCallback(async () => {
     try {
@@ -126,6 +126,8 @@ export default function AppLayout({ children }) {
                 <Link
                   key={href}
                   href={href}
+                  aria-label={label}
+                  title={badge ? `${openAlerts} open signals, including account observations` : label}
                   className={[
                     'relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all',
                     active
@@ -137,7 +139,7 @@ export default function AppLayout({ children }) {
                   <span className="hidden sm:inline">{label}</span>
                   {badge && openAlerts > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center
-                                     justify-center rounded-full bg-red-500 px-1
+                                     justify-center rounded-full bg-slate-600 px-1
                                      text-[9px] font-bold text-white leading-none">
                       {openAlerts > 99 ? '99+' : openAlerts}
                     </span>
@@ -149,11 +151,10 @@ export default function AppLayout({ children }) {
 
           {/* Live indicator */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className={`h-2 w-2 rounded-full ${isReplay ? 'bg-indigo-400' : 'bg-slate-400'}`} />
+            <span className="text-xs text-slate-300 font-medium hidden sm:inline">
+              {isReplay ? 'Offline benchmark' : applicationMode === 'live' ? 'Connected sources' : applicationMode ? 'Benchmark workspace' : 'Checking mode'}
             </span>
-            <span className="text-xs text-emerald-500 font-medium hidden sm:inline">Live</span>
           </div>
 
         </div>

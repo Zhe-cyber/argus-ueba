@@ -18,10 +18,13 @@ Usage
         --out        data/processed/cloud_features.parquet \
         --limit      50000
 
-Ground truth labels (flaws.cloud)
-----------------------------------
+Legacy heuristic labels (NOT verified flaws.cloud ground truth)
+-------------------------------------------------------------
     NORMAL users  : backup, AWSService, SecurityMokey, Root, flaws, piper, AWSAccount
     ATTACKER users: Level5, Level6   (CTF privilege-escalation players)
+
+Treating all other identities as normal is unverified and may include attacks.
+Use export_cloud_baseline.py and train_verified_cloud.py for the audited lab path.
 
 Output schema
 -------------

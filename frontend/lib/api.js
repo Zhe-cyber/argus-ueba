@@ -284,3 +284,15 @@ export async function updateAlertStatus(alertId, status) {
 export async function escalateAlert(alertId) {
   return apiFetch(`/alerts/${alertId}/escalate`, { method: 'POST' })
 }
+
+/** Read-only persisted source evidence; not collector health. */
+export async function fetchMonitoringOverview() {
+  return apiFetch('/monitoring/overview')
+}
+
+export const fetchIdentities = () => apiFetch('/identities')
+export const fetchIdentityAccounts = () => apiFetch('/identities/accounts')
+export const fetchIdentityTimeline = id => apiFetch(`/identities/${encodeURIComponent(id)}/timeline?limit=100`)
+export const createIdentity = body => apiFetch('/identities', { method: 'POST', body: JSON.stringify(body) })
+export const approveIdentityLink = (id, body) => apiFetch(`/identities/${encodeURIComponent(id)}/links`, { method: 'POST', body: JSON.stringify(body) })
+export const revokeIdentityLink = (id, body) => apiFetch(`/identities/links/${encodeURIComponent(id)}/revoke`, { method: 'POST', body: JSON.stringify(body) })

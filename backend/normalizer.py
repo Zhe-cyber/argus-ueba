@@ -18,6 +18,7 @@ unified 8-field internal schema:
 
 from __future__ import annotations
 
+import re
 from typing import Callable
 
 # ---------------------------------------------------------------------------
@@ -123,7 +124,8 @@ def parse_aws_cloudtrail(event: dict) -> dict:
     )
 
     metadata: dict = {}
-    for key in ("eventID", "eventSource", "awsRegion", "userAgent", "errorCode", "errorMessage"):
+    for key in ("eventID", "eventSource", "awsRegion", "userAgent", "errorCode", "errorMessage",
+                "requestID", "eventCategory", "readOnly"):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
@@ -259,6 +261,19 @@ def parse_azure_ad(event: dict) -> dict:
     # ── Resource ──────────────────────────────────────────────────────────────
     resource = _aad_extract_resource(event)
 
+    # ── Graph signIn schema (GET /v1.0/auditLogs/signIns) ─────────────────────
+    # Detected by fields only the signIn resource carries, so legacy records keep
+    # their old mapping (action = app name). Success/failure becomes the action;
+    # the app (what was signed in to) is the resource.
+    graph_signin = any(k in event for k in ("signInEventTypes", "riskLevelDuringSignIn", "isInteractive"))
+    if graph_signin:
+        status = event.get("status") if isinstance(event.get("status"), dict) else {}
+        code = status.get("errorCode")
+        # ponytail: any non-zero code is a failure (includes MFA-interrupt 50074/50140); refine if noisy
+        action = "signin_success" if code == 0 else "signin_failure" if isinstance(code, int) and not isinstance(code, bool) else "signin"
+        resource = event.get("appDisplayName") or event.get("resourceDisplayName") or ""
+        user = user or event.get("servicePrincipalName") or event.get("appDisplayName") or ""
+
     # ── IP address ────────────────────────────────────────────────────────────
     ip_address = (
         event.get("ipAddress")
@@ -284,12 +299,17 @@ def parse_azure_ad(event: dict) -> dict:
         "status", "Result", "clientAppUsed", "deviceDetail", "location",
         "UserAgent", "Category", "LoggedByService", "AADOperationType",
         "Type", "SourceSystem",
+        "userId", "userDisplayName", "appId", "appDisplayName", "servicePrincipalId", "servicePrincipalName",
+        "riskLevelDuringSignIn", "resourceDisplayName", "isInteractive", "userType",
     ):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
     if country:
         metadata["country"] = country
+    if graph_signin:
+        metadata["clientApp"] = event.get("clientAppUsed") or ""
+        metadata["errorCode"] = code
 
     return _build(
         source=SOURCE_AZURE,
@@ -334,10 +354,20 @@ def parse_cloudflare_access(event: dict) -> dict:
     action = action_type if allowed else f"{action_type} (denied)"
 
     metadata: dict = {}
-    for key in ("country", "app_uid", "ray_id", "user_id", "app_type"):
+    for key in ("country", "app_uid", "ray_id", "user_id", "app_type", "connection"):
         val = event.get(key)
         if val is not None:
             metadata[key] = val
+
+    if type(event.get("allowed")) is bool:
+        metadata["allowed"] = event["allowed"]
+    # Access service logs put the native Client ID in user_email, without a
+    # human user_id. Preserve that explicit non-identity evidence as a machine
+    # principal; never infer it from a token-looking human email alone.
+    client_id = event.get("user_email")
+    if (event.get("connection") == "nonidentity" and isinstance(client_id, str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,128}\.access", client_id)):
+        metadata["service_client_id"] = client_id
 
     return _build(
         source=SOURCE_CF,
@@ -543,8 +573,9 @@ def parse_github_events(event: dict) -> dict:
     elif ev_type == "IssuesEvent" and pr_action:
         action = f"Issue {pr_action}"
     elif ev_type == "PushEvent":
-        size = payload.get("size", 0)
-        action = f"Code push ({size} commit{'s' if size != 1 else ''})"
+        size = payload.get("size")
+        if type(size) is int and size >= 0:
+            action = f"Code push ({size} commit{'s' if size != 1 else ''})"
 
     repo_name = str(repo.get("name", ""))
 
@@ -553,7 +584,13 @@ def parse_github_events(event: dict) -> dict:
     metadata["public"]   = event.get("public", True)
     if payload.get("ref"):
         metadata["ref"] = payload["ref"]
-    if payload.get("size") is not None:
+    if ev_type == "PushEvent":
+        size = payload.get("size")
+        known_count = type(size) is int and size >= 0
+        metadata["commit_count_status"] = "known" if known_count else "unknown"
+        if known_count:
+            metadata["commits"] = size
+    elif payload.get("size") is not None:
         metadata["commits"] = payload["size"]
     if actor.get("id"):
         metadata["actor_id"] = actor["id"]
@@ -612,4 +649,19 @@ def normalize(event: dict, source: str) -> dict:
             f"Unknown source {source!r}. "
             f"Valid sources: {sorted(_PARSERS)}"
         )
-    return _PARSERS[source](event)
+    result = _PARSERS[source](event)
+    # Only actual record IDs can identify a retry. Correlation IDs may span
+    # multiple legitimate events; CERT IDs/repeated rows retain replay semantics.
+    native_id = None
+    if source == SOURCE_AWS:
+        native_id = event.get('eventID')
+    elif source == SOURCE_AZURE:
+        native_id = result['metadata'].get('id') or result['metadata'].get('Id')
+    elif source == SOURCE_CF:
+        native_id = event.get('ray_id')
+    elif source == SOURCE_GITHUB:
+        native_id = event.get('id')
+    result['event_id'] = (str(native_id).strip() or None) if (
+        isinstance(native_id, (str, int)) and not isinstance(native_id, bool)
+    ) else None
+    return result

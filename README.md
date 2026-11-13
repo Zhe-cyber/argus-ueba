@@ -21,12 +21,46 @@ pinned: false
 
 **Argus** is a User and Entity Behaviour Analytics (UEBA) platform that detects insider threats and cloud-based attacks by modelling normal user behaviour across multiple sources and flagging anomalies in real time.
 
-Raw logs from AWS CloudTrail, Azure AD, and the CMU CERT r6.2 insider-threat dataset are ingested through a unified 8-field normalisation layer, transformed into behavioural feature vectors, and scored by a hybrid engine:
+Logs from AWS CloudTrail, Microsoft Entra ID, Cloudflare Access, GitHub activity events and the CMU CERT r4.2 benchmark can be normalized into an 8-field schema. Parser support does not imply a configured live connector for every provider.
 
-- **Autoencoder ensemble** (AE + LightGBM + Isolation Forest + rule-based) for CERT endpoint users — achieves **F1 = 0.787, AUROC = 0.976**
-- **Source-agnostic rarity flags** for cloud users (first-time action, new IP, off-hours, high volume, sensitive resource) — no training data required, mirrors Microsoft Sentinel's ActivityInsights architecture
+- **Autoencoder detector**: a 71-feature CERT model and a separate 12-feature cloud model. IF and AE+IF remain evaluation baselines. Historical CERT results are **F1 = 0.787, AUROC = 0.976** in their recorded evaluation setup; these are not live cloud accuracy measurements.
+- **Six supporting rarity signals**: first-time action, new IP, off-hours, high volume, sensitive resource and geo-rarity, subject to available fields and history.
 
-SHAP values are computed for every flagged user. A React/Next.js SOC dashboard and live log ingestion demo page complete the system.
+The React/Next.js dashboard supports alert review and investigation. The existing CERT SHAP generation path explains the IF baseline, while seeded cloud views use residual diagnostics. Neither establishes faithful explanations of every live AE score. Live mode disables those explanation/AI routes pending a verified AE explanation path.
+
+### Cloud-only monitoring (first competition implementation slice)
+
+Set `ARGUS_MODE=live` before starting the backend. Live mode starts without CERT
+score CSV, SHAP parquet or daily-feature files, and excludes benchmark users and
+offline score-only seeds. It accepts supported cloud event payloads only.
+
+```powershell
+$env:ARGUS_MODE = 'live'
+$env:DATABASE_URL = 'sqlite-local'
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Use a **fresh, dedicated database** for live monitoring. Local live SQLite and
+investigations use `data/live/` (override with LIVE_STATE_DIR), separate from the
+tracked benchmark investigation records. In PostgreSQL, use a separate live
+database. Provider/account identity scoping and migration of
+mixed historical data are separate workstreams.
+
+Install the cloud model/scaler (`ml/models/cloud_ae_v1.pt`, `cloud_scaler_v1.pkl`)
+from your verified model artifacts to enable inference. If scoring is unavailable,
+the account has a null AE score and **Unknown** risk, not a benign/Low result.
+Existing thresholds remain provisional; they have not been calibrated to your tenant.
+
+`GET /` and `/stats` report `application_mode`. Live user ground-truth fields and
+the insider count are null. `ARGUS_MODE=benchmark` loads the historical benchmark;
+`ARGUS_MODE=demo` loads the demo fixture files. If ARGUS_MODE is unset, the legacy
+DEMO_MODE selection is preserved. Explicit ARGUS_MODE takes precedence.
+
+This is a local development workflow. Authentication, collector credentials,
+provider-account identity resolution and faithful live AE explanations remain
+release blockers. Do not expose this slice publicly with real logs. A supported
+payload shape does not prove a genuine provider event; collector authentication
+and source provenance still need implementation.
 
 ---
 

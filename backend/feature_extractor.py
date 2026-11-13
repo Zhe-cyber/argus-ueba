@@ -36,7 +36,9 @@ import json
 from datetime import datetime
 from typing import Any
 
-# Business hours window (matching training notebook constants)
+# Business hours window (matching training notebook constants). FROZEN with the AE feature contract
+# (71-dim CERT): do not move to the ARGUS_BUSINESS_* settings. The analyst-facing off-hours rule in
+# rarity_scorer.py has its own configurable window (default Mon-Fri 08:00-18:00 MYT); two windows by design.
 _BIZ_START = 7
 _BIZ_END   = 18
 

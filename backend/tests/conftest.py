@@ -42,13 +42,17 @@ def isolated_event_store(tmp_path_factory: pytest.TempPathFactory):
     the suite was mutating real, persistent, file-backed state.
     """
     from backend import event_store
+    from backend import investigations
 
     tmp_dir = tmp_path_factory.mktemp("event_store")
     fresh_db_path: Path = tmp_dir / "events.db"
 
     original_db_path = event_store.DB_PATH
+    original_investigations_path = investigations.INVESTIGATIONS_PATH
     event_store.DB_PATH = fresh_db_path
+    investigations.INVESTIGATIONS_PATH = tmp_dir / 'investigations.json'
     try:
         yield fresh_db_path
     finally:
         event_store.DB_PATH = original_db_path
+        investigations.INVESTIGATIONS_PATH = original_investigations_path

@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_recall_curve
 
-from backend.config import DEMO_MODE, SCORES_PATH, SHAP_PATH, DAILY_FEATURES_PATH
+from backend.config import LIVE_MODE, DEMO_MODE, SCORES_PATH, SHAP_PATH, DAILY_FEATURES_PATH
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -124,6 +124,20 @@ class DataStore:
         FileNotFoundError  if either data file is missing
         ValueError         if required columns cannot be found
         """
+        if LIVE_MODE:
+            # Live users come from the event store. No benchmark files, labels,
+            # thresholds or peer groups may enter the live application.
+            self.__init__()
+            self._score_col = 'ae_score'
+            self._user_col = 'user'
+            self._shap_user_col = 'user'
+            self.scores_df = pd.DataFrame({
+                'user': pd.Series(dtype=str), 'ae_score': pd.Series(dtype=float),
+            })
+            self.shap_df = pd.DataFrame({'user': pd.Series(dtype=str)})
+            self.loaded = True
+            return
+
         print(f"Loading data ({'DEMO' if DEMO_MODE else 'LOCAL'} mode)")
         print(f"  scores -> {SCORES_PATH}")
         print(f"  SHAP   -> {SHAP_PATH}")

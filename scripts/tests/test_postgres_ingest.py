@@ -1,0 +1,172 @@
+"""Opt-in PostgreSQL integration in a disposable, explicitly local test database.
+
+Never uses DATABASE_URL from the developer environment or production .env.
+"""
+import os
+from pathlib import Path
+import subprocess
+import sys
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from uuid import uuid4
+
+import pytest
+
+
+def _run_isolated(code, extra_env=None):
+    """Run `code` in a subprocess against a fresh schema of the guarded local test database, then drop it."""
+    url = os.environ.get('ARGUS_TEST_PG_URL')
+    if not url:
+        pytest.skip('Set ARGUS_TEST_PG_URL for an isolated local PostgreSQL integration run')
+    parsed = urlsplit(url)
+    assert parsed.scheme in ('postgres', 'postgresql')
+    assert parsed.hostname == '127.0.0.1' and parsed.port == 55432
+    assert parsed.path == '/argus_ingest_test', 'Refusing a non-test database'
+    import psycopg2
+    from psycopg2 import sql
+    schema = 'argus_test_' + uuid4().hex
+    con = psycopg2.connect(url)
+    con.autocommit = True
+    try:
+        with con.cursor() as cur:
+            cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+        query = dict(parse_qsl(parsed.query))
+        query['options'] = '-csearch_path=' + schema
+        isolated_url = urlunsplit(parsed._replace(query=urlencode(query)))
+        environment = dict(os.environ, DATABASE_URL=isolated_url, ARGUS_MODE='live', DEMO_MODE='false', **(extra_env or {}))
+        result = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[2],
+                                env=environment, capture_output=True, text=True, timeout=90)
+        assert result.returncode == 0, result.stdout + result.stderr
+    finally:
+        # This schema was created above in the guarded local test database only.
+        with con.cursor() as cur:
+            cur.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
+        con.close()
+
+
+def test_postgres_baseline_scores_and_unique_guard():
+    """L8: baseline_scores upsert, the alerts (alert_type,user_id,day) guard and the ingest hook on PostgreSQL."""
+    _run_isolated(r'''
+from fastapi.testclient import TestClient
+import psycopg2
+from backend import baseline_scorer as scorer, event_store as db, main
+assert db._PG is True
+main.cloud_ae_scorer.score_user=lambda *args: None
+def ev(n, when, bucket='lab-p01'):
+    return {'source':'aws_cloudtrail','source_account_id':'123456789012','event':{'eventID':f'pg-{n}','eventTime':when,
+        'eventName':'GetObject','requestParameters':{'bucketName':bucket},
+        'userIdentity':{'type':'IAMUser','userName':'pg-user','principalId':'AIDAPGTEST','accountId':'123456789012'}}}
+with TestClient(main.app) as client:
+    db.init_db(); scorer.ensure_schema(); scorer.ensure_schema()  # idempotent migrations
+    for d in range(10, 17):
+        for i in range(3):
+            assert client.post('/ingest', json=ev(f'{d}{i}', f'2026-10-{d:02d}T02:0{i}:00Z')).status_code == 200
+    for i in range(6):
+        assert client.post('/ingest', json=ev(f's{i}', f'2026-10-17T13:0{i}:00Z', f'secret-{i}')).status_code == 200
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n, MIN(scored_mode) AS m FROM baseline_scores")
+        row = cur.fetchone(); assert row['n'] == 8 and row['m'] == 'ingest', row
+        cur.execute("SELECT user_id, severity FROM alerts WHERE alert_type='baseline_risk' AND day='2026-10-17'")
+        found = cur.fetchall(); assert len(found) == 1 and found[0]['severity'] in ('Medium', 'High'), found
+        key = found[0]['user_id']
+    try:
+        with db._db() as con:
+            db._cursor(con).execute("INSERT INTO alerts (user_id,alert_type,severity,title,created_at,day) "
+                                    "VALUES (%s,'baseline_risk','High','dup','x','2026-10-17')", (key,))
+        raise AssertionError('unique guard missing')
+    except psycopg2.IntegrityError:
+        pass
+    from backend import alert_store
+    alert_store.create_alert(key, 'rarity_spike', 'High', 'a', {}); alert_store.create_alert(key, 'rarity_spike', 'High', 'b', {})
+    before = scorer.backfill()
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n FROM baseline_scores WHERE scored_mode='backfill'")
+        assert cur.fetchone()['n'] == 8
+print('Postgres baseline table, upsert, unique guard and backfill passed')
+''', {'ARGUS_ACCOUNT_KEYS': 'source-principal-v1'})
+
+
+def test_postgres_atomic_ingestion():
+    _run_isolated(r'''
+from concurrent.futures import ThreadPoolExecutor
+from fastapi.testclient import TestClient
+from backend import event_store as db, main
+from backend.normalizer import normalize
+assert db._PG is True
+# Seed the old schema before startup, then exercise repeated migrations.
+with db._db() as con:
+    cur=db._cursor(con)
+    cur.execute(db._DDL_EVENTS)
+    cur.execute("INSERT INTO events (\"user\",timestamp,source,action,resource,ingested_at) VALUES ('legacy','old','cert_logon','Logon','pc1','old')")
+db.init_db()
+db.init_db()
+assert db.get_total_event_count('legacy')==1
+body={'source':'aws_cloudtrail','source_account_id':'123456789012','event':{'eventID':'postgres-one','eventTime':'2026-10-27T12:00:00Z','eventName':'ListBuckets','userIdentity':{'userName':'postgres-test','accountId':'123456789012'}}}
+main.cloud_ae_scorer.score_user=lambda *args: None
+with TestClient(main.app,raise_server_exceptions=False) as client:
+    one=client.post('/ingest',json=body)
+    assert one.status_code==200, one.status_code
+    two=client.post('/ingest',json=body)
+    assert two.status_code==200 and two.json()['duplicate'] is True
+    assert db.get_total_event_count('postgres-test')==1
+    assert db.get_live_score('postgres-test')['ae_live'] is None
+    changed={**body,'event':{**body['event'],'eventID':'postgres-failure'}}
+    def fail(*args): raise RuntimeError('injected scoring error')
+    main.cloud_ae_scorer.score_user=fail
+    assert client.post('/ingest',json=changed).status_code==500
+    assert db.get_total_event_count('postgres-test')==1
+    main.cloud_ae_scorer.score_user=lambda *args: None
+    assert client.post('/ingest',json=changed).json()['duplicate'] is False
+    # SQL failures in optional alert creation must not abort the outer PG commit.
+    original=main.astore.create_alert
+    def bad_alert(*args):
+        original(*args)
+        with db._db() as con:
+            db._cursor(con).execute('SELECT * FROM nonexistent_alert_test_table')
+    main.astore.create_alert=bad_alert
+    alert_body={**body,'event':{**body['event'],'eventID':'postgres-alert','userIdentity':{'userName':'alert-test','accountId':'123456789012'}}}
+    assert client.post('/ingest',json=alert_body).status_code==200
+    assert db.get_total_event_count('alert-test')==1
+    with db._db() as con:
+        cur=db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n FROM alerts WHERE user_id='alert-test'")
+        assert cur.fetchone()['n']==0
+event=normalize({**body['event'],'eventID':'concurrent-key'},'aws_cloudtrail')
+def insert(_):
+    with db.transaction(): return db.insert_event(event)
+with ThreadPoolExecutor(max_workers=4) as pool:
+    assert list(pool.map(insert,range(8))).count(True)==1
+print('Postgres migration, receipts, null scores, rollback, alert savepoints and concurrent inserts passed')
+''')
+
+
+def test_postgres_ingest_writes_baseline_and_ml_rows():
+    """L14: after a short synthetic stream through the real ingest path, the account-day has a baseline_scores row AND
+    an ml_scores row (test-only comparator bundle, pinned in-process). Guards the bound LIKE pattern on psycopg2.
+    The SQLite equivalent is backend/tests/test_l14_readiness.py::test_ingest_writes_baseline_and_ml_rows."""
+    pytest.importorskip('torch')
+    _run_isolated(r'''
+import os, tempfile
+from pathlib import Path
+from fastapi.testclient import TestClient
+from backend import event_store as db, live_ae, main, readiness
+from backend.tests.live_ae_fixture import make_bundle, persona_stream
+assert db._PG is True
+bundle = Path(tempfile.mkdtemp()) / 'bundle'
+live_ae.EXPECTED_MANIFEST_SHA256 = make_bundle(bundle)
+os.environ['ARGUS_LIVE_AE_BUNDLE'] = str(bundle)
+main.cloud_ae_scorer.score_user = lambda *args: None
+with TestClient(main.app) as client:
+    for body in persona_stream():
+        assert client.post('/ingest', json=body).status_code == 200
+    with db._db() as con:
+        cur = db._cursor(con)
+        cur.execute("SELECT COUNT(*) AS n FROM baseline_scores WHERE day='2026-10-15'")
+        assert cur.fetchone()['n'] == 1
+        cur.execute("SELECT COUNT(*) AS n FROM ml_scores WHERE day='2026-10-15' AND score IS NOT NULL")
+        assert cur.fetchone()['n'] == 1
+    assert readiness.missing_scores() == [] and readiness.schema() == {}
+    assert client.get('/readiness').json()['comparator']['ok'] is True
+print('Postgres ingest wrote baseline and ML rows')
+''', {'ARGUS_ACCOUNT_KEYS': 'source-principal-v1'})

@@ -1,0 +1,45 @@
+{
+  "version": "baseline-risk-score-v1.2",
+  "weights": {
+    "new_action": 0.25,
+    "new_resource": 0.25,
+    "unusual_hours": 0.2,
+    "volume": 0.15,
+    "sensitive_new": 0.15
+  },
+  "tiers": {
+    "high": 60,
+    "medium": 30
+  },
+  "history_window_days": 28,
+  "learning_min_active_days": 5,
+  "count_signal": [
+    0.0,
+    0.6,
+    1.0
+  ],
+  "novelty": {
+    "evaluated_from_history_day": 4,
+    "min_evaluable_days": 2,
+    "fact_shown_at_rho": 0.25,
+    "discount": "signal x (1 - rho)"
+  },
+  "usual_hours": {
+    "core_hour_min_share": 0.05,
+    "widen_hours": 1,
+    "circular": true,
+    "full_signal_outside_share": 0.5,
+    "clock": "MYT"
+  },
+  "volume": {
+    "full_signal_log2_ratio": 3
+  },
+  "sensitive_floor": {
+    "min_signal_after_discount": 0.5,
+    "min_score": 30
+  },
+  "day": "Asia/Kuala_Lumpur calendar day (UTC+08:00)",
+  "builtin_sensitive_patterns_sha256": "4b6b4831e1911ccfb0486e19e1270fc422d42e123928633f1d7a538553b77318",
+  "sensitive_resources_sha256": "d69917825c3a0941d1ff4bf81224c6b87e56fd914ffd96d03cfe3823338e4e38",
+  "reference_vectors_sha256": "d73b5ceefc65b36e6aaf05e36e1113105cc845263a556b11ba0c4d6ce860b63d"
+}

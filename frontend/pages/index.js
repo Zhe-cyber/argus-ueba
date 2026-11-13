@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import DashboardViews from '@/components/DashboardViews'
+import SourceActivity from '@/components/SourceActivity'
 import { fetchUsers, fetchStats } from '@/lib/api'
+import ScoringStatusNotice from '@/components/ScoringStatusNotice'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -15,9 +18,11 @@ const RISK_STYLE = {
   High:   { badge: 'bg-red-100 text-red-700 ring-1 ring-red-300',   dot: 'bg-red-500'   },
   Medium: { badge: 'bg-amber-100 text-amber-700 ring-1 ring-amber-300', dot: 'bg-amber-500' },
   Low:    { badge: 'bg-green-100 text-green-700 ring-1 ring-green-300', dot: 'bg-green-500' },
+  Unknown: { badge: 'bg-slate-100 text-slate-700 ring-1 ring-slate-300', dot: 'bg-slate-400' },
 }
 
 const STAT_STYLE = {
+  Unknown: { bg: 'bg-slate-50', border: 'border-slate-200', label: 'text-slate-500', value: 'text-slate-700', pct: 'text-slate-400' },
   total:  { bg: 'bg-slate-50',  border: 'border-slate-200', label: 'text-slate-500', value: 'text-slate-800', pct: 'text-slate-400' },
   High:   { bg: 'bg-red-50',    border: 'border-red-200',   label: 'text-red-500',   value: 'text-red-700',   pct: 'text-red-400'   },
   Medium: { bg: 'bg-amber-50',  border: 'border-amber-200', label: 'text-amber-500', value: 'text-amber-700', pct: 'text-amber-400' },
@@ -82,7 +87,7 @@ function StatCard({ label, count, pct, styleKey }) {
 }
 
 function RiskBadge({ level }) {
-  const s = RISK_STYLE[level] ?? RISK_STYLE.Low
+  const s = RISK_STYLE[level] ?? RISK_STYLE.Unknown
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.badge}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
@@ -202,15 +207,20 @@ export default function Dashboard() {
       </Head>
 
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <DashboardViews />
+
+          {stats?.application_mode === 'live' && <SourceActivity />}
+          {stats?.application_mode === 'live' && <ScoringStatusNotice status={stats.scoring_status} />}
 
           {/* ── Stats bar ── */}
-          {stats && (
+          {stats && (stats.application_mode !== 'live' || stats.scoring_status?.model_ready) && (
             <section aria-label="Risk summary">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatCard label="Total Users" count={stats.total_users} styleKey="total" />
-                <StatCard label="High Risk"   count={stats.high_risk}   pct={pct(stats.high_risk)}   styleKey="High" />
-                <StatCard label="Medium Risk" count={stats.medium_risk} pct={pct(stats.medium_risk)} styleKey="Medium" />
-                <StatCard label="Low Risk"    count={stats.low_risk}    pct={pct(stats.low_risk)}    styleKey="Low" />
+              <div className={`grid grid-cols-2 ${stats.application_mode === 'live' ? stats.scoring_status?.model_ready ? 'sm:grid-cols-5' : 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-4`}>
+                <StatCard label={stats.application_mode === 'live' ? 'Observed Accounts' : 'Total Users'} count={stats.total_users} styleKey="total" />
+                {(stats.application_mode !== 'live' || stats.scoring_status?.model_ready) && <><StatCard label="High priority"   count={stats.high_risk}   pct={pct(stats.high_risk)}   styleKey="High" />
+                <StatCard label="Medium priority" count={stats.medium_risk} pct={pct(stats.medium_risk)} styleKey="Medium" />
+                <StatCard label="Low priority"    count={stats.low_risk}    pct={pct(stats.low_risk)}    styleKey="Low" /></>}
+                {stats.application_mode === 'live' && <StatCard label="Unscored" count={stats.unscored_users} pct={pct(stats.unscored_users)} styleKey="Unknown" />}
               </div>
             </section>
           )}
@@ -223,7 +233,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-700">
-                    {filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`}
+                    {stats?.application_mode === 'live' ? 'Observed accounts' : (filtered ? 'User Risk Overview' : `Top ${PAGE_SIZE} Highest-Risk Users`)}
                   </h2>
                   {!loading && !error && (
                     <p className="text-xs text-slate-400 mt-0.5">
@@ -247,7 +257,7 @@ export default function Dashboard() {
                       type="text"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
-                      placeholder="Search user ID…"
+                      placeholder="Search account…"
                       className="w-full sm:w-52 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-7 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-200"
                     />
                     {searchInput && (
@@ -263,7 +273,7 @@ export default function Dashboard() {
 
                   {/* Source filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Source filter">
-                    {SOURCE_FILTERS.map((s) => (
+                    {SOURCE_FILTERS.filter(() => stats?.application_mode !== 'live').map((s) => (
                       <button
                         key={s}
                         onClick={() => setSourceFilter(s)}
@@ -282,7 +292,7 @@ export default function Dashboard() {
                   </div>
                   {/* Risk filter */}
                   <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="Risk filter">
-                    {RISK_FILTERS.map((f) => (
+                    {(stats?.application_mode === 'live' ? stats.scoring_status?.model_ready ? [...RISK_FILTERS, 'Unknown'] : ['All', 'Unknown'] : RISK_FILTERS).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFilter(f)}
@@ -316,14 +326,14 @@ export default function Dashboard() {
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 w-12">#</th>
-                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User ID</th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Account</th>
                           <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
-                              title="Raw autoencoder reconstruction error. Scale differs by detector (CERT vs Cloud), so compare by Risk Level, not raw score.">
-                            Risk Score
+                              title="AE anomaly score. Scores from different models or sources are not directly comparable.">
+                            AE score
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
-                              title="Calibrated per detector — CERT High threshold ≈ 0.066, Cloud High ≈ 0.70. This is the comparable signal across sources.">
-                            Risk Level
+                              title="Operational risk tier, not a probability of compromise. Live thresholds remain provisional.">
+                            Review priority
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Source</th>
                         </tr>
@@ -343,7 +353,8 @@ export default function Dashboard() {
                               {offset + idx + 1}
                             </td>
                             <td className="px-5 py-3.5 font-mono text-slate-700 font-medium">
-                              {user.user}
+                              {user.display_name || user.user}
+                              {user.account_kind && <span className="block text-[10px] font-sans text-slate-400 mt-0.5">{user.account_kind}{user.source_account_id ? ' · ' + user.source_account_id : ''}</span>}
                             </td>
                             <td className="px-5 py-3.5 text-right">
                               <ScoreBar score={user.ae_score} risk={user.risk_level} />
@@ -397,7 +408,10 @@ export default function Dashboard() {
 // ---------------------------------------------------------------------------
 
 function ScoreBar({ score, risk }) {
-  const pct = Math.round(score * 100)
+  if (score == null || !Number.isFinite(score)) {
+    return <span className="text-xs text-slate-500">Unavailable</span>
+  }
+  const pct = Math.max(0, Math.min(100, Math.round(score * 100)))
 
   const trackColor =
     risk === 'High'   ? 'bg-red-400'

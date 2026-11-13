@@ -54,6 +54,15 @@ class ShapFeature(BaseModel):
 # User schemas
 # ---------------------------------------------------------------------------
 
+class CloudScoringStatus(BaseModel):
+    status: str
+    message: str
+    model_ready: bool
+    model_origin: Optional[str] = None
+    provisional: bool = True
+    next_step: str
+
+
 class UserSummary(BaseModel):
     """
     Lightweight user row returned by GET /users.
@@ -70,17 +79,24 @@ class UserSummary(BaseModel):
     """
 
     user: str
-    ae_score: float
-    risk_level: str = Field(..., description="'High', 'Medium', or 'Low'")
-    is_insider: int = Field(..., ge=0, le=1, description="Ground-truth label: 0 or 1")
-    scenario: int   = Field(..., ge=0, le=3, description="CERT scenario: 0–3")
+    display_name: Optional[str] = None
+    identity_basis: Optional[str] = None
+    source_account_id: Optional[str] = None
+    account_kind: Optional[str] = None
+    ae_score: Optional[float]
+    risk_level: str = Field(..., description="High, Medium, Low, or Unknown when scoring is unavailable. "
+                            "Live mode: the baseline risk score tier of the latest scored day (or Learning)")
+    baseline_score: Optional[int] = Field(None, description="Live mode: baseline risk score v1.1 (0-100) of baseline_day")
+    baseline_day: Optional[str] = Field(None, description="Live mode: MYT day of baseline_score")
+    is_insider: Optional[int] = Field(..., ge=0, le=1, description="Benchmark ground truth; null for live accounts")
+    scenario: Optional[int] = Field(..., ge=0, le=3, description="CERT scenario; null for live accounts")
     data_source: str = Field("cert", description="'cert' or 'cloud'")
     source: Optional[str] = Field(None, description="Specific cloud source, e.g. aws_cloudtrail, azure_ad, github_events, cloudflare_access")
 
     @field_validator("risk_level")
     @classmethod
     def risk_level_must_be_valid(cls, v: str) -> str:
-        allowed = {"High", "Medium", "Low"}
+        allowed = {"High", "Medium", "Low", "Unknown", "Learning"}
         if v not in allowed:
             raise ValueError(f"risk_level must be one of {allowed}, got {v!r}")
         return v
@@ -134,11 +150,13 @@ class UserDetail(UserSummary):
     peer_deviations: top behavioural deviations vs peer group mean
     """
 
+    application_mode: str = 'benchmark'
+    scoring_status: Optional[CloudScoringStatus] = None
     if_score:        float
     rule_score:      float
     wa_score:        float
     lgbm_score:      float = Field(0.0, description="Deprecated; equals ae_score (LightGBM Stage 2 not adopted)")
-    ensemble_score:  float = Field(0.0, description="Alias of ae_score; retained for back-compat (no score fusion)")
+    ensemble_score:  Optional[float] = Field(0.0, description="Alias of ae_score; retained for back-compat (no score fusion)")
     top_features:    List[ShapFeature] = Field(
         default_factory=list,
         description="Top 5 attribution features sorted by absolute value descending",
@@ -185,9 +203,12 @@ class Stats(BaseModel):
     high_risk:        int   = Field(..., ge=0, description="Users at High risk level")
     medium_risk:      int   = Field(..., ge=0, description="Users at Medium risk level")
     low_risk:         int   = Field(..., ge=0, description="Users at Low risk level")
-    insiders:         int   = Field(..., ge=0, description="Ground-truth insider count (is_insider == 1)")
-    high_threshold:   float = Field(..., description="AE score cutoff for High risk (F1-optimal from PR curve)")
-    medium_threshold: float = Field(..., description="AE score cutoff for Medium risk (99th pct of normal users)")
+    insiders:         Optional[int] = Field(..., ge=0, description="Benchmark ground-truth count; null in live mode")
+    high_threshold:   float = Field(..., description="Cutoff for High risk in the active mode (live: baseline score 60)")
+    medium_threshold: float = Field(..., description="Cutoff for Medium risk in the active mode (live: baseline score 30)")
+    application_mode: str = Field('benchmark', description="live, benchmark or demo")
+    unscored_users: int = Field(0, ge=0, description="Live: accounts without a baseline score (Learning or Unknown)")
+    scoring_status: Optional[CloudScoringStatus] = None
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +237,8 @@ class NormalizedEvent(BaseModel):
     ip_address: str          = Field(..., description="Source IP address or empty string")
     metadata:   Dict[str, Any] = Field(default_factory=dict, description="Additional source-specific fields")
     raw:        Dict[str, Any] = Field(..., description="Original unmodified event")
+    event_id: Optional[str] = Field(None, description="Native provider record ID; absent for CERT replay")
+    source_account_id: str = Field('', max_length=128, description="Provider account namespace; not authorization")
 
     @field_validator("source")
     @classmethod
@@ -243,6 +266,7 @@ class Alert(BaseModel):
 
     id:          int
     user_id:     str
+    display_name: Optional[str] = None
     alert_type:  str  = Field(..., description="rarity_spike | ae_critical | anomalous_behavior | new_user")
     severity:    str  = Field(..., description="Critical | High | Medium | Low")
     title:       str
@@ -291,6 +315,7 @@ class InvestigationRecord(BaseModel):
     """Full investigation record returned by GET /users/{id}/investigation."""
 
     user_id:       str
+    display_name: Optional[str] = None
     status:        str = Field(..., description="Pending | Under Investigation | Cleared | Confirmed Insider")
     analyst:       str = Field(..., description="Display name of the analyst who last updated the record")
     notes:         str = Field("", description="Free-text analyst notes")
@@ -325,6 +350,10 @@ class PipelineResult(NormalizedEvent):
     pipeline output: extracted behavioral features, live 24-hour risk score,
     and a summary of the user's accumulated event history.
     """
+
+    account_key: Optional[str] = None
+    identity_status: str = 'legacy'
+    duplicate: bool = Field(False, description="A committed native event was returned without processing it again")
 
     # Step 2 — feature extraction
     extracted_features: Dict[str, int] = Field(
@@ -404,6 +433,14 @@ class LiveEvent(BaseModel):
     ingested_at: str
 
 
+class GitHubActivityIngestRequest(BaseModel):
+    """Repository context comes from the verified collector request, not the row."""
+    event: Dict[str, Any]
+    source_account_id: str = Field(..., min_length=1, max_length=128, pattern=r'^github-owner:[0-9]+$')
+    repository: str = Field(..., max_length=256, pattern=r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
+    repository_id: int = Field(..., gt=0, strict=True)
+
+
 class IngestRequest(BaseModel):
     """
     Request body for POST /ingest.
@@ -413,6 +450,7 @@ class IngestRequest(BaseModel):
     """
 
     event:  Dict[str, Any] = Field(..., description="Raw log event as received from the source")
+    source_account_id: str = Field('', max_length=128, description="Configured provider account namespace; not authorization")
     source: str = Field(
         ...,
         description=(

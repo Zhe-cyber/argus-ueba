@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from backend.config import BASE_DIR
+from backend.config import BASE_DIR, LIVE_MODE, LIVE_STATE_DIR
 
 # ---------------------------------------------------------------------------
 # Backend detection (reuses the same env var as event_store)
@@ -30,7 +30,7 @@ _PH: str     = "%s" if _PG else "?"
 VALID_STATUSES = {"Pending", "Under Investigation", "Cleared", "Confirmed Insider"}
 
 # JSON fallback path (local dev only)
-INVESTIGATIONS_PATH = BASE_DIR / "data" / "investigations.json"
+INVESTIGATIONS_PATH = (LIVE_STATE_DIR if LIVE_MODE else BASE_DIR / 'data') / 'investigations.json'
 
 # ---------------------------------------------------------------------------
 # PostgreSQL helpers

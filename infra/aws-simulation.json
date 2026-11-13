@@ -1,0 +1,1529 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Argus synthetic-only activity lab: 6 machine roles, 7 private fixture buckets. No app/model deployment.",
+  "Parameters": {
+    "TrailName": {
+      "Type": "String",
+      "Default": "argus-ueba-live-trail",
+      "AllowedPattern": "argus-[a-z0-9-]+"
+    }
+  },
+  "Resources": {
+    "Bucket01": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p01"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket01Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket01"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket01",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket01.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket02": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p02"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket02Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket02"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket02",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket02.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket03": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p03"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket03Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket03"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket03",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket03.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket04": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p04"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket04Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket04"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket04",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket04.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket05": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p05"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket05Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket05"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket05",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket05.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket06": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-p06"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket06Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket06"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket06",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket06.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Bucket07": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-confidential"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireSyntheticFixture",
+              "Status": "Enabled",
+              "ExpirationInDays": 30
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Bucket07Policy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Bucket07"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Bucket07",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Bucket07.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RunnerUser": {
+      "Type": "AWS::IAM::User",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "UserName": {
+          "Fn::Sub": "${AWS::StackName}-runner"
+        },
+        "Path": "/argus-lab/",
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "AssumeOnlyLabRolesAndCheckAudit",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sts:AssumeRole"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-01"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-02"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-03"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-04"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-05"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/argus-lab/${AWS::StackName}-persona-06"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudtrail:GetEventSelectors",
+                    "cloudtrail:GetTrailStatus"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:cloudtrail:us-east-1:${AWS::AccountId}:trail/${TrailName}"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Persona01": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-01"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Persona02": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-02"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Persona03": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-03"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Persona04": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-04"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Persona05": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-05"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    },
+    "Persona06": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-persona-06"
+        },
+        "Path": "/argus-lab/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "RunnerUser",
+                    "Arn"
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadOnlySyntheticFixtures",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Bucket01.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket02.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket03.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket04.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket05.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket06.Arn}/fixture.txt"
+                    },
+                    {
+                      "Fn::Sub": "${Bucket07.Arn}/fixture.txt"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket01",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket02",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket03",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket04",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket05",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket06",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "Bucket07",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Argus"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SyntheticLab"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "RunnerUserName": {
+      "Value": {
+        "Ref": "RunnerUser"
+      }
+    },
+    "RunnerUserArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "RunnerUser",
+          "Arn"
+        ]
+      }
+    },
+    "Persona01RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona01",
+          "Arn"
+        ]
+      }
+    },
+    "Persona02RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona02",
+          "Arn"
+        ]
+      }
+    },
+    "Persona03RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona03",
+          "Arn"
+        ]
+      }
+    },
+    "Persona04RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona04",
+          "Arn"
+        ]
+      }
+    },
+    "Persona05RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona05",
+          "Arn"
+        ]
+      }
+    },
+    "Persona06RoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Persona06",
+          "Arn"
+        ]
+      }
+    },
+    "Bucket01Name": {
+      "Value": {
+        "Ref": "Bucket01"
+      }
+    },
+    "Bucket02Name": {
+      "Value": {
+        "Ref": "Bucket02"
+      }
+    },
+    "Bucket03Name": {
+      "Value": {
+        "Ref": "Bucket03"
+      }
+    },
+    "Bucket04Name": {
+      "Value": {
+        "Ref": "Bucket04"
+      }
+    },
+    "Bucket05Name": {
+      "Value": {
+        "Ref": "Bucket05"
+      }
+    },
+    "Bucket06Name": {
+      "Value": {
+        "Ref": "Bucket06"
+      }
+    },
+    "Bucket07Name": {
+      "Value": {
+        "Ref": "Bucket07"
+      }
+    }
+  }
+}

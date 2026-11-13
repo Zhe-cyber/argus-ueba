@@ -1,422 +1,105 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
-import { useRouter } from 'next/router'
+import Link from 'next/link'
 import { fetchAlerts, fetchAlertStats, updateAlertStatus, escalateAlert } from '@/lib/api'
 
-// ---------------------------------------------------------------------------
-// Style maps
-// ---------------------------------------------------------------------------
-
-const SEV_STYLE = {
-  Critical: { bg: 'bg-red-100',    text: 'text-red-700',    ring: 'ring-red-300',    dot: 'bg-red-500',    bar: 'bg-red-500'    },
-  High:     { bg: 'bg-orange-100', text: 'text-orange-700', ring: 'ring-orange-300', dot: 'bg-orange-500', bar: 'bg-orange-500' },
-  Medium:   { bg: 'bg-amber-100',  text: 'text-amber-700',  ring: 'ring-amber-300',  dot: 'bg-amber-500',  bar: 'bg-amber-500'  },
-  Low:      { bg: 'bg-slate-100',  text: 'text-slate-600',  ring: 'ring-slate-300',  dot: 'bg-slate-400',  bar: 'bg-slate-400'  },
+const STATUSES = ['All', 'Open', 'Acknowledged', 'Resolved', 'False Positive']
+const LABELS = { rarity_spike: 'Rarity rules', anomalous_behavior: 'Timing and novelty rule', new_user: 'New account observation', ae_critical: 'AE threshold alert' }
+const SOURCE_LABELS = { aws_cloudtrail: 'AWS CloudTrail', cloudflare_access: 'Cloudflare Access', github_events: 'GitHub Events', cert: 'CERT benchmark' }
+function origin(type) {
+  return ['rarity_spike', 'anomalous_behavior'].includes(type) ? 'Rule signal' : type === 'new_user' ? 'Observation' : type === 'ae_critical' ? 'AE detection' : 'Unverified origin'
 }
-
-const STATUS_STYLE = {
-  'Open':           { bg: 'bg-red-50',    text: 'text-red-700',    ring: 'ring-red-200'    },
-  'Acknowledged':   { bg: 'bg-amber-50',  text: 'text-amber-700',  ring: 'ring-amber-200'  },
-  'Resolved':       { bg: 'bg-green-50',  text: 'text-green-700',  ring: 'ring-green-200'  },
-  'False Positive': { bg: 'bg-slate-50',  text: 'text-slate-500',  ring: 'ring-slate-200'  },
-}
-
-const TYPE_LABELS = {
-  rarity_spike:       'Rarity Spike',
-  ae_critical:        'AE Anomaly',
-  anomalous_behavior: 'Anomalous Behavior',
-  new_user:           'New User',
-}
-
-const STATUS_FILTERS = ['All', 'Open', 'Acknowledged', 'Resolved', 'False Positive']
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function timeAgo(isoStr) {
-  const diff = Date.now() - new Date(isoStr).getTime()
-  const m = Math.floor(diff / 60_000)
-  if (m < 1)  return 'just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function SeverityBadge({ severity }) {
-  const s = SEV_STYLE[severity] ?? SEV_STYLE.Low
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1
-                      ${s.bg} ${s.text} ${s.ring}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-      {severity}
-    </span>
-  )
-}
-
-function StatusPill({ status }) {
-  const s = STATUS_STYLE[status] ?? STATUS_STYLE['Open']
-  return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1
-                      ${s.bg} ${s.text} ${s.ring}`}>
-      {status}
-    </span>
-  )
-}
-
-function TypeChip({ type }) {
-  return (
-    <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5
-                     text-[10px] font-semibold text-indigo-600 ring-1 ring-indigo-200">
-      {TYPE_LABELS[type] ?? type}
-    </span>
-  )
-}
-
-function StatCard({ label, count, color, bg }) {
-  return (
-    <div className={`rounded-xl border px-5 py-4 shadow-sm ${bg}`}>
-      <p className={`text-xs font-semibold uppercase tracking-wider ${color} opacity-70`}>{label}</p>
-      <p className={`text-3xl font-bold tabular-nums mt-1 ${color}`}>{count.toLocaleString()}</p>
-    </div>
-  )
-}
-
-function AlertRow({ alert, onUserClick, onStatusUpdate, onEscalate, updating }) {
-  const canEscalate = alert.status === 'Open' || alert.status === 'Acknowledged'
-  const sev = SEV_STYLE[alert.severity] ?? SEV_STYLE.Low
-
-  // Status → available next actions
-  const actions = []
-  if (alert.status === 'Open') {
-    actions.push({ label: 'Acknowledge', next: 'Acknowledged', style: 'bg-amber-500 hover:bg-amber-600 text-white' })
-    actions.push({ label: 'Resolve',     next: 'Resolved',     style: 'bg-green-600 hover:bg-green-700 text-white' })
-    actions.push({ label: 'False +',     next: 'False Positive', style: 'bg-slate-500 hover:bg-slate-600 text-white' })
-  } else if (alert.status === 'Acknowledged') {
-    actions.push({ label: 'Resolve',     next: 'Resolved',     style: 'bg-green-600 hover:bg-green-700 text-white' })
-    actions.push({ label: 'False +',     next: 'False Positive', style: 'bg-slate-500 hover:bg-slate-600 text-white' })
-  } else {
-    actions.push({ label: 'Re-open',     next: 'Open',         style: 'bg-red-500 hover:bg-red-600 text-white' })
-  }
-
-  return (
-    <div className={`px-5 py-4 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-slate-50/70 transition-colors
-                     ${alert.status !== 'Open' && alert.status !== 'Acknowledged' ? 'opacity-60' : ''}`}>
-
-      {/* Left: severity bar */}
-      <div className={`hidden sm:block w-1 self-stretch rounded-full flex-shrink-0 ${sev.bar}`} />
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 space-y-1.5">
-
-        {/* Top row: badges + title */}
-        <div className="flex flex-wrap items-center gap-2">
-          <SeverityBadge severity={alert.severity} />
-          <TypeChip type={alert.alert_type} />
-          <StatusPill status={alert.status} />
-        </div>
-
-        <p className="text-sm font-semibold text-slate-800 leading-snug">{alert.title}</p>
-
-        {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-          <button
-            onClick={onUserClick}
-            className="font-mono text-indigo-500 hover:text-indigo-700 hover:underline font-medium transition-colors"
-          >
-            {alert.user_id}
-          </button>
-          <span>·</span>
-          <span>{timeAgo(alert.created_at)}</span>
-          {alert.resolved_at && (
-            <>
-              <span>·</span>
-              <span className="text-green-500">resolved {timeAgo(alert.resolved_at)}</span>
-            </>
-          )}
-        </div>
-
-        {/* Details — show key scores if present */}
-        {alert.details && Object.keys(alert.details).length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {Object.entries(alert.details)
-              .filter(([, v]) => typeof v === 'number' || typeof v === 'string')
-              .slice(0, 4)
-              .map(([k, v]) => (
-                <span key={k}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5
-                             text-[10px] font-mono text-slate-600">
-                  {k}: <span className="font-semibold text-slate-700">{
-                    typeof v === 'number' ? v.toFixed(3) : String(v)
-                  }</span>
-                </span>
-              ))}
-          </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {updating ? (
-          <svg className="animate-spin h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-        ) : (
-          <>
-            {canEscalate && (
-              <button
-                onClick={onEscalate}
-                title="Open an investigation case for this user"
-                className="rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                Escalate →
-              </button>
-            )}
-            {actions.map(({ label, next, style }) => (
-              <button
-                key={next}
-                onClick={() => onStatusUpdate(next)}
-                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all ${style}`}
-              >
-                {label}
-              </button>
-            ))}
-          </>
-        )}
-      </div>
-
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
+const pill = 'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 '
+const severityColor = value => ['Critical', 'High'].includes(value) ? 'bg-rose-50 text-rose-700 ring-rose-200' : value === 'Medium' ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-slate-100 text-slate-600 ring-slate-200'
 
 export default function AlertsPage() {
-  const router  = useRouter()
-  const [alerts,   setAlerts]   = useState([])
-  const [stats,    setStats]    = useState(null)
-  const [filter,   setFilter]   = useState('Open')  // default to Open alerts
-  const [loading,  setLoading]  = useState(true)
-  const [updating, setUpdating] = useState(null)    // alert id being updated
-  const [escalated, setEscalated] = useState(null)  // banner after escalation
-
-  const load = useCallback(async (f) => {
-    setLoading(true)
+  const [alerts, setAlerts] = useState([])
+  const [stats, setStats] = useState(null)
+  const [filter, setFilter] = useState('Open')
+  const [kind, setKind] = useState('Security findings')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [updating, setUpdating] = useState(null)
+  const [pending, setPending] = useState(null)
+  const [success, setSuccess] = useState(null)
+  const [expanded, setExpanded] = useState(null)
+  const requestId = useRef(0)
+  const load = useCallback(async () => {
+    const id = ++requestId.current
     try {
-      const [alertsData, statsData] = await Promise.all([
-        fetchAlerts(f === 'All' ? null : f, 100),
-        fetchAlertStats(),
-      ])
-      setAlerts(alertsData)
-      setStats(statsData)
-    } catch (e) {
-      console.error('Alerts load error:', e)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load(filter) }, [filter, load])
-
-  // Auto-refresh every 15 s
-  useEffect(() => {
-    const id = setInterval(() => load(filter), 15_000)
-    return () => clearInterval(id)
-  }, [filter, load])
-
-  async function handleStatusUpdate(alertId, newStatus) {
-    setUpdating(alertId)
-    try {
-      await updateAlertStatus(alertId, newStatus)
-      await load(filter)
-    } catch (e) {
-      console.error('Status update failed:', e)
-    } finally {
-      setUpdating(null)
-    }
+      const [rows, counts] = await Promise.all([fetchAlerts(filter === 'All' ? null : filter, 100), fetchAlertStats()])
+      if (id === requestId.current) { setAlerts(rows); setStats(counts); setError(null) }
+    } catch (e) { if (id === requestId.current) setError(e.message || 'Unable to load alerts') }
+    finally { if (id === requestId.current) setLoading(false) }
+  }, [filter])
+  useEffect(() => { setLoading(true); load(); const timer = setInterval(load, 15000); return () => { clearInterval(timer); requestId.current++ } }, [load])
+  async function changeStatus(alert, status) {
+    setUpdating(alert.id); setError(null)
+    try { await updateAlertStatus(alert.id, status); setSuccess({ message: `Alert #${alert.id} marked ${status}.` }); await load() }
+    catch (e) { setError(e.message || 'Status update failed') }
+    finally { setUpdating(null) }
   }
-
-  async function handleEscalate(alertId, userId) {
-    setUpdating(alertId)
+  async function confirmEscalation() {
+    const alert = pending
+    setUpdating(alert.id); setError(null)
     try {
-      await escalateAlert(alertId)
-      setEscalated(userId)
-      setTimeout(() => setEscalated(null), 6000)
-      await load(filter)
-    } catch (e) {
-      console.error('Escalation failed:', e)
-    } finally {
-      setUpdating(null)
-    }
+      const result = await escalateAlert(alert.id)
+      setPending(null)
+      setSuccess({ message: `Alert #${alert.id} linked to an investigation.`, user: result.user_id })
+      await load()
+    } catch (e) { setError(e.message || 'Escalation failed. No success has been assumed.') }
+    finally { setUpdating(null) }
   }
-
-  return (
-    <>
-      <Head>
-        <title>Alerts — Argus</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
-
-        {/* Page header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Security Alerts</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Triage queue — review each detection, then <span className="font-semibold text-indigo-600">Escalate</span> real threats into an investigation
-            </p>
-          </div>
-          <button
-            onClick={() => load(filter)}
-            className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200
-                       bg-white px-3 py-1.5 text-xs font-medium text-slate-500
-                       hover:text-slate-700 hover:border-slate-300 transition-all"
-          >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" clipRule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002
-                   5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1
-                   1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1
-                   0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" />
-            </svg>
-            Refresh
-          </button>
+  const visible = alerts.filter(alert => kind === 'Security findings' ? ['Rule signal', 'AE detection'].includes(origin(alert.alert_type)) : origin(alert.alert_type) === kind)
+  return <>
+    <Head><title>Alert review — Argus</title></Head>
+    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-5">
+      <div className="flex justify-between items-start gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Alert review</h1>
+        <button onClick={load} className="rounded-lg border bg-white px-4 py-2 text-sm text-slate-700">Refresh</button>
+      </div>
+      {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
+      {success && <div role="status" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 flex flex-wrap gap-3"><span>{success.message}</span>{success.user && <Link className="font-semibold underline" href={'/users/' + encodeURIComponent(success.user)}>Open account investigation →</Link>}</div>}
+      {stats && <p className="text-xs text-slate-500">Status totals include security findings and account observations.</p>}
+      {stats && <section aria-label="All signal status summary" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[['Open', stats.open], ['Acknowledged', stats.acknowledged], ['Resolved', stats.resolved], ['False Positive', stats.false_positive]].map(([label, value]) => <button key={label} onClick={() => setFilter(label)} className="rounded-xl border border-slate-200 bg-white text-left p-4 hover:border-indigo-300"><span className="text-xs text-slate-500">{label}</span><p className="text-3xl font-bold text-slate-800 mt-1">{value}</p></button>)}
+      </section>}
+      {pending && <section aria-label="Confirm investigation" className="rounded-xl border border-indigo-300 bg-indigo-50 p-5 space-y-3">
+        <h2 className="font-semibold text-slate-900">Investigate alert #{pending.id}?</h2>
+        <p className="text-sm text-slate-700 break-words">{pending.title}</p>
+        <p className="text-xs text-slate-600">Creates or links a case and acknowledges this alert. Existing notes and owner are retained.</p>
+        <div className="flex gap-2"><button disabled={updating !== null} onClick={confirmEscalation} className="rounded-lg bg-indigo-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50">{updating === pending.id ? 'Creating…' : 'Create or link case'}</button><button disabled={updating !== null} onClick={() => setPending(null)} className="rounded-lg bg-white border px-4 py-2 text-sm">Cancel</button></div>
+      </section>}
+      <section aria-label="Alert queue" className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-100 space-y-3">
+          <div className="flex flex-wrap gap-1" aria-label="Alert status filters">{STATUSES.map(status => <button key={status} onClick={() => setFilter(status)} aria-pressed={filter === status} className={'rounded-lg px-3 py-1.5 text-xs font-semibold ' + (filter === status ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600')}>{status}</button>)}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><label className="text-xs text-slate-500">Category <select aria-label="Signal origin" className="ml-2 rounded-lg border p-1.5 text-slate-700" value={kind} onChange={e => setKind(e.target.value)}>{['Security findings', 'Observation', 'Unverified origin'].map(value => <option key={value} value={value}>{value === 'Observation' ? 'Account observations' : value}</option>)}</select></label><span className="text-xs text-slate-400">{visible.length} shown · category filtered from up to 100 newest signals</span></div>
         </div>
+        {loading ? <p className="p-12 text-center text-sm text-slate-500">Loading alerts…</p> : visible.length === 0 ? <div className="p-12 text-center"><h2 className="font-semibold text-slate-700">No alerts in this view</h2><p className="text-sm text-slate-500 mt-2">Try another status or origin.</p><Link href="/" className="inline-block mt-4 text-sm font-semibold text-indigo-700">View connected activity →</Link></div> : <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] table-fixed text-sm text-left"><colgroup>{[10, 28, 18, 12, 15, 17].map((width, index) => <col key={index} style={{ width: width + '%' }} />)}</colgroup><thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500"><tr>
+            {['Severity', 'Signal', 'Account', 'Created', 'Status', ''].map((label, index) => <th key={index} className="px-4 py-3 font-semibold">{label}</th>)}
+          </tr></thead>
+          {visible.map(alert => {
+            const active = ['Open', 'Acknowledged'].includes(alert.status)
+            const busy = updating !== null
+            return <tbody key={alert.id} className="border-t border-slate-100">
+              <tr data-testid="alert-row" className="hover:bg-slate-50/70 align-top">
+                <td className="px-4 py-4"><span className={pill + severityColor(alert.severity)}>{alert.severity}</span></td>
+                <td className="px-4 py-4 max-w-sm"><p className="font-medium text-slate-800 text-xs leading-5 break-words line-clamp-2">{alert.title}</p><p className="text-[11px] text-slate-400 mt-1">#{alert.id} · {origin(alert.alert_type)}{alert.details?.source ? ' · ' + (SOURCE_LABELS[alert.details.source] || alert.details.source) : ''}</p></td>
+                <td className="px-4 py-4 max-w-[210px]">{alert.user_id ? <Link href={'/users/' + encodeURIComponent(alert.user_id)} className="font-mono text-xs text-indigo-700 hover:underline break-all">{alert.display_name || alert.user_id}</Link> : <span className="text-xs text-slate-400">Unresolved identity</span>}</td>
+                <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{new Date(alert.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                <td className="px-4 py-3"><select aria-label={'Status for alert ' + alert.id} disabled={busy} value={alert.status} onChange={e => changeStatus(alert, e.target.value)} className="rounded-md border border-slate-200 bg-white text-xs px-2 py-1.5 text-slate-600 disabled:opacity-50">{STATUSES.filter(value => value !== 'All').map(value => <option key={value}>{value}</option>)}</select></td>
+                <td className="px-4 py-3"><div className="flex items-center gap-2">{active && <button disabled={busy || !alert.user_id} title={alert.user_id ? 'Open investigation' : 'Identity needs review'} onClick={() => { setPending(alert); setSuccess(null) }} className="rounded-md bg-indigo-700 text-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50 whitespace-nowrap">Investigate →</button>}
+                  <button aria-expanded={expanded === alert.id} aria-label={'Evidence for alert ' + alert.id} onClick={() => setExpanded(expanded === alert.id ? null : alert.id)} className="rounded-md border border-slate-200 px-2 py-1.5 text-xs text-slate-600">Details</button></div>{updating === alert.id && <span role="status" className="text-xs text-slate-400">Saving…</span>}</td>
+              </tr>
+              {expanded === alert.id && <tr><td colSpan={6} className="px-5 py-4 bg-slate-50"><div className="flex flex-wrap gap-3 items-start"><div className="flex-1"><p className="text-xs font-semibold text-slate-700">{LABELS[alert.alert_type] || alert.alert_type}</p><pre className="text-xs text-slate-600 whitespace-pre-wrap break-all mt-2 max-h-60 overflow-auto">{JSON.stringify(alert.details || {}, null, 2)}</pre></div><Link href={'/users/' + encodeURIComponent(alert.user_id)} className="text-xs text-indigo-700 font-semibold">Open account →</Link></div></td></tr>}
+            </tbody>
+          })}
+          </table>
+        </div>}
 
-        {/* Escalation banner */}
-        {escalated && (
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 flex items-center gap-2 text-sm">
-            <span className="text-indigo-700 font-medium">
-              Escalated <span className="font-mono">{escalated}</span> to an investigation.
-            </span>
-            <button
-              onClick={() => router.push(`/users/${encodeURIComponent(escalated)}`)}
-              className="text-indigo-600 hover:text-indigo-800 underline font-medium text-xs"
-            >
-              Open case →
-            </button>
-          </div>
-        )}
-
-        {/* Stats row */}
-        {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="Open"          count={stats.open}           color="text-red-600"    bg="bg-red-50 border-red-200"    />
-            <StatCard label="Acknowledged"  count={stats.acknowledged}   color="text-amber-600"  bg="bg-amber-50 border-amber-200"  />
-            <StatCard label="Resolved"      count={stats.resolved}       color="text-green-600"  bg="bg-green-50 border-green-200"  />
-            <StatCard label="False Positive" count={stats.false_positive} color="text-slate-500"  bg="bg-slate-50 border-slate-200"  />
-          </div>
-        )}
-
-        {/* Filter + alert list */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-
-          {/* Toolbar */}
-          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 flex-wrap">
-              {STATUS_FILTERS.map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={[
-                    'relative rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
-                    filter === f
-                      ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                      : 'text-slate-500 hover:text-slate-700',
-                  ].join(' ')}
-                >
-                  {f}
-                  {f === 'Open' && stats?.open > 0 && (
-                    <span className="ml-1.5 rounded-full bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5">
-                      {stats.open}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            {!loading && (
-              <p className="text-xs text-slate-400">
-                {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-
-          {/* Alert rows */}
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <svg className="animate-spin h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-            </div>
-          ) : alerts.length === 0 ? (
-            <div className="py-16 text-center space-y-2">
-              <div className="mx-auto rounded-full bg-slate-50 p-4 w-fit">
-                <svg className="h-8 w-8 text-slate-300" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118
-                       9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64
-                       3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714
-                       0a3 3 0 11-5.714 0" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-slate-500">
-                No {filter !== 'All' ? filter.toLowerCase() : ''} alerts
-              </p>
-              {filter === 'Open' && (
-                <p className="text-xs text-slate-400">
-                  Ingest events in the{' '}
-                  <button onClick={() => router.push('/demo')}
-                    className="text-indigo-500 hover:underline font-medium">
-                    Demo Lab
-                  </button>
-                  {' '}to trigger alerts automatically
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {alerts.map(alert => (
-                <AlertRow
-                  key={alert.id}
-                  alert={alert}
-                  updating={updating === alert.id}
-                  onUserClick={() => router.push(`/users/${encodeURIComponent(alert.user_id)}`)}
-                  onStatusUpdate={(status) => handleStatusUpdate(alert.id, status)}
-                  onEscalate={() => handleEscalate(alert.id, alert.user_id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Empty state — no alerts at all */}
-        {!loading && stats?.total === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
-            <p className="text-sm font-medium text-slate-600">No alerts have been generated yet</p>
-            <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto">
-              The system auto-creates alerts when events cross anomaly thresholds.
-              Go to the{' '}
-              <button onClick={() => router.push('/demo')}
-                className="text-indigo-500 hover:underline font-medium">
-                Demo Lab
-              </button>
-              {' '}and run a CERT file or device sample to see alerts appear here in real time.
-            </p>
-          </div>
-        )}
-
-      </main>
-    </>
-  )
+      </section>
+      <details className="text-xs text-slate-500"><summary className="cursor-pointer">About signals</summary><p className="mt-2 max-w-2xl">Rule signals, account observations and AE detections have separate origins. Severity is a review cue, not a compromise probability. Escalation opens an internal case; it sends no external notification or cloud action.</p></details>
+    </main>
+  </>
 }
