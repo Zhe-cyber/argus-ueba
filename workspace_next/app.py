@@ -29,6 +29,18 @@ class RetainDiagnostic(BaseModel):
     artifact_manifest_sha256: str = Field(pattern='^[0-9a-f]{64}$')
 
 
+class StripPrefix:
+    """Outermost ASGI layer: /api/x is served as /x, so UI pages (/workspace, /cases) and API routes can share a hostname."""
+    def __init__(self, app, prefix):
+        self.app, self.prefix = app, prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] in ('http', 'websocket') and (scope['path'] == self.prefix or scope['path'].startswith(self.prefix + '/')):
+            scope = {**scope, 'path': scope['path'][len(self.prefix):] or '/'}
+            scope['raw_path'] = scope['path'].encode()
+        await self.app(scope, receive, send)
+
+
 def create_app():
     if store._PG:
         raise RuntimeError('Workspace preview requires SQLite copy')
@@ -60,9 +72,13 @@ def create_app():
     auth_dir = path.parent / 'auth'  # git-ignored data folder unless the environment points elsewhere
     auth.install(app, auth.Auth(os.environ.get('ARGUS_AUTH_USERS_FILE') or auth_dir / 'users.json',
                                 os.environ.get('ARGUS_AUTH_SECRET_FILE') or auth_dir / 'session.key'),
-                 cookie_name=os.environ.get('ARGUS_SESSION_COOKIE', auth.COOKIE))  # before CORS: CORS stays outermost
+                 cookie_name=os.environ.get('ARGUS_SESSION_COOKIE', auth.COOKIE),
+                 secure=os.environ.get('ARGUS_COOKIE_SECURE') == '1')  # before CORS: CORS stays outermost
     app.add_middleware(CORSMiddleware,allow_origins=[os.environ.get('ARGUS_WORKSPACE_UI_ORIGIN','http://127.0.0.1:3011')],
                        allow_credentials=True,allow_methods=['GET','POST','PATCH'],allow_headers=['Content-Type','X-Argus-Request'])
+    prefix = os.environ.get('ARGUS_API_PREFIX', '').rstrip('/')
+    if prefix:  # cloud: the tunnel sends /api/* here unchanged (cloudflared cannot rewrite paths)
+        app.add_middleware(StripPrefix, prefix=prefix)
     app.include_router(router)
     app.include_router(drift_router)
 

@@ -248,7 +248,12 @@ def collect_aws(args, backend):
 
 def collect_cloudflare(args, backend):
     from scripts.setup_cloudflare import Cloudflare, load_token
-    api = Cloudflare(args.account_id, load_token(args.account_id))
+    if os.name == 'nt':
+        token = load_token(args.account_id)
+    else:  # Linux server: read-only Access-log API token in /etc/argus/secrets (mode 0600)
+        from scripts.linux_compat import read_secret
+        token = read_secret('cloudflare-api-token')
+    api = Cloudflare(args.account_id, token)
     now = datetime.now(timezone.utc)
     query = urlencode({'limit': 100, 'direction': 'desc', 'since': (now - timedelta(hours=24)).isoformat(), 'until': now.isoformat()})
     records = api.call('GET', 'access/logs/access_requests?' + query)

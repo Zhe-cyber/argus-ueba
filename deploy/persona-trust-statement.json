@@ -1,0 +1,7 @@
+{
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "arn:aws:iam::<ACCOUNT_ID>:role/<INSTANCE_ROLE_NAME>"
+  },
+  "Action": "sts:AssumeRole"
+}

@@ -1,0 +1,34 @@
+# Argus live system: one supervisor, every component on 127.0.0.1. Install to /etc/systemd/system/argus.service.
+# NEVER enable this while the laptop collector (Argus-Pilot-Collect / Argus-Ops-*) can still run: two
+# consumers would split the SQS queue. The condition below is the runbook gate: the owner creates the
+# file only after the laptop drain check passed and backend.readiness printed READY here.
+[Unit]
+Description=Argus live system (supervisor)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/argus/CUTOVER_OK
+
+[Service]
+User=argus
+Group=argus
+WorkingDirectory=/opt/argus/app
+# AWS: collector uses the instance role (profile null). The persona runner keeps its own profile, see README.
+Environment=AWS_SHARED_CREDENTIALS_FILE=/etc/argus/secrets/aws-credentials
+Environment=ARGUS_COOKIE_SECURE=1
+Environment=ARGUS_API_PREFIX=/api
+Environment=ARGUS_LIVE_AE_BUNDLE=/var/lib/argus/bundle/bundle-v2-20261113T010640
+# GH_TOKEN=<fine-grained read-only token> for the gh CLI (one line, file mode 0600 owned by argus)
+EnvironmentFile=/etc/argus/secrets/github.env
+ExecStart=/opt/argus/venv/bin/python scripts/argus_supervisor.py --config /etc/argus/ops.json
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/argus /opt/argus/ui
+
+[Install]
+WantedBy=multi-user.target

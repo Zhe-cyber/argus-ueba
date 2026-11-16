@@ -1,0 +1,12 @@
+# /etc/cloudflared/config.yml. One hostname, path routing. Only the workspace API (8017) and the web UI (3013)
+# are reachable; the ingest API (8013) and everything else are not routed (last rule: 404).
+# cloudflared does not rewrite paths: the workspace API strips the /api prefix itself (ARGUS_API_PREFIX=/api).
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+ingress:
+  - hostname: argus.<domain>
+    path: ^/api(/|$)
+    service: http://127.0.0.1:8017
+  - hostname: argus.<domain>
+    service: http://127.0.0.1:3013
+  - service: http_status:404

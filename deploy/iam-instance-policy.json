@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ConsumeTheOneEventQueue",
+      "Effect": "Allow",
+      "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"],
+      "Resource": "arn:aws:sqs:us-east-1:<ACCOUNT_ID>:<QUEUE_NAME>"
+    },
+    {
+      "Sid": "AssumeOnlyThePersonaRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-01",
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-02",
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-03",
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-04",
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-05",
+        "arn:aws:iam::<ACCOUNT_ID>:role/argus-lab/argus-ueba-actors-persona-06"
+      ]
+    },
+    {
+      "Sid": "ReadTheMigrationPackOnly",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::<MIGRATION_BUCKET>/migrate/*"
+    }
+  ]
+}

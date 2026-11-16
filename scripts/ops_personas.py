@@ -23,6 +23,7 @@ import argparse
 from contextlib import closing
 from datetime import date, datetime, time as daytime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -34,7 +35,8 @@ if str(ROOT) not in sys.path:
 from scripts import ops_collect  # noqa: E402
 from scripts import run_persona_history as history  # noqa: E402  read-only reuse
 from scripts.persona_history_plan import make_plan, MALAYSIA  # noqa: E402
-from scripts.local_pilot import atomic_json, lock  # noqa: E402
+from scripts.local_pilot import atomic_json  # noqa: E402
+from scripts.linux_compat import lock, read_secret  # noqa: E402
 
 STATUS_NAME = 'ops-personas-status.json'
 MARKER = 'ops-ledger.json'
@@ -115,11 +117,15 @@ def cf_plan(day):
 
 
 def cf_loader(state_dir, persona):
-    """(host, client_id, client_secret) through the existing DPAPI loader. Never printed or logged."""
-    from scripts.github_lab_app import load_secret
+    """(host, client_id, client_secret) through the existing DPAPI loader (Windows) or /etc/argus/secrets/<persona>
+    (elsewhere, JSON with the same keys). Never printed or logged."""
     state = Path(state_dir)
     pilot = json.loads((state / 'pilot-config.json').read_bytes())
-    token = load_secret(state / f'{persona}.dpapi')
+    if os.name == 'nt':
+        from scripts.github_lab_app import load_secret
+        token = load_secret(state / f'{persona}.dpapi')
+    else:
+        token = json.loads(read_secret(persona))
     if token['client_id'] != pilot['tokens'][persona]['client_id'] or token['id'] != pilot['tokens'][persona]['id']:
         raise ValueError('Credential scope differs')
     if not re.fullmatch(r'argus-machine-lab\.[a-z0-9-]+\.workers\.dev', pilot.get('host', '')):

@@ -1,0 +1,47 @@
+{
+  "schema": "argus_ops_v1",
+  "_note": "Copy to /etc/argus/ops.json and fill the <PLACEHOLDERS>. Same shape as config/ops.json with Linux paths. profile null = the instance role (boto3 default chain).",
+  "backend_url": "http://127.0.0.1:8013",
+  "live_state_dir": "/var/lib/argus/connected",
+  "status_dir": "/var/lib/argus/ops",
+  "collect_start_local": "2026-11-17",
+  "protected_paths": [],
+  "intervals_minutes": {"aws": 5, "github": 30, "cloudflare": 30},
+  "providers": {
+    "aws": {"enabled": true, "account_id": "<ACCOUNT_ID>", "queue_url": "<QUEUE_URL>", "profile": null, "batches": 5},
+    "github": {"enabled": true, "repos": ["<OWNER>/<REPO>"], "gh_path": ""},
+    "cloudflare": {"enabled": true, "account_id": "<CLOUDFLARE_ACCOUNT_ID>", "app_ids": ["<LAB_ACCESS_APP_ID>"]}
+  },
+  "personas": {
+    "enabled": true,
+    "start_local": "2026-11-16",
+    "ledger_dir": "/var/lib/argus/persona-ledger",
+    "stack": "argus-ueba-actors",
+    "aws_profile": "argus-simulator",
+    "cloudflare": {"enabled": true, "state_dir": "/var/lib/argus/cf-personas", "tokens_valid_until_utc": "<ISO-8601 UTC>"}
+  },
+  "supervisor": {
+    "python": "/opt/argus/venv/bin/python",
+    "node": "/usr/bin/node",
+    "workspace_dir": "/var/lib/argus/workspace",
+    "frontend_dir": "/opt/argus/ui",
+    "workspace_api_port": 8017,
+    "web_ui_port": 3013,
+    "mirror_interval_seconds": 60,
+    "collect_interval_seconds": 300,
+    "persona_interval_seconds": 60
+  },
+  "auth": {
+    "users_file": "/var/lib/argus/auth/users.json",
+    "secret_file": "/var/lib/argus/auth/session.key",
+    "log_file": "/var/lib/argus/auth/auth.log"
+  },
+  "notify": {
+    "sender": "outbox",
+    "interval_seconds": 60,
+    "outbox_file": "/var/lib/argus/notify-outbox.jsonl",
+    "credential_file": "",
+    "telegram_chat_id": "",
+    "email": {"host": "", "port": 587, "from": "", "to": ""}
+  }
+}

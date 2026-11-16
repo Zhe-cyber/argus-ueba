@@ -91,6 +91,23 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 
+  linux-ops:
+    name: Linux ops path (pinned lock, readiness, migrate round trip)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"   # same minor as the laptop and the cloud server
+      - name: Install from the pinned ops lock
+        run: pip install --quiet -r backend/requirements-ops.lock.txt pytest httpx
+      - name: Readiness fixtures, secrets, lock, cookie, migrate pack/verify
+        run: >-
+          python -m pytest backend/tests/test_l14_readiness.py backend/tests/test_cloud_deploy_workspace.py
+          scripts/tests/test_cloud_deploy.py -v --tb=short
+        env:
+          DATABASE_URL: "sqlite-local"
+
   # ── Backend → Hugging Face Spaces ────────────────────────────────────────
   # NOTE: Model files (*.pt, *.pkl, *.parquet, *.csv) are gitignored and
   # live on the local `hf-deploy` branch. GitHub Actions cannot push model

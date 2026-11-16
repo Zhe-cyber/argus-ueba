@@ -1,0 +1,4 @@
+{
+  "basis": "The server's own instance role (credential refresh, SSM, snapshots): monitoring infrastructure, not a persona or user. Copy to the workspace folder (<workspace_dir>/system-accounts.json) BEFORE the first collector tick. The label is the role name; keep it exactly equal to the instance role.",
+  "labels": ["argus-ops-instance"]
+}

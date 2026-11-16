@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from scripts import collect_live  # noqa: E402  read-only reuse of the pilot fetchers
-from scripts.local_pilot import atomic_json, lock  # noqa: E402
+from scripts.local_pilot import atomic_json  # noqa: E402
+from scripts.linux_compat import lock  # noqa: E402  msvcrt on Windows, fcntl elsewhere
 
 MY = timezone(timedelta(hours=8))
 STATUS_NAME = 'ops-status.json'
