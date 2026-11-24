@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import DiagnosticPanel, { activityDay } from '@/components/DiagnosticPanel'
-import BaselinePanel, { ScoreChip } from '@/components/BaselinePanel'
+import BaselinePanel, { AiSuggestion, ScoreChip } from '@/components/BaselinePanel'
+import { attackTags } from '@/lib/factFormat.mjs'
 import { display, Frame, Drawer, Facts, ErrorNotice, FieldError, Info, request, useCommand, useSession, canChange, field, button, secondary, when } from '@/components/WorkspaceUI'
 const TRIAGE = { review_first: 'Review first', automation_context: 'Automation account', office_hours_context: 'Office hours', infrastructure_context: 'Monitoring infrastructure' }
 // The date filters are typed in Malaysia time (MYT, UTC+8) and sent to the API as UTC.
@@ -12,16 +13,19 @@ const ACTIONS = [['Acknowledged', 'Acknowledge'], ['Resolved', 'Resolve'], ['Fal
 function StatusActions({ id, finding, onDone }) {
   const [reason, setReason] = useState(''), [busy, setBusy] = useState(false), session = useSession()
   const [error, setError] = useState(null), [tried, setTried] = useState(false)
-  async function change(status) {
+  async function change(status, label) {
     setTried(true); setError(null)
-    if (!reason.trim()) return
+    if (!reason.trim() && !label) return
     setBusy(true)
-    try { await request(`/findings/${id}/status`, { status, reason: reason.trim() }); setTried(false); setReason(''); await onDone() } catch (e) { setError(e.message) } finally { setBusy(false) }
+    const why = label ? `${label}: ${reason.trim() || 'real activity, expected'}` : reason.trim()
+    try { await request(`/findings/${id}/status`, { status, reason: why }); setTried(false); setReason(''); await onDone() } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
   if (!canChange(session)) return <section className="border-t pt-3" aria-label="Finding status"><h3 className="text-sm font-semibold">Status: {finding.status}</h3></section>
   return <section className="border-t pt-3 space-y-2" aria-label="Finding status"><h3 className="text-sm font-semibold">Status: {finding.status}</h3><ErrorNotice error={error} />
     <label className="block text-sm">Reason<input maxLength={2000} className={field} value={reason} onChange={e => setReason(e.target.value)} /><FieldError show={tried && !reason.trim()}>Reason is required.</FieldError></label>
-    <div className="flex flex-wrap gap-2">{ACTIONS.map(([status, label]) => <button key={status} className={secondary} disabled={busy || finding.status === status} onClick={() => change(status)}>{label}</button>)}</div></section>
+    <div className="flex flex-wrap gap-2">{ACTIONS.map(([status, label]) => <button key={status} className={secondary} disabled={busy || finding.status === status} onClick={() => change(status)}>{label}</button>)}
+      <button className={secondary} disabled={busy || finding.status === 'Resolved'} onClick={() => change('Resolved', 'Benign positive')}>Benign positive</button>
+      <Info label="About benign positive">Real activity that was expected (e.g. planned maintenance). Recorded as Resolved with the reason "Benign positive: …".</Info></div></section>
 }
 
 // The model diagnostic only appears when a reviewed artifact is configured.
@@ -66,9 +70,11 @@ function FindingDrawer({ id, close, changed }) {
   }
   const day = finding && (finding.origin === 'baseline' ? finding.details?.day : activityDay(finding.rule_event_time_utc || finding.created_at))
   return <Drawer title={'Finding #' + id} close={close}><ErrorNotice error={error || command.error} />{!finding ? <p>Loading evidence…</p> : <>
-    <h3 className="font-semibold text-slate-900">{display(finding.display_title || finding.title)}</h3><p className="text-xs text-slate-500">{finding.severity} · {finding.origin} · {finding.status} · {when(finding.created_at)}</p>
+    <h3 className="font-semibold text-slate-900">{display(finding.display_title || finding.title)}</h3>
+    {attackTags(finding).length > 0 && <p className="flex flex-wrap items-center gap-1.5 text-xs" aria-label="Suggested MITRE ATT&CK techniques">{attackTags(finding).map(t => <span key={t.id} className="rounded bg-slate-800 text-white px-2 py-0.5">ATT&amp;CK {t.id} · {t.name}</span>)}<span className="text-slate-500">suggested</span><Info label="About ATT&CK tags">MITRE ATT&CK is the industry catalogue of attacker techniques. These tags are suggested from this finding's facts to help triage; they are display only and do not affect the score.</Info></p>}<p className="text-xs text-slate-500">{finding.severity} · {finding.origin} · {finding.status} · {when(finding.created_at)}</p>
     <StatusActions id={id} finding={finding} onDone={async () => { await reload(); changed() }} />
     {day && <BaselinePanel key={'b' + id} account={finding.user_id} day={day} compact />}
+    {day && finding.origin === 'baseline' && <AiSuggestion findingId={id} />}
     <Facts value={{ account: finding.account_label, triage: TRIAGE[finding.triage], event_time_malaysia: finding.event_time_myt ? when(finding.event_time_myt) + (finding.in_myt_office_hours ? ' (inside office hours, Mon–Fri 08:00–18:00)' : ' (outside office hours, Mon–Fri 08:00–18:00)') : null, rule_window: finding.rule_window, event_time_utc: finding.rule_event_time_utc, ...finding.details }} />
     <p className="text-xs text-slate-500">{finding.entity_context === 'service_or_workload' ? 'Service/workload account. ' : ''}{finding.history_context === 'limited_observed_history' ? 'Limited observed history. ' : ''}{finding.origin === 'baseline' ? 'Compared with this account’s own history.' : 'Rule-based finding.'}<Info label="About this finding">{finding.history_context === 'limited_observed_history' ? 'Limited observed history; novelty alone does not establish misuse. ' : ''}{finding.origin === 'baseline' ? 'A baseline finding describes this account-day compared with the account’s own history. ' : 'Exact triggering events are not bound to this legacy signal. '}Account activity added to a case is related context. Triage is display context only; recorded severity and detection are unchanged.</Info></p>
     <Diagnostic finding={finding} id={id} />
@@ -119,7 +125,7 @@ export default function WorkQueue() {
     <label className="text-sm flex items-end gap-2 pb-2"><input type="checkbox" aria-label="Learning period" checked={learningView === 'only'} onChange={e => filter('learning', e.target.checked ? 'only' : '')} />Learning period{data ? ` (${data.learning_count})` : ''}</label>
     <label className="text-sm flex items-end gap-2 pb-2"><input type="checkbox" checked={grouped} onChange={e => setGrouped(e.target.checked)} />Group similar</label>
   </section>{router.query.account && <p className="text-sm text-slate-500 break-all">Account filter: {display(router.query.account)} <button className="text-indigo-700 ml-2" onClick={() => filter('account', '')}>Clear account filter</button></p>}{!data ? !error && <p>Loading findings…</p> : <section className="rounded-xl border bg-white overflow-x-auto">
-    <p className="p-4 text-xs text-slate-500">{data.matched_in_scan} matching findings{grouped ? ` · ${groups.length} groups` : ''}{(data.scan_capped || data.invalid_timestamps > 0) && <Info label="About this list">{data.scan_capped ? 'Within the capped scan; older signals may be omitted. ' : ''}{data.invalid_timestamps > 0 ? `${data.invalid_timestamps} invalid timestamps excluded.` : ''}</Info>}</p>{data.triage_counts && <p className="px-4 pb-3 text-sm text-slate-700"><b>{data.triage_counts.review_first || 0}</b> to review first · {data.triage_counts.automation_context || 0} on automation or service accounts · {data.triage_counts.office_hours_context || 0} inside Malaysian office hours · {data.triage_counts.infrastructure_context || 0} on monitoring infrastructure{learningView === 'exclude' && data.learning_count > 0 ? ` · ${data.learning_count} from the learning period` : ''}. <Info label="About triage">Triage is display context only; recorded severity and detection are unchanged.</Info></p>}
+    <p className="p-4 text-xs text-slate-500">{data.matched_in_scan} matching findings{grouped ? ` · ${groups.length} groups` : ''}{(data.scan_capped || data.invalid_timestamps > 0) && <Info label="About this list">{data.scan_capped ? 'Within the capped scan; older signals may be omitted. ' : ''}{data.invalid_timestamps > 0 ? `${data.invalid_timestamps} invalid timestamps excluded.` : ''}</Info>}</p>{data.triage_counts && <p className="px-4 pb-3 text-sm text-slate-700 flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-800 text-white px-2.5 py-0.5 font-semibold">{data.triage_counts.review_first || 0} to review</span>{[['automation', data.triage_counts.automation_context], ['office hours', data.triage_counts.office_hours_context], ['infrastructure', data.triage_counts.infrastructure_context], ...(learningView === 'exclude' && data.learning_count > 0 ? [['learning', data.learning_count]] : [])].map(([label, n]) => <span key={label} className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs">{label} {n || 0}</span>)}<Info label="About triage">Triage is display context only; recorded severity and detection are unchanged.</Info></p>}
     <table className="w-full text-sm text-left"><thead className="bg-slate-50"><tr>{['Finding', 'Account', 'Baseline score', 'Created', 'Cases', ''].map(label => <th className="p-3" key={label}>{label}</th>)}</tr></thead><tbody>{grouped ? groups.map(group => group.list.length === 1 ? plain(group.top, false) : folded(group)) : rows.map(row => plain(row, false))}</tbody></table>
     {!rows.length && (learningView === 'exclude' && !tier && !router.query.triage && !router.query.account && !router.query.entity_context && !router.query.provider && !router.query.start && !router.query.end ? <p className="p-5">Nothing needs review. <button className="text-indigo-700 underline" onClick={() => filter('learning', 'only')}>{data.learning_count} findings from the learning period</button> · <button className="text-indigo-700 underline" onClick={() => filter('triage', 'infrastructure_context')}>{data.triage_counts?.infrastructure_context || 0} on monitoring infrastructure</button></p> : <p className="p-5">No findings match these filters.</p>)}
     <div className="p-4 flex gap-2">{router.query.before_id && <button className={secondary} onClick={() => filter('category', category)}>Newest</button>}{data.next_cursor && <button className={secondary} onClick={() => router.push({ pathname: '/workspace', query: { ...router.query, before_time: data.next_cursor[0], before_id: data.next_cursor[1] } })}>Older findings</button>}</div>

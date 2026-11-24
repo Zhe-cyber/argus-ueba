@@ -13,6 +13,7 @@ from workspace_next import operations
 from workspace_next import diagnostic_receipts
 from workspace_next import baseline_score, live_mirror, workload_groups
 from workspace_next.drift_api import router as drift_router
+from workspace_next import ai_assist
 
 
 class RetainDiagnostic(BaseModel):
@@ -65,6 +66,20 @@ def create_app():
                        allow_credentials=True,allow_methods=['GET','POST','PATCH'],allow_headers=['Content-Type','X-Argus-Request'])
     app.include_router(router)
     app.include_router(drift_router)
+    ai_assist.load_keys(os.environ.get('ARGUS_LLM_ENV'))  # provider key lines only
+
+    @app.post('/workspace/findings/{finding_id}/ai-suggestion')
+    def ai_suggestion(finding_id: int):
+        from workspace_next import queries
+        from workspace_next.case_api import call
+        finding = call(queries.finding, finding_id)
+        try:
+            return ai_assist.suggest(finding)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+        except RuntimeError as error:
+            raise HTTPException(503, 'AI suggestion unavailable: ' + str(error)) from error
+
 
     @app.get('/health')
     def health():

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import DiagnosticPanel from '@/components/DiagnosticPanel'
 import BaselinePanel, { ScoreChip } from '@/components/BaselinePanel'
+import { shortFact, sourceTag } from '@/lib/factFormat.mjs'
 import { display, Frame, Facts, ErrorNotice, Info, maskEmail, request, field, secondary, when } from '@/components/WorkspaceUI'
 
 // Workloads tab detail: combined score, merged facts, merged MYT timeline of the group's latest day, each member's baseline.
@@ -10,7 +11,7 @@ function Workload({ group }) {
   const [timeline, setTimeline] = useState(null), [error, setError] = useState(null)
   useEffect(() => { let active = true; request('/workspace/groups/' + encodeURIComponent(group.group) + '/timeline').then(v => { if (active) setTimeline(v) }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [group.group])
   return <div className="space-y-4"><p className="text-xs text-slate-500">Combined risk across this workload's accounts<Info>Declared lab mapping, not identity proof. Combined score = highest member score, plus 10 when two different sources each score 30 or more.</Info></p><ScoreChip baseline={{ score: group.group_score, tier: group.tier }} />
-    <ul className="text-sm list-disc pl-5 space-y-1">{(group.facts || []).length ? group.facts.map((f, i) => <li key={i}>{display(f)}</li>) : <li>Nothing unusual against these accounts' own histories.</li>}</ul>
+    <ul className="text-sm list-disc pl-5 space-y-1">{(group.facts || []).length ? group.facts.map((f, i) => { const t = sourceTag(display(f)); return <li key={i}>{t.source && <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{t.source}</span>}{shortFact(t.text).text}</li> }) : <li>Nothing unusual against these accounts' own histories.</li>}</ul>
     <ErrorNotice error={error} />{timeline && <section><h3 className="text-sm font-semibold">Merged timeline, {timeline.day} (MYT){timeline.truncated ? ', newest 200' : ''}</h3><ul className="text-xs divide-y max-h-64 overflow-auto">{timeline.events.map((e, i) => <li key={i} className="py-1 break-words">{when(e.time_myt)} · {e.source} · {display(e.account_label)} · {display(e.action)}</li>)}</ul>{!timeline.events.length && <p className="text-xs">No member activity that day.</p>}</section>}
     {(group.members || []).map(m => <section key={m.account_key} className="border-t pt-3 space-y-2"><p className="text-sm break-words">{display(m.account_label)} <span className="text-xs text-slate-500">{m.source}</span></p><BaselinePanel account={m.account_key} /></section>)}</div>
 }
