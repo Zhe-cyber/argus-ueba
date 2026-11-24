@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sqlite3
 from types import SimpleNamespace
 
@@ -155,6 +156,13 @@ def build_store(tmp_path):
     return cfg, bundle
 
 
+def install(out, cfg):
+    """Stand-in for the owner's copy step: write the packed databases over the configured stores."""
+    shutil.copyfile(out / 'events.db', cfg['live_state_dir'] / 'events.db')
+    shutil.copyfile(out / 'preview.db', ops_collect._path(cfg['supervisor']['workspace_dir']) / 'preview.db')
+    shutil.copyfile(out / 'ledger' / 'ledger.db', cfg['personas']['ledger_dir'] / 'ledger.db')
+
+
 def test_pack_then_verify_round_trip_and_a_deleted_row_is_caught(tmp_path):
     cfg, bundle = build_store(tmp_path)
     out = tmp_path / 'pack'
@@ -165,7 +173,8 @@ def test_pack_then_verify_round_trip_and_a_deleted_row_is_caught(tmp_path):
     assert manifest['method_binding_sha256'] == cloud_migrate.method_sha()
     assert cloud_migrate.verify(out) == []
     assert cloud_migrate.main(['verify', '--pack', str(out)]) == 0
-    assert cloud_migrate.verify(out, cfg, bundle) == []  # installed copies (here: the source itself) equal the pack
+    install(out, cfg)
+    assert cloud_migrate.verify(out, cfg, bundle) == []  # installed copies equal the pack
     db = sqlite3.connect(out / 'preview.db')  # one row lost in transfer
     db.execute('DELETE FROM events WHERE id=3')
     db.commit()
@@ -183,6 +192,59 @@ def test_verify_catches_a_changed_file_and_a_missing_installed_store(tmp_path):
     (bundle / 'model.pt').write_bytes(b'\x00\x01\x02')
     (tmp_path / 'ledger' / 'ledger.db').unlink()
     assert any('ledger' in d for d in cloud_migrate.verify(out, cfg, bundle))
+
+
+def edit_cell_same_ids(path):
+    db = sqlite3.connect(path)
+    db.execute("UPDATE events SET v='tampered' WHERE id=2")
+    db.commit()
+    db.close()
+
+
+def test_edited_cell_with_unchanged_ids_and_counts_is_caught_in_pack_and_after_install(tmp_path):
+    cfg, bundle = build_store(tmp_path)
+    out = tmp_path / 'pack'
+    cloud_migrate.pack(cfg, bundle, out)
+    install(out, cfg)
+    edit_cell_same_ids(cfg['live_state_dir'] / 'events.db')  # installed copy altered
+    assert any('events.db' in d for d in cloud_migrate.verify(out, cfg, bundle))
+    edit_cell_same_ids(out / 'events.db')  # packed copy altered in transit
+    assert cloud_migrate.main(['verify', '--pack', str(out)]) == 1
+
+
+def test_deleting_a_store_and_its_manifest_entries_is_caught(tmp_path):
+    cfg, bundle = build_store(tmp_path)
+    out = tmp_path / 'pack'
+    cloud_migrate.pack(cfg, bundle, out)
+    (out / 'events.db').unlink()
+    path = out / cloud_migrate.MANIFEST
+    manifest = json.loads(path.read_text())
+    for key in ('entries', 'dbs', 'files'):
+        manifest[key].pop('events.db')
+    path.write_text(json.dumps(manifest))
+    assert any('events.db' in d for d in cloud_migrate.verify(out))
+    assert cloud_migrate.main(['verify', '--pack', str(out)]) == 1
+
+
+def test_an_extra_unlisted_file_in_the_pack_is_caught(tmp_path):
+    cfg, bundle = build_store(tmp_path)
+    out = tmp_path / 'pack'
+    cloud_migrate.pack(cfg, bundle, out)
+    (out / 'bundle' / 'extra.bin').write_bytes(b'x')
+    assert any('extra.bin' in d for d in cloud_migrate.verify(out))
+    assert cloud_migrate.main(['verify', '--pack', str(out)]) == 1
+
+
+def test_symlink_in_a_bundled_directory_is_refused(tmp_path):
+    cfg, bundle = build_store(tmp_path)
+    outside = tmp_path / 'outside-secret.txt'
+    outside.write_text('fixture')
+    try:
+        (bundle / 'link.txt').symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip('cannot create symlinks without privilege here')
+    with pytest.raises(ValueError):
+        cloud_migrate.pack(cfg, bundle, tmp_path / 'pack')
 
 
 def test_pack_refuses_a_used_output_folder_and_leaves_the_source_unchanged(tmp_path):
@@ -203,11 +265,13 @@ def test_iam_policy_has_no_wildcard_resource_and_no_iam_writes():
     policy = json.loads((DEPLOY / 'iam-instance-policy.json').read_text())
     for statement in policy['Statement']:
         resources = statement['Resource'] if isinstance(statement['Resource'], list) else [statement['Resource']]
-        assert all(r != '*' and '*' not in r.replace('/migrate/*', '') for r in resources), statement['Sid']
+        assert all(r != '*' and '*' not in r.replace('/migrate/<PACK_ID>/*', '') for r in resources), statement['Sid']
         actions = statement['Action'] if isinstance(statement['Action'], list) else [statement['Action']]
         assert not any(a == '*' or a.endswith(':*') or a.startswith('iam:') for a in actions)
-    assume = next(s for s in policy['Statement'] if s['Action'] == 'sts:AssumeRole')
-    assert len(assume['Resource']) == 6 and all(re.search(r'-persona-0[1-6]$', r) for r in assume['Resource'])
+    # option A: persona runner uses its own key file, so the instance role cannot assume anything
+    assert not any('sts:' in str(s['Action']) for s in policy['Statement'])
+    s3 = next(s for s in policy['Statement'] if s['Action'] == 's3:GetObject')
+    assert s3['Resource'].endswith('/migrate/<PACK_ID>/*')
 
 
 def test_tunnel_example_routes_only_the_ui_and_the_workspace_api():
@@ -215,6 +279,12 @@ def test_tunnel_example_routes_only_the_ui_and_the_workspace_api():
     services = re.findall(r'^\s*-?\s*service:\s*(\S+)', text, re.M)
     assert services == ['http://127.0.0.1:8017', 'http://127.0.0.1:3013', 'http_status:404']
     assert '8013' not in re.sub(r'^\s*#.*$', '', text, flags=re.M)
+    # both routed hostnames fail closed without a valid Access token for this application (security review #6)
+    body = re.sub(r'^\s*#.*$', '', text, flags=re.M)
+    routes = [r for r in re.split(r'\n  - ', body) if 'hostname:' in r]
+    assert len(routes) == 2
+    for route in routes:
+        assert re.search(r'access:\s*\n\s*required:\s*true\s*\n\s*teamName:\s*\S+\s*\n\s*audTag:\s*\[\S+\]', route), route
 
 
 def test_linux_ops_example_uses_the_instance_role_and_the_right_ports():

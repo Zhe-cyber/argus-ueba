@@ -162,3 +162,22 @@ def test_run_survives_a_failing_daily_hook():
     ticks = iter([False, False, True])
     sup.run([], None, spawn=None, clock=lambda: 0.0, sleep=lambda s: None, until=lambda: next(ticks), daily=daily)
     assert len(calls) == 2
+
+
+def test_only_collector_and_personas_children_get_provider_credentials(tmp_path, monkeypatch):
+    secrets = {'AWS_SHARED_CREDENTIALS_FILE': 'x', 'AWS_PROFILE': 'x', 'AWS_ACCESS_KEY_ID': 'x', 'AWS_SECRET_ACCESS_KEY': 'x',
+               'GH_TOKEN': 'x', 'GITHUB_TOKEN': 'x', 'CLOUDFLARE_API_TOKEN': 'x'}
+    for k, v in secrets.items():
+        monkeypatch.setenv(k, v)
+    cfg = make_config(tmp_path)
+    cfg['live_state_dir'].mkdir(parents=True)
+    with sqlite3.connect(cfg['live_state_dir'] / 'events.db') as db:
+        db.execute('CREATE TABLE events(id INTEGER)')
+    cfg['supervisor'] = {'workspace_dir': str(tmp_path / 'workspace'), 'workspace_api_port': 8021, 'web_ui_port': 3016,
+                         'python': sys.executable, 'node': 'node', 'frontend_dir': str(tmp_path / 'frontend')}
+    cfg['auth'] = {'users_file': str(tmp_path / 'auth' / 'users.json'), 'secret_file': str(tmp_path / 'auth' / 'session.key')}
+    by_name = {c.name: c for c in sup.components(cfg, tmp_path / 'ops.json')}
+    for name in ('collector', 'personas'):
+        assert all(by_name[name].env.get(k) == 'x' for k in secrets), name
+    for name in ('ingest-api', 'mirror', 'workspace-api', 'notifier', 'web-ui'):
+        assert not [k for k in by_name[name].env if k.upper() in secrets], name

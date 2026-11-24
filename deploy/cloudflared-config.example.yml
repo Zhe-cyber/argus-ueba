@@ -1,12 +1,26 @@
 # /etc/cloudflared/config.yml. One hostname, path routing. Only the workspace API (8017) and the web UI (3013)
 # are reachable; the ingest API (8013) and everything else are not routed (last rule: 404).
 # cloudflared does not rewrite paths: the workspace API strips the /api prefix itself (ARGUS_API_PREFIX=/api).
+# originRequest.access: cloudflared itself rejects any request without a valid Cloudflare Access token for THIS
+# application, so a missing or mismatched Access policy fails closed instead of exposing the app.
+# <TEAM_NAME>: your Zero Trust team name (<TEAM_NAME>.cloudflareaccess.com). <ACCESS_AUD_TAG>: the Access application's
+# "Application Audience (AUD) Tag" (Access -> Applications -> argus -> Overview). Neither is a secret.
 tunnel: <TUNNEL_ID>
 credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
 ingress:
   - hostname: argus.<domain>
     path: ^/api(/|$)
     service: http://127.0.0.1:8017
+    originRequest:
+      access:
+        required: true
+        teamName: <TEAM_NAME>
+        audTag: [<ACCESS_AUD_TAG>]
   - hostname: argus.<domain>
     service: http://127.0.0.1:3013
+    originRequest:
+      access:
+        required: true
+        teamName: <TEAM_NAME>
+        audTag: [<ACCESS_AUD_TAG>]
   - service: http_status:404

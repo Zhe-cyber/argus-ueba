@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 import subprocess
 import sys
@@ -27,6 +28,9 @@ from scripts import ops_collect  # noqa: E402
 from scripts.local_pilot import atomic_json  # noqa: E402
 
 FAIL_LIMIT, FAIL_WINDOW, BACKOFF_CAP, HEALTH_EVERY = 5, 600, 60, 30
+# Provider credentials: only the collector and persona children get them (the web-facing children must not).
+SECRET_ENV = re.compile(r'^(AWS_(SHARED_CREDENTIALS_FILE|CONFIG_FILE|PROFILE|ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)'
+                        r'|(GH|GITHUB)_[A-Z_]*TOKEN|(CLOUDFLARE|CF)_.*)$', re.I)
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 
 
@@ -90,6 +94,11 @@ def prepare_workspace(cfg):
     return folder
 
 
+def scrubbed(environ):
+    """environ without any provider credential variable (case-insensitive, so Windows spellings match too)."""
+    return {k: v for k, v in environ.items() if not SECRET_ENV.match(k)}
+
+
 def components(cfg, config_path):
     s = cfg['supervisor']
     python = s.get('python') or sys.executable
@@ -97,7 +106,8 @@ def components(cfg, config_path):
     ui = f"http://127.0.0.1:{s['web_ui_port']}"
     logs = cfg['status_dir'] / 'logs'
     logs.mkdir(parents=True, exist_ok=True)
-    base = {**os.environ, 'DATABASE_URL': 'sqlite-local', 'ARGUS_LOG_DIR': str(logs)}
+    base = {**scrubbed(os.environ), 'DATABASE_URL': 'sqlite-local', 'ARGUS_LOG_DIR': str(logs)}
+    collector_env = {**os.environ, 'DATABASE_URL': 'sqlite-local', 'ARGUS_LOG_DIR': str(logs)}  # keeps the credentials
     auth = cfg.get('auth', {})
     workspace_env = {**base, 'ARGUS_WORKSPACE_COPY_DB': str(workspace / 'preview.db'), 'ARGUS_WORKSPACE_UI_ORIGIN': ui,
                      'ARGUS_SUPERVISOR_HEALTH': str(cfg['status_dir'] / 'health.json')}
@@ -107,8 +117,8 @@ def components(cfg, config_path):
     conf = str(config_path)
     result = [
         Child('ingest-api', [python, str(ROOT / 'scripts/ops_collect.py'), 'serve', '--config', conf], env=base),
-        Child('collector', [python, str(ROOT / 'scripts/ops_collect.py'), 'loop', '--config', conf], env=base),
-        Child('personas', [python, str(ROOT / 'scripts/ops_personas.py'), 'loop', '--config', conf], env=base),
+        Child('collector', [python, str(ROOT / 'scripts/ops_collect.py'), 'loop', '--config', conf], env=collector_env),
+        Child('personas', [python, str(ROOT / 'scripts/ops_personas.py'), 'loop', '--config', conf], env=collector_env),
         Child('mirror', [python, '-m', 'workspace_next.live_mirror', '--source', str(cfg['live_state_dir'] / 'events.db'),
                          '--dest', str(workspace / 'preview.db'), '--interval', str(s.get('mirror_interval_seconds', 60))], env=base),
         Child('workspace-api', [python, '-m', 'uvicorn', 'workspace_next.app:create_app', '--factory', '--host', '127.0.0.1',
@@ -133,7 +143,7 @@ def drift_daily(python, db, today=None, spawn=subprocess.Popen):
             return
         state['day'] = day
         try:
-            spawn([python, '-m', 'backend.drift_monitor', '--db', str(db)], cwd=ROOT, env={**os.environ, 'DATABASE_URL': 'sqlite-local'},
+            spawn([python, '-m', 'backend.drift_monitor', '--db', str(db)], cwd=ROOT, env={**scrubbed(os.environ), 'DATABASE_URL': 'sqlite-local'},
                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, creationflags=NO_WINDOW)
         except OSError:
             pass
